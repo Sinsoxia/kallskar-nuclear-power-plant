@@ -134,3 +134,17 @@ whether §3.4's sentence should say "≈ 0.5 s" or "+210 pcm".
 **Decision:** the amplitude equation's `BETA` is computed as Σβᵢ from the group table. Using the rounded 360 while the
 groups sum to 360.3 would leave a "critical" reactor sitting at ρ = −0.3 pcm and drifting. Config keeps both numbers
 with their spec provenance; the validation target (360 ± 5%) is unaffected.
+
+## D-017 The §14.2 "uniform perturbation" check and the generation-time change (finding F13) — Proposed
+**Spec:** §14.2 "For a uniform perturbation, the 3D amplitude must match the point-kinetics fallback"; §3.1 Λ.
+**Problem:** in adjoint-weighted kinetics Λ = ⟨φ*, v⁻¹ψ⟩ / F, where F is the weighted fission production. A uniform
+change on the *fission* side (νΣf × 1/(1 − ρ)) leaves the shape alone but raises F by the same factor, so Λ drops by
+(1 − ρ). The prompt-jump precursor amplitudes sᵢ = λᵢΛCᵢ drop with it, and the exact 3D answer is point kinetics
+started from sᵢ = (1 − ρ)βᵢn₀, about 5 × 10⁻⁴ below constant-Λ point kinetics at +50 pcm. A uniform change on the
+*loss* side (D, Σr, Σs and the boundary γ all × (1 − ρ)) leaves both the shape and F unchanged, so constant-Λ point
+kinetics is exact. The first IQS version kept sᵢ against the old F until the next shape step, which matched neither.
+**Decision:** the IQS keeps sᵢ = λᵢ⟨C*, cᵢ⟩ / F_w on every tick by rescaling sᵢ by F_old / F_new whenever F_w moves,
+which is the physics above and costs O(6). `tests/IQSSpec` runs the §14.2 check with a loss-side perturbation, which must
+agree with constant-Λ point kinetics to the solver tolerance, and a fission-side one, which must agree with point
+kinetics including the (1 − ρ) change. The point-kinetics fallback keeps constant Λ: rods and most feedback act
+mainly on the loss side, and the error is O(ρ), below 1% for any sub-prompt-critical state.
