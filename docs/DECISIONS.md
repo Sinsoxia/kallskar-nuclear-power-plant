@@ -96,6 +96,39 @@ I ≈ 572 °C. The real hottest outlet will come from the 3D power map.
 580–585 °C, re-derive the orifice factors from the computed power map (how real orifice zoning is designed) and ask
 Aqua before changing them.
 
+## D-014 IQS shape step is a normalised (power-iteration) solve with a lagged delayed-source map — Proposed
+**Spec:** §14.2 "One implicit time step of the multigroup diffusion equations over the whole mesh, renormalised so
+shape and amplitude stay consistent"; outer loop "usually 2–3 passes with a warm start"; Λ = 4 × 10⁻⁷ s (§3.1).
+**Problem:** with Λ this small, the time-derivative term (1/v)/Δt is ~10⁻⁷ of the removal term, so the shape
+equation is effectively [A − (1−β)χF]ψ = (delayed source). Solved literally as a fixed-source problem, its iteration
+converges at rate (1−β)·k ≈ 0.996, i.e. thousands of passes, not the 2–3 the spec expects. Only a normalised
+iteration (power iteration, converging at the dominance ratio) reaches 10⁻⁴ in a few warm-started passes.
+**Decision:** each shape step is a warm-started power iteration on the current cross sections, with the fission
+source split into its prompt part (1−β)·S(ψ) and the actual delayed-emission distribution Σᵢ λᵢ cᵢ(r) from the
+node precursors, rescaled to the same total magnitude. The spatial lag of the delayed neutrons — the thing IQS adds
+over an adiabatic model — is kept. The magnitude, and the reactivity that drives power, come from the adjoint-weighted
+point-kinetics parameters, exactly as in IQS. The (1/v) terms are dropped, with the order-of-magnitude reason above.
+The §14.2 development check (uniform perturbation ⇒ 3D amplitude = point kinetics) still applies unchanged.
+
+## D-015 Amplitude integrator treats n as linear over each step — Proposed (accuracy refinement)
+**Spec:** §14.2 snippet `s[i] = s[i]·e + beta[i]·n·(1 − e)`; `n = Σs / (BETA − rho)`.
+**Problem:** the snippet holds n at its old value while integrating the precursors, which lags the delayed source
+by one 0.1 s step (a period error of order dt/T, about 0.2% at T = 50 s).
+**Decision:** the same prompt-jump form, with the precursor integral taken exactly for n varying linearly across the
+step: sᵢ¹ = sᵢ⁰eᵢ + βᵢn⁰(1 − eᵢ − wᵢ) + βᵢn¹wᵢ, with wᵢ = (1 − eᵢ) − (1 − eᵢ − xᵢeᵢ)/xᵢ and xᵢ = λᵢdt. n¹ then follows
+algebraically, n¹ = Σ[sᵢ⁰eᵢ + βᵢn⁰(1 − eᵢ − wᵢ)] / (β − ρ − Σβᵢwᵢ), which is still explicit, still unconditionally
+exact at steady state, and has a period error of order (dt/T)². At dt = 0.1 s, Σβᵢwᵢ ≈ 10 pcm, so the denominator
+stays positive for every ρ below the 0.9β prompt-jump limit.
+
+## D-016 The "+300 pcm gives a period near 2.5 s" figure (finding F12) — Open question for Aqua
+**Spec:** §3.4 "All three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s";
+§3.1 delayed-neutron groups (βᵢ, λᵢ) and Λ = 4 × 10⁻⁷ s.
+**Problem:** with the §3.1 constants, the inhour equation gives a period of about 0.46 s for +300 pcm (Λ changes
+this by less than a millisecond). A 2.5 s period corresponds to about 211 pcm. `tests/KineticsSpec` computes both.
+**Proposal:** the simulation follows the §3.1 physics, so a +300 pcm step really gives ~0.46 s. Nothing in M1 depends
+on the 2.5 s figure; it only matters for how S-19 is described and for the trip-timing narrative. Aqua to decide
+whether §3.4's sentence should say "≈ 0.5 s" or "+210 pcm".
+
 ## D-011 Kinetics uses β = Σβᵢ, not the rounded 360 pcm — Proposed (consistency fix)
 **Spec:** §3.1 β_eff = 360 pcm; the six group βᵢ sum to 360.3 pcm.
 **Decision:** the amplitude equation's `BETA` is computed as Σβᵢ from the group table. Using the rounded 360 while the
