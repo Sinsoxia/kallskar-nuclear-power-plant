@@ -1,0 +1,108 @@
+# Verbatim copy of the calc.py source embedded in kallskar_handoff/20_derivations_and_calc_script.txt
+# (extracted mechanically; do not edit -- edit the spec, then re-extract).
+# Provenance: spec file 20, Rev A3. Re-run: micromamba run -n kallskar-xs python tools/derive/spec_calc_file20.py
+import math
+from iapws import IAPWS97 as W97
+def S(**k):
+    if 'T' in k: k['T']+=273.15
+    return W97(**k)
+hf=lambda P:S(P=P,x=0).h
+ts=lambda P:S(P=P,x=0).T-273.15
+def rho(T): t=1-(T+273.15)/2503.7; return 219+275.32*t+511.58*t**.5
+def cp(T): K=T+273.15; return 1.6582-8.479e-4*K+4.4541e-7*K*K-2992.6/K/K
+def dh(a,b,n=100): d=(b-a)/n; return sum(cp(a+(i+.5)*d)*d for i in range(n))
+def psat(T): K=T+273.15; return math.exp(11.9463-12633.73/K-.4672*math.log(K))
+def kNa(T): K=T+273.15; return 124.67-.11381*K+5.5226e-5*K*K-1.1842e-8*K**3
+def mu(T): K=T+273.15; return math.exp(-6.4406-.3958*math.log(K)+556.835/K)
+def ex(h,P0,P1,eta):
+    s=S(P=P0,h=h).s; return h-eta*(h-S(P=P1,s=s).h)
+def cycle(Trh=500.0,Pc=0.005):
+    h1=S(P=13.5,T=500).h
+    h2=ex(h1,13.0,3.5,.84); h3=ex(h2,3.5,2.8,.84)
+    h4=S(P=2.5,T=Trh).h
+    h5=ex(h4,2.5,1.1,.88); h6=ex(h5,1.1,.55,.88)
+    h7=ex(h6,.55,.2,.85); h8=ex(h7,.2,.08,.85); h9=ex(h8,.08,.03,.85); h10=ex(h9,.03,Pc,.85)
+    T=3; hc=hf(Pc); hcp=hc+S(P=Pc,x=0).v*2.5e3/.8
+    hL=[S(P=2.5,T=ts(P)-T).h for P in (.03,.08,.2,.55)]
+    hda=hf(1.0); hfp=hda+S(P=1.0,x=0).v*16.5e3/.83
+    hH6=S(P=17.5,T=ts(2.8)-T).h; hH7=S(P=17.5,T=ts(3.5)-T).h
+    m7=(hH7-hH6)/(h2-hf(3.5))
+    m6=((hH6-hfp)-m7*(hf(3.5)-hf(2.8)))/(h3-hf(2.8))
+    mda=(hda-(m6+m7)*hf(2.8)-(1-m6-m7)*hL[3])/(h5-hL[3]); mc=1-mda-m6-m7
+    m4=mc*(hL[3]-hL[2])/(h6-hf(.55))
+    m3=(mc*(hL[2]-hL[1])-m4*(hf(.55)-hf(.2)))/(h7-hf(.2))
+    m2=(mc*(hL[1]-hL[0])-(m3+m4)*(hf(.2)-hf(.08)))/(h8-hf(.08))
+    m1=(mc*(hL[0]-hcp)-(m2+m3+m4)*(hf(.08)-hf(.03)))/(h9-hf(.03))
+    mrh=1-m7-m6; mlp=mrh-mda-m4
+    Wt=(h1-h2)+(1-m7)*(h2-h3)+mrh*(h4-h5)+(mrh-mda)*(h5-h6)+mlp*(h6-h7)+(mlp-m3)*(h7-h8)+(mlp-m3-m2)*(h8-h9)+(mlp-m3-m2-m1)*(h9-h10-35)
+    hsg=S(P=14.0,T=505).h; hrho=S(P=2.6,T=505).h
+    return dict(We=Wt*.978*.988,Qms=hsg-hH7,Qrh=mrh*(hrho-h3),mrh=mrh,h3=h3,T3=S(P=2.8,h=h3).T-273.15,
+      Tfw=S(P=16.0,h=hH7).T-273.15,x=S(P=Pc,h=h10).x,ext=(m1,m2,m3,m4,mda,m6,m7),hfp=hfp,hda=hda,hfw=hH7,hsg=hsg,hrho=hrho,
+      Tcr=S(P=2.8,h=h3).T-273.15, Tsat_c=ts(Pc), mc=mc)
+c=cycle(); mt=500e3/c['We']; Qt=mt*(c['Qms']+c['Qrh'])/1e3
+print(f"TURBINE: We/kg={c['We']:.1f} kJ/kg  m_main/turbine={mt:.1f} kg/s  heat/turbine={Qt:.1f} MWt  eta_gross={500/Qt*100:.2f}%")
+print(f" cold RH {c['Tcr']:.0f}C, reheat frac {c['mrh']:.3f}, FW {c['Tfw']:.1f}C, LP exhaust x={c['x']:.3f}, Tsat cond {c['Tsat_c']:.1f}")
+print(" extraction fractions m1..m7:", [round(v,4) for v in c['ext']], "cond flow frac", round(c['mc'],3))
+FPpump=(c['hfp']-c['hda'])*mt/1e3; print(f" MFP power/train {FPpump:.1f} MW")
+SG=2*Qt; loop=SG/3; Pth=SG-10.5
+print(f"PLANT: SG total {SG:.0f} MWt, per loop {loop:.1f}; reactor {Pth:.0f} MWt; gross eta on reactor {1000/Pth*100:.2f}%")
+cw=(Qt-500-5)*1e3/(4.0*11); print(f" condenser duty/turbine {Qt-505:.0f} MWt, CW {cw/1025:.1f} m3/s at dT 11K")
+ml=2*mt/3; Pev=14.6; hev=S(P=Pev,T=ts(Pev)+15).h
+Qev=ml*(hev-c['hfw'])/1e3; Qsh=ml*(c['hsg']-hev)/1e3; Qr=ml*c['Qrh']/1e3
+mna=loop*1e3/dh(320,520)
+lo,hi=320,520
+for _ in range(50):
+    mid=(lo+hi)/2
+    if mna*dh(mid,520)/1e3>Qsh+Qr: lo=mid
+    else: hi=mid
+Tmid=mid
+Qsub=ml*(hf(Pev)-c['hfw'])/1e3
+lo,hi=320,520
+for _ in range(50):
+    mid=(lo+hi)/2
+    if mna*dh(320,mid)/1e3<Qsub: lo=mid
+    else: hi=mid
+print(f"SG/loop: steam {ml:.1f} kg/s, EV {Qev:.1f} SH {Qsh:.1f} RH {Qr:.1f} MW; Na {mna:.0f} kg/s; Tmid {Tmid:.1f}; EV exit {ts(Pev)+15:.1f}C h={hev:.0f}; pinch Na {mid:.1f} vs sat {ts(Pev):.1f} -> {mid-ts(Pev):.1f}K")
+print(f" section: {loop/8:.1f} MWt, steam {ml/8:.2f} kg/s, RH steam {ml/8*c['mrh']:.2f} kg/s")
+# reheat eps-NTU
+frac=Qr/(Qsh+Qr); Cna=(mna/8)*frac*dh(Tmid,520)/(520-Tmid)
+ms=ml/8*c['mrh']; cps=(c['hrho']-c['h3'])/(505-c['T3']); Cs=ms*cps
+Cmin,Cmax=min(Cs,Cna),max(Cs,Cna); Cr=Cmin/Cmax; eps=(505-c['T3'])/(520-c['T3'])*(Cs/Cmin)
+x=(1-eps)/(1-Cr*eps); NTU=-math.log(x)/(1-Cr); UA=NTU*Cmin
+def Trh(m):
+    C=m*cps; cmin=min(C,Cna); cr=cmin/max(C,Cna); ntu=UA/cmin; e=math.exp(-ntu*(1-cr))
+    ep=(1-e)/(1-cr*e); return c['T3']+ep*cmin/C*(520-c['T3'])
+def lim(T): return 1.0 if T>=490 else (0.6+0.4*(T-450)/40 if T>=450 else (0.3+0.3*(T-430)/20 if T>=430 else 0.0))
+print(f"RH module UA {UA:.0f} kW/K; check design T {Trh(ms):.1f}")
+print("LOOP3 OUT split table (sB = share of loop2 steam to B):")
+for sB in (0.5,0.6,0.7,0.75,0.8,0.9,1.0):
+    mA=ml*(2-sB); mB=ml*sB
+    TA=Trh(c['mrh']*mA/12); TB=Trh(c['mrh']*mB/4)
+    eA=cycle(min(TA,505)-5)['We']/c['We']; eB=cycle(min(TB,505)-5)['We']/c['We']
+    MA=500*mA/mt*eA; MBs=500*mB/mt*eB; MB=min(MBs,500*lim(TB))
+    print(f" sB={sB:.2f} A {MA:5.0f} MWe RH {TA:5.1f}C | B {MB:5.0f} MWe (steam-limited {MBs:4.0f}) RH {TB:5.1f}C lim {lim(TB)*100:3.0f}% | total {MA+MB:5.0f}")
+# primary
+mp=Pth*1e3/dh(375,550); print(f"PRIMARY flow {mp:.0f} kg/s, per pump {mp/3:.0f} kg/s = {mp/3/rho(375):.2f} m3/s; pump shaft {mp/3/rho(375)*0.65e6/0.82/1e6:.2f} MW")
+mf=0.925*mp; dTfa=0.97*Pth*1e3/(mf*1.27); print(f" fuel asm avg dT {dTfa:.1f}K outlet {375+dTfa:.1f}; hot asm inner {375+dTfa*1.2/1.08:.0f}, outer {375+dTfa*1.05/0.925:.0f}; LHR avg {0.95*Pth*1e3/(301*271):.1f} kW/m")
+print(f" secondary per pump shaft {mna/rho(320)*0.45e6/0.80/1e6:.2f} MW; vol {mna/rho(420):.2f} m3/s; pipe v DN900 {mna/rho(520)/0.636:.1f} m/s; hot leg delay {180*0.636*rho(520)/mna:.0f}s cold {180*0.636*rho(320)/mna:.0f}s")
+Vfp=620e3/rho(545)+560e3/rho(375)+70e3/rho(460); V230=1250e3/rho(230); V375=1250e3/rho(375)
+print(f"POOL: V fp {Vfp:.0f} m3, V375 {V375:.0f}, V230 {V230:.0f}; level fp-230 {(Vfp-V230)/140:.2f} m; fp-375 {(Vfp-V375)/140:.2f} m; tau hot {620e3/mp:.0f}s cold {560e3/mp:.0f}s")
+Vg2=320+(Vfp-V230); print(f" cover gas at 230C (fixed moles): {0.12*320/Vg2*(453/573):.3f} MPa (gas 180C vs 300C)")
+Top=160*86400
+print("DECAY HEAT %:", [(t, round(6.6*(t**-0.2-(t+Top)**-0.2),2)) for t in (1,10,60,100,600,1800,3600,14400,28800,86400,259200,604800)])
+Cp=1250e3*1.27+1500e3*0.55; E=Cp*200/1e3; P0=Pth
+t=(E/(0.066*P0/0.8)+60**0.8)**1.25; print(f"SBO no heat sink: pool +200K after {t/3600:.1f} h")
+print("Na props T,rho,cp,k,mu(mPa s),psat(MPa):")
+for T in (98,150,200,250,300,375,450,520,550,600,700,800,900,950):
+    print(f" {T} {rho(T):.1f} {cp(T):.4f} {kNa(T):.1f} {mu(T)*1e3:.3f} {psat(T):.3e}")
+print("PART LOAD:")
+for P in (100,80,60,40,30,20,10,5):
+    Q=max(P,40) if P>=10 else 25; r=P/Q
+    pms=14.0 if P>=30 else 14.0-(30-P)*0.25
+    Tso=375-55*r; Tsh=375+145*r
+    print(f" {P}% Q{Q} out {375+175*r:.0f} Ns {Tso:.0f}/{Tsh:.0f} ms {min(505,Tsh-15*r):.0f} p {pms:.2f} Tsat {ts(pms):.0f} fw {170+70*(P/100)**0.6:.0f} MWe {10*P*(0.8+0.2*(P/100)**0.5):.0f}")
+print("ROD S-curve (inserted frac -> worth frac):",[ (d/10, round(d/10-math.sin(2*math.pi*d/10)/(2*math.pi),3)) for d in range(11)])
+dop=-900*math.log(1380/648); ax=-0.12*(1380-648); na=0.40*92; pad=-0.35*175; crd=-0.30*170
+iso=-900*math.log(648/503)+(-0.12+0.40-0.35-0.80-0.30+0.15)*145
+print(f"REACTIVITY: power defect {dop+ax+na+pad+crd:.0f} (Dop {dop:.0f} ax {ax:.0f} Na {na:.0f} pad {pad:.0f} crdl {crd:.0f}); iso 230->375 {iso:.0f}; iso coeff@375 {-900/648-0.12+0.40-0.35-0.80-0.30+0.15:.2f}")
+

@@ -1,0 +1,294 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 3 of 7: primary system, secondary sodium loops, steam generators, splitter, reheat
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+4. PRIMARY SYSTEM
+====================================================================================================
+
+4.1 Vessel and pools
+--------------------
+(Parameter / Value)
+Main vessel                        : 15.0 m ID, 14.5 m high, 316LN, 40 mm wall
+Guard vessel                       : 15.6 m ID, 0.3 m gap, leak detectors in the gap
+Roof                               : 2.5 m shielded slab; large and small rotating plugs
+Primary sodium                     : 1,250 t: hot pool 620 t, cold pool 560 t, core and diagrid 70 t
+Sodium per MWt                     : 0.53 t/MWt, close to BN-600 (Superphénix ≈ 1.1). This is the
+                                     main responsiveness knob
+Free surface                       : Hot pool 95 m²; cold pool annulus 45 m²
+Mixing time constants              : Hot pool 58 s (model as 40 s + 18 s nodes); cold pool 52 s plus
+                                     8 s transport from IHX outlets to pump inlets
+Heat capacity, sodium plus internals
+    ≈ 2,400 MJ/K
+
+Pool levels: the hot pool sits above the cold pool, and that head difference is what pushes sodium
+through the IHXs.
+
+(Level relation / Formula)
+Head difference : ΔL = 1.5 m × (Q/Q₀)²
+Hot pool        : L_mean + 0.32 × ΔL
+Cold pool       : L_mean − 0.68 × ΔL
+Mean level      : +0.26 m from 375 °C isothermal to 100%; +0.64 m from 230 °C to 100%
+
+
+4.2 Primary pumps PP1–PP3
+-------------------------
+(Parameter / Value)
+Type                          : Vertical centrifugal, free surface in pump tank, suction from cold
+                                pool, discharge to diagrid through a flap check valve
+Rated flow                    : 3,565 kg/s each (4.13 m³/s at 375 °C); 10,694 kg/s total
+Head, speed                   : 0.65 MPa (≈ 77 m sodium); 740 rpm
+Power                         : 3.3 MW shaft; 4.0 MW motor on a variable-frequency drive
+Speed range                   : 25–105% on the main motor; ramp ≤ 2 %/s
+Pony motor                    : 250 kW, 10% speed, on essential boards (Divisions 1–3)
+Coastdown                     : Q(t) = Q₀ / (1 + t / 10 s): 50% at 10 s, 25% at 30 s; flywheel J ≈
+                                5,500 kg·m²
+Natural circulation, no pumps : Q_nc ≈ 3.5% × (P / 1 %FP)^(1/3) †
+Start interlocks              : Cover gas ≥ 0.105 MPa; sodium ≥ 180 °C; bearing oil pressure normal
+Cavitation                    : Cover gas below 0.108 MPa with speed above 90%: cavitation alarm and
+                                vibration rise †
+Gas entrainment               : Cold pool 1.3 m below program with speed above 95%: bubbles reach
+                                the core (S-10) †
+Pump heat to sodium           : ≈ 10 MWt total
+
+
+4.3 Intermediate heat exchangers, primary side
+----------------------------------------------
+(Parameter / Value)
+Units                     : 6 (1A, 1B, 2A, 2B, 3A, 3B), 400 MWt each
+Arrangement               : Primary on shell side flowing down; secondary in tubes flowing up
+Primary side              : 1,782 kg/s each; 545 °C in from hot pool, 375 °C out to cold pool
+Secondary side            : 1,556 kg/s each; 320 → 520 °C
+Thermal                   : LMTD ≈ 40 K; UA ≈ 10 MW/K; ≈ 2,000 m²
+Inlet shutter (fictional) : Closes in 60 s with 5% leak-by. Used when a loop is out, so hot sodium
+                            doesn't bypass straight into the cold pool
+Pressure rule             : Secondary side stays ≥ 0.4 MPa above primary, so a tube leak runs
+                            secondary into primary
+
+
+4.4 Cover gas
+-------------
+(Parameter / Value)
+Gas, volume            : Argon, 320 m³ above the pools at 100%
+Pressure               : Setpoint 0.120 MPa; auto band 0.115–0.125
+Limits                 : Alarm low 0.105, high 0.140; trip 0.160; never below 0.102 (air ingress)
+Heatup and cooldown    : Sodium expansion moves the gas volume by ≈ 90 m³ between 230 °C and full
+                         power. With a fixed gas inventory, cooldown alone would pull pressure down
+                         to ≈ 0.074 MPa, so argon has to be admitted on cooldown and vented to decay
+                         tanks on heatup
+Normal activity        : Ar-41 (110 min half-life)
+Fuel failure signature : Xe-133, Xe-135, Kr-85m, Kr-88
+Decay tanks            : 3 × 50 m³, 72 h hold-up before the stack †
+
+
+4.5 Decay heat removal (DRACS)
+------------------------------
+(Parameter / Value)
+Loops       : 4 independent: sodium-sodium exchanger in hot pool, natural-circulation sodium loop,
+              sodium-air exchanger, stack
+Capacity    : 20 MWt per loop at 550 °C hot pool; Q = 20 MW × ((T_hot − 30) / 520)^1.4 †
+Standby     : Dampers 5% open, 0.3 MW loss per loop keeps the loop warm
+Dampers     : 2 per loop, motor-operated from essential boards; fail as-is (OD-6) because the motors
+              can't move them without power; local handwheel 90 s each
+Coping time : With no heat sink at all, the pool rises 200 K in ≈ 5 h after a trip from 100%
+
+
+4.6 Primary purification
+------------------------
+Two 100% cold traps, 8 kg/s each †, trap wall 125 °C. Plugging temperature normal ≤ 125 °C, alarm
+150 °C, LCO 180 °C. Oxygen meter online; tritium and carbon by sampling.
+
+
+====================================================================================================
+5. SECONDARY SODIUM LOOPS
+====================================================================================================
+
+5.1 Loop parameters (each of 3)
+-------------------------------
+(Parameter / Value)
+Duty             : 796 MWt
+Flow             : 3,112 kg/s (3.65 m³/s)
+Temperatures     : IHX outlet and SG inlet 520 °C; SG outlet and IHX inlet 320 °C
+Piping           : DN900 (0.90 m ID), 5.9 m/s; hot leg 180 m; cold leg 180 m
+Transport delays : Hot leg 31 s; SG shell residence 41 s; buffer tank 17 s; cold leg 32 s; IHX tubes
+                   5 s; one lap ≈ 125 s
+Inventory        : ≈ 400 t
+Pump             : Cold leg, free surface, 0.45 MPa head, 980 rpm, 2.0 MW shaft, 2.5 MW motor with
+                   VFD; coastdown Q₀ / (1 + t / 5 s)
+Pressures        : Buffer tank gas 0.30 MPa; pump discharge 0.75; IHX inlet 0.72; IHX outlet 0.62;
+                   SG inlet 0.55; SG outlet 0.32
+Isolation        : Sodium gate valves at IHX secondary inlet and outlet, 180 s stroke
+Dump tank        : 450 m³, gravity drain in 20 min, electrically heated
+Trace heating    : 42 zones per loop †; idle setpoint 200 °C; alarm below 150 °C
+Cold trap        : 1 per loop; plugging temperature normal ≤ 140 °C, alarm 160 °C
+
+
+5.2 Sodium-water reaction protection
+------------------------------------
+* Micro
+    Water leak rate: below 0.05 g/s
+    Detected by: Hydrogen trend over grid-hours
+* Small
+    Water leak rate: 0.05–10 g/s
+    Detected by: Section hydrogen meter within minutes
+* Intermediate
+    Water leak rate: 10 g/s – 2 kg/s
+    Detected by: Acoustic leak detection, seconds
+* Large
+    Water leak rate: above 2 kg/s
+    Detected by: Pressure rise and rupture discs, immediate
+
+Hydrogen signal: a 1 g/s water leak adds +0.28 ppm at its section outlet meter and +0.036 ppm at the
+loop outlet meter about 10 s later. Background is ≈ 0.06 ppm at 100% and 0.02 ppm at hot standby,
+drifting ±0.01 ppm per grid day †.
+
+Large leak, automatic sequence: rupture discs burst at 1.2 MPa, then separator tank, pump trip and
+loop isolation, water side isolated in ≤ 5 s and blown down, nitrogen purge, sodium drained to the
+dump tank, and reactor runback RB-1.
+
+
+====================================================================================================
+6. STEAM GENERATORS, SPLITTER AND REHEAT ROUTING
+====================================================================================================
+
+6.1 Construction
+----------------
+(Parameter / Value)
+Arrangement                  : 3 SGs × 8 identical sections (1-1 … 3-8). Each section has an
+                               evaporator (EV), superheater (SH) and reheater (RH) module; straight
+                               tubes, sodium on shell side
+Materials                    : 2¼Cr-1Mo evaporator; 9Cr-1Mo superheater and reheater †
+Section duty                 : 99.5 MWt: EV 62.6, SH 21.2, RH 15.7
+Loop duty                    : EV 501, SH 170, RH 125 MWt
+Sodium path                  : 520 °C in, split 57.6% SH and 42.4% RH in parallel, both leave at 445
+                               °C, mix, then EV, out at 320 °C
+Water path, per section      : Feed 36.5 kg/s at 16.0 MPa, 240 °C; EV outlet 14.6 MPa, 355 °C (15 K
+                               superheat); SH outlet 14.0 MPa, 505 °C
+Reheat path, per section     : 31.9 kg/s from 2.75 MPa, 292 °C to 2.6 MPa, 505 °C
+Pinch                        : ≈ 20 K where boiling starts (sodium 360 °C, saturation 340 °C)
+Hot-end approach             : 15 K (sodium 520 °C, steam 505 °C)
+Section isolation            : Sodium valves 60 s; feed and steam valves ≤ 5 s; water dump valve; N₂
+                               purge
+One section isolated at 100% : Loop capacity −12.5%; reactor −4.2 %FP
+
+
+6.2 Main steam
+--------------
+(Item / Value)
+Pressure drop : SG outlet 14.0 MPa, header 13.7 MPa, turbine stop valve 13.5 MPa and 500 °C
+Loop 1        : SG1 through MSIV-1 to header A
+Loop 3        : SG3 through MSIV-3 to header B
+Loop 2        : Branch A through CV-2A and NRV-2A to header A; branch B through CV-2B and NRV-2B to
+                header B
+Protection    : SG safety valves 15.8 MPa (3 × 35% per SG); atmospheric relief valve 15.2 MPa, auto
+                or manual; MSIVs close in ≤ 5 s
+
+
+6.3 Splitter valves (steam generator desk)
+------------------------------------------
+(Parameter / Value)
+CV-2A, CV-2B      : Hydraulic control valves; 20 s full stroke; 5 s fast close; fail as-is on loss
+                    of hydraulic pressure †
+Losses            : Fully open 0.10 MPa at full branch flow; equal-percentage trim; throttled to 50%
+                    open costs ≈ 0.8 MPa, about 6 MWe on that branch †
+NRV-2A, NRV-2B    : Swing check valves; close on reverse ΔP above 0.02 MPa
+Turbine desks see : Valve position, branch flow, check valve state, both header pressures. Repeaters
+                    only
+Auto mode         : Holds position. Does nothing on a loop loss
+
+
+6.4 Reheat routing (OD-4)
+-------------------------
+* A
+    Reheater modules: SG1 sections 1–8 plus SG2 sections 1–4 (12 modules)
+    Capacity: 1.5 loops' worth
+* B
+    Reheater modules: SG3 sections 1–8 plus SG2 sections 5–8 (12 modules)
+    Capacity: 1.5 loops' worth
+
+Each reheater group (SG1, SG2-A, SG2-B, SG3) has steam-side isolation valves, 30 s stroke. Each hot
+reheat line has an attemperator spray fed from the feed pump interstage; sprays can only cool.
+
+Why this matters: the splitter moves loop 2's main steam between turbines, but reheater capacity is
+fixed by pipework. Push steam towards B and B's reheat runs cold while A's runs hot. Isolating a
+single SG2 section nudges the balance by about 2 K in each direction, which a good steam generator
+desk trims out with a small split change.
+
+
+6.5 Loss of loop 3: what each split actually gives
+--------------------------------------------------
+Reactor at 67%, loops 1 and 2 at 100%, loop 3 and its reheaters isolated. Output includes the
+efficiency effect of reheat temperature and the turbine reheat load limit (§7.1).
+
+* 50%
+    Turbine A (MWe): 500
+    A hot reheat: 505 °C
+    Turbine B (MWe): 167
+    B hot reheat: 505 °C
+    B load limit: 100%
+    Plant (MWe): 667
+* 60%
+    Turbine A (MWe): 467
+    A hot reheat: 508 °C
+    Turbine B (MWe): 198
+    B hot reheat: 495 °C
+    B load limit: 100%
+    Plant (MWe): 665
+* 70%
+    Turbine A (MWe): 433
+    A hot reheat: 511 °C, spraying
+    Turbine B (MWe): 229
+    B hot reheat: 484 °C
+    B load limit: 94%
+    Plant (MWe): 662
+* 80%
+    Turbine A (MWe): 400
+    A hot reheat: 513 °C, spraying
+    Turbine B (MWe): 259
+    B hot reheat: 473 °C
+    B load limit: 83%
+    Plant (MWe): 659
+* 90%
+    Turbine A (MWe): 367
+    A hot reheat: 516 °C, spraying
+    Turbine B (MWe): 288
+    B hot reheat: 462 °C
+    B load limit: 72%
+    Plant (MWe): 655
+* 100%
+    Turbine A (MWe): 333
+    A hot reheat: 517 °C, spraying
+    Turbine B (MWe): 311, capped by reheat; 6 MWe to bypass
+    B hot reheat: 452 °C
+    B load limit: 62%
+    Plant (MWe): 645
+* Trip B
+    Turbine A (MWe): 500
+    A hot reheat: 505 °C
+    Turbine B (MWe): 0
+    B hot reheat: –
+    B load limit: –
+    Plant (MWe): 500; reactor to 50% or dump 146 kg/s
+
+Reading it: 50/50 keeps reheat perfect but leaves B at 33%, a hair above its 30% minimum load, where
+the next disturbance trips it. Sending everything to B looks balanced, yet it loses 22 MWe and runs
+both reheat lines out of specification. The right answer is 60–70% of loop 2 to B: about 3 MWe lost,
+B comfortably above minimum, reheat within limits. Crews who understand the plant will find it, and
+crews who don't will pick one of the obvious answers.
+
+
+6.6 Startup and low-load behaviour
+----------------------------------
+Once-through modules have no drum. Steam temperature is set by the ratio of feed flow to sodium
+flow.
+
+(Item / Value)
+Startup separator          : One per SG between EV and SH; separator level 2.0 m; drains to
+                             deaerator when hot, condenser when cold
+Minimum evaporator flow    : 25% (73 kg/s per SG) through the separator
+Switch to once-through     : EV outlet superheat ≥ 15 K held for 5 min, around 30–35% load
+Water admission interlocks : Sodium ≥ 250 °C; feed temperature ≥ sodium − 80 K
+Density-wave oscillation   : EV flow below 20% with EV sodium inlet above 400 °C: section flow
+                             oscillates with a 6–10 s period, growing 5% per cycle until flow is
+                             raised or sodium cooled †

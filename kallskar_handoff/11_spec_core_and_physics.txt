@@ -1,0 +1,459 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 2 of 7: reactor core and reactor physics
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+2. REACTOR CORE
+====================================================================================================
+
+2.1 Geometry
+------------
+(Parameter / Value)
+Core type                  : Two-zone homogeneous MOX; steel reflectors, no breeding blankets
+Assembly pitch             : 179 mm; wrapper 173 mm across flats, 4.5 mm wall
+Assembly length            : 4.80 m
+Fissile height             : 1,000 mm; lower steel reflector 300 mm; upper gas plenum 1,100 mm
+Core equivalent diameter   : 3.42 m (rings 0–10)
+Core volume, power density : 9.18 m³; 259 MW/m³ average
+Positions on diagrid       : 817 (rings 0–16)
+
+
+2.2 Core map by ring
+--------------------
+Ring n holds 6n positions (ring 0 holds 1). Space each rod set evenly so it is 3-fold symmetric, and
+offset bank B by 30° from bank A so they don't shadow each other.
+
+* 0
+    Positions: 1
+    Contents: Fuel, inner zone
+* 1
+    Positions: 6
+    Contents: Fuel
+* 2
+    Positions: 12
+    Contents: 3 regulating rods (RR) at 0°, 120°, 240°; 9 fuel
+* 3
+    Positions: 18
+    Contents: 6 shim rods, bank A; 12 fuel
+* 4
+    Positions: 24
+    Contents: 3 secondary shutdown rods (SSR); 21 fuel
+* 5
+    Positions: 30
+    Contents: Fuel
+* 6
+    Positions: 36
+    Contents: 6 shim rods, bank B; 30 fuel
+* 7
+    Positions: 42
+    Contents: 6 SSR; 36 fuel (last inner-zone ring)
+* 8
+    Positions: 48
+    Contents: 6 shim rods, bank C; 42 fuel (first outer-zone ring)
+* 9–10
+    Positions: 54, 60
+    Contents: Fuel
+* 11–12
+    Positions: 66, 72
+    Contents: Steel reflector
+* 13–14
+    Positions: 78, 84
+    Contents: B₄C shield
+* 15
+    Positions: 90
+    Contents: In-vessel storage: spent assemblies decay here for one cycle
+* 16
+    Positions: 96
+    Contents: Steel shield
+
+Totals: 301 fuel (145 inner, 156 outer), 3 RR, 18 shim, 9 SSR.
+
+
+2.3 Fuel pin and assembly
+-------------------------
+(Parameter / Value)
+Pins per assembly       : 271 on a 9.7 mm triangular pitch
+Cladding                : 15-15Ti austenitic steel, OD 8.50 mm, wall 0.56 mm
+Pellet                  : Annular (U,Pu)O₂, OD 7.28 mm, hole 2.0 mm, 95% TD
+Plutonium fraction      : ≈ 18% inner zone, ≈ 23% outer zone
+Spacer                  : Helical wire 1.2 mm, 200 mm pitch
+Wrapper                 : Ferritic-martensitic steel
+Total pins, heavy metal : 81,571 pins; ≈ 29 tHM
+Cycle                   : 160 EFPD; a quarter of the core replaced per outage; discharge ≈ 51
+                          GWd/tHM
+Refuelling outage       : Timed wait (OD-8), 30 min real †; reactor held in Mode 5
+
+
+2.4 Thermal limits
+------------------
+* Average linear heat rate
+    At 100%: 27.7 kW/m
+    Alarm: –
+    Limit: –
+* Peak linear heat rate (1.20 radial × 1.04 pin × 1.22 axial)
+    At 100%: 42 kW/m
+    Alarm: 44
+    Limit: 45 steady; centreline melting above ≈ 60
+* Fuel centreline, hot pin
+    At 100%: ≈ 1,950 °C
+    Alarm: –
+    Limit: MOX melts ≈ 2,700 °C
+* Cladding midwall, hot spot
+    At 100%: ≈ 620 °C
+    Alarm: 650
+    Limit: 700 short term; above 850 burst likely within minutes †
+* Fuel assembly outlet, average
+    At 100%: 559 °C
+    Alarm: –
+    Limit: –
+* Hottest assembly outlet
+    At 100%: 580–585 °C
+    Alarm: deviation alarms, §9.5
+    Limit: –
+* Mixed core outlet
+    At 100%: 550 °C
+    Alarm: 565
+    Limit: Trip 580
+* Sodium boiling
+    At 100%: –
+    Alarm: –
+    Limit: ≈ 950 °C at core-outlet static pressure; 881 °C at 1 atm
+* Sodium freezing
+    At 100%: –
+    Alarm: –
+    Limit: 97.8 °C
+
+
+2.5 Flow zoning
+---------------
+Fuel assemblies take 92.5% of primary flow, rod positions 1.5%, reflector, shield and storage
+positions 3%, and leakage 3%. Mean fuel assembly flow is 32.9 kg/s, bundle velocity ≈ 5.4 m/s, core
+transit time 0.19 s, assembly pressure drop ≈ 0.45 MPa.
+
+* I
+    Rings: 0–5
+    Fuel assemblies: 79
+    Flow factor f: 1.12
+* II
+    Rings: 6–8
+    Fuel assemblies: 108
+    Flow factor f: 1.00
+* III
+    Rings: 9–10
+    Fuel assemblies: 114
+    Flow factor f: 0.92
+
+Per-assembly outlet for the thermocouple map: T_out = T_in + 183.7 × (p / f) × (P/Q), where p is
+that assembly's relative power from the 3D model (§3.7). Add ±1 K noise and a 3 s sensor lag. The
+point-kinetics fallback uses a static radial map multiplied by rod-shadow factors instead.
+
+
+====================================================================================================
+3. REACTOR PHYSICS AND KINETICS
+====================================================================================================
+The simulation runs real-time 3D multigroup space-time kinetics (§3.7). Everything in §3.1–3.6
+describes the core that model must reproduce.
+
+
+3.1 Kinetics constants
+----------------------
+β_eff = 360 pcm, Λ = 4.0 × 10⁻⁷ s, mean delayed neutron lifetime 10.7 s. Six groups blended for MOX
+(Pu-239, U-238 fast fission, U-235):
+
+* 1
+    λ (s⁻¹): 0.0130
+    Relative abundance: 0.024
+    β_i (pcm): 8.8
+* 2
+    λ (s⁻¹): 0.0315
+    Relative abundance: 0.198
+    β_i (pcm): 71.3
+* 3
+    λ (s⁻¹): 0.135
+    Relative abundance: 0.185
+    β_i (pcm): 66.6
+* 4
+    λ (s⁻¹): 0.345
+    Relative abundance: 0.366
+    β_i (pcm): 131.8
+* 5
+    λ (s⁻¹): 1.37
+    Relative abundance: 0.171
+    β_i (pcm): 61.6
+* 6
+    λ (s⁻¹): 3.82
+    Relative abundance: 0.056
+    β_i (pcm): 20.2
+
+NOTE: No xenon. Xe-135 barely absorbs fast neutrons, so there is no poison-out after a trip.
+      Restarts are gated by thermal limits, investigation and paperwork instead. One small real
+      effect does remain: Np-239 decaying to Pu-239 adds about +30 pcm over the week after shutdown
+      (half-life 2.36 d). Include it in the estimated critical position.
+
+
+3.2 Feedback coefficients
+-------------------------
+In the 3D model (§3.7), Doppler and sodium density act through each node's cross sections, and
+expansion acts through geometry and rod offsets. The coefficients below are the whole-core values
+the model must reproduce, and the lags are the thermal time constants of the driving temperatures.
+The point-kinetics fallback uses them directly.
+
+* Doppler
+    Driving temperature: Fuel average (K)
+    Coefficient: ρ = −900 pcm × ln(T_f / T_ref)
+    Lag: 4 s
+* Fuel axial expansion
+    Driving temperature: Fuel average
+    Coefficient: −0.12 pcm/K
+    Lag: 4 s
+* Sodium density in core
+    Driving temperature: Core-average sodium
+    Coefficient: +0.40 pcm/K
+    Lag: 0.2 s
+* Above-core load pads
+    Driving temperature: Core outlet
+    Coefficient: −0.35 pcm/K
+    Lag: 15 s
+* Diagrid radial expansion
+    Driving temperature: Core inlet
+    Coefficient: −0.80 pcm/K
+    Lag: 120 s
+* Control rod drivelines
+    Driving temperature: Upper hot pool
+    Coefficient: −0.30 pcm/K
+    Lag: 90 s
+* Vessel and core support
+    Driving temperature: Cold pool
+    Coefficient: +0.15 pcm/K (rods effectively withdraw)
+    Lag: 900 s
+
+(Derived quantity / Value)
+Whole-core sodium void worth       : +1,800 pcm (≈ +$5); no sodium plenum
+Isothermal coefficient at 375 °C   : −2.41 pcm/K
+Isothermal defect, 230 → 375 °C    : −376 pcm
+Fuel average temperature at 100%   : ≈ 1,107 °C
+Power defect, hot zero power to 100%
+    −844 pcm (Doppler −680, axial −88, sodium +37, pads −61, drivelines −51)
+Power coefficient at 100%          : ≈ −5.3 pcm/%FP in the first 5 s; ≈ −6.4 pcm/%FP after 2 min
+Inlet temperature sensitivity      : ≈ −0.4 %FP per K of inlet rise, settled in 2–3 min
+
+The vessel term is the quiet troublemaker. After a long spell at a different cold pool temperature
+it drifts reactivity for about 15 minutes, which is exactly the kind of thing an attentive reactor
+operator notices and a distracted one doesn't (scenario S-23).
+
+
+3.3 Reactivity budget, beginning of cycle
+-----------------------------------------
+(Item / pcm)
+Isothermal 230 → 375 °C            : 376
+Power defect                       : 844
+Burnup over the cycle (160 EFPD × 3.0 pcm/EFPD)
+    480
+Operating margin (RR band, load following)
+    250
+Uncertainty allowance              : 300
+Required excess reactivity, 230 °C, all rods out
+    ≈ 2,250 (k_eff ≈ 1.023)
+
+
+3.4 Rod systems
+---------------
+* Regulating (RR)
+    Rods: 3
+    Worth each (pcm): 100
+    Total (pcm): 300
+    Normal position: 400–700 mm band
+    Drive speed: 5 mm/s
+    Scram: Primary shutdown system (PSS), 90% in ≤ 1.2 s
+* Shim, banks A/B/C
+    Rods: 18
+    Worth each (pcm): 400 / 300 / 200
+    Total (pcm): 5,400
+    Normal position: Per ECP
+    Drive speed: 2 mm/s single; 1 mm/s bank; 10 mm/s drive-in on runback
+    Scram: PSS
+* Secondary shutdown (SSR)
+    Rods: 9
+    Worth each (pcm): 330
+    Total (pcm): 2,970
+    Normal position: Parked at 1,100 mm, latched
+    Drive speed: 5 mm/s, withdraw only
+    Scram: Own logic plus Curie latch; 90% in ≤ 2.0 s
+
+Shutdown margins: all PSS rods in with the most reactive rod stuck, 230 °C, beginning of cycle ≈
+−3,050 pcm. SSS alone at 375 °C ≈ −1,100 pcm, or ≈ −770 pcm with one SSR stuck.
+
+Integral rod worth: W(d) = W_total × (d − sin(2πd) / 2π), where d is the inserted fraction of the
+1,000 mm active height. In the 3D model this is a validation target, not a formula the code uses.
+
+* Worth fraction
+    10%: 0.006
+    20%: 0.049
+    30%: 0.149
+    40%: 0.306
+    50%: 0.500
+    60%: 0.694
+    70%: 0.851
+    80%: 0.951
+    90%: 0.994
+
+Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All
+three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s.
+The period and overpower trips must catch that (scenario S-19).
+
+
+3.5 Neutron instrumentation
+---------------------------
+* Source (SR)
+    Detectors: Pulse-counting fission chambers
+    Span: 1–10⁶ cps
+    Channels: 3
+* Wide range (WR)
+    Detectors: Fission chambers in pulse and Campbell modes, log output
+    Span: 10⁻⁸ to 150 %FP, no range switching
+    Channels: 3
+* Power (PR)
+    Detectors: DC ionisation chambers
+    Span: 0–125 %FP linear
+    Channels: 4 quadrants
+* Period
+    Detectors: From SR and WR
+    Span: −100 s to +3 s
+    Channels: –
+* Delayed neutron detectors (DND)
+    Detectors: At each IHX primary inlet
+    Span: Background ≈ 40 cps †
+    Channels: 6
+
+SR count rate ≈ 15 / (1 − k) cps †, about 250 cps with all rods in. The approach to critical is
+flown on SR counts and a 1/M plot. SR high voltage switches off once WR reads above 10⁻³ %FP, and
+from there WR carries log power and period continuously into the power range.
+
+
+3.6 Decay heat
+--------------
+P/P₀ = 0.066 × (t^−0.2 − (t + T_op)^−0.2) with t and T_op in seconds. For T_op = 160 EFPD:
+
+* % of 2,380 MWt
+    1 s: 6.35
+    10 s: 3.92
+    1 min: 2.66
+    10 min: 1.59
+    30 min: 1.23
+    1 h: 1.04
+    4 h: 0.73
+    1 d: 0.43
+    3 d: 0.30
+    7 d: 0.22
+* MW
+    1 s: 151
+    10 s: 93
+    1 min: 63
+    10 min: 38
+    30 min: 29
+    1 h: 25
+    4 h: 17
+    1 d: 10
+    3 d: 7
+    7 d: 5
+
+The fission-power tail from delayed neutrons comes out of the kinetics model on its own and should
+not be added here.
+
+
+3.7 Core physics model
+----------------------
+Real-time 3D multigroup space-time kinetics: hexagonal-Z nodal diffusion, solved with the improved
+quasi-static method and coupled assembly by assembly to the thermal-hydraulics. Every value in
+§3.1–3.6, plus the peaking factors in §2.4, is a target the model must reproduce, not an input to
+it.
+
+NOTE: Why multigroup, not two-group. Two-group diffusion is the standard for light-water reactor
+      simulators, where neutrons split cleanly into fast and thermal. A sodium fast reactor has
+      almost no thermal neutrons, so its realistic equivalent is several fast energy groups.
+
+What 3D adds in this core: a single rod moving tilts the flux and the thermocouple map; sodium
+voiding adds reactivity at the core centre but removes it in the outer rings; a blocked assembly
+changes local power; a gas bubble's reactivity depends on its path. Whole-core power response
+changes little, because a fast core is tightly coupled. That is also why real sodium fast reactor
+safety codes often still use point kinetics.
+
+(Item / Specification)
+Method                : Time-dependent multigroup neutron diffusion in hexagonal-Z geometry,
+                        factorised by the improved quasi-static (IQS) method: flux = amplitude(t) ×
+                        shape(r, E, t)
+Energy groups         : 4 †, raised to 6 once performance allows. No upscattering in a fast
+                        spectrum, so groups are solved in sequence from fastest to slowest
+Delayed neutrons      : 6 precursor groups in every fuel node, constants from §3.1
+Radial mesh           : One node per hexagonal position in rings 0–12 (469 positions: fuel, rods,
+                        reflector); albedo boundary outside ring 12 †
+Axial mesh            : 14 layers: 2 lower reflector, 10 fuel at 100 mm each, 2 upper plenum and
+                        structure †
+Size                  : 469 × 14 × 4 = 26,264 flux unknowns, plus precursors in the fuel nodes
+Amplitude step        : Every 0.1 s: prompt-jump point kinetics (§14.2) using reactivity, β_eff and
+                        Λ recomputed from the latest shape, weighted by the adjoint flux
+Shape step            : Every 2 s at steady power; every 0.5 s while reactivity changes faster than
+                        5 pcm/s, and for 60 s after any trip †. Time-sliced across frames
+Steady state          : Eigenvalue (k_eff) and adjoint solve at server start, after a reset, and on
+                        demand for the ECP calculator
+Rods                  : The rod tip splits its node into absorber and sodium-follower fractions by
+                        volume, with a cusping correction
+Doppler               : Each fuel node's absorption and fission cross sections vary with ln(T_fuel)
+                        of that node
+Sodium density        : Each node's cross sections vary linearly with that node's sodium density, so
+                        voiding happens node by node
+Axial fuel expansion  : Fuel node height grows with fuel temperature; number densities fall to match
+Radial expansion      : Diagrid (core inlet temperature) and load pads (core outlet temperature)
+                        scale the assembly pitch; cross sections scale with density
+Drivelines and vessel : Offsets added to every rod's effective position, with the §3.2 lags
+Burnup                : Every fuel assembly tracks its own burnup; cross sections interpolate
+                        between tabulated burnup points
+Detectors             : PR quadrant chambers and SR and WR channels read weighted sums of peripheral
+                        node fluxes, so quadrant tilt is physical
+Thermocouple map      : Each outlet temperature comes from that assembly's own nodal power and flow
+                        (§2.5)
+Fallback              : Point kinetics with lumped feedback (§3.2) stays in the code as a low-load
+                        fallback and as a cross-check during development
+
+Cross sections
+
+(Item / Detail)
+Material sets          : Inner fuel, outer fuel, regulating absorber, shim absorber, SSR absorber,
+                         sodium follower, steel reflector, lower structure, upper plenum
+Data per set and group : Diffusion coefficient, removal, νΣf, κΣf, fission spectrum χ, downscatter
+                         matrix
+Feedback tables †      : Fuel temperature at 4 points (600–2,000 K); sodium density at 3 points
+                         including voided; burnup at 3 points
+Best source            : Generated offline with an open-source Monte Carlo code such as OpenMC,
+                         homogenised per material set, collapsed to the chosen groups
+Acceptable source      : A few-group set tuned by hand until every validation target below passes
+Reference compositions : The OECD/NEA sodium fast reactor benchmark cores include a large oxide core
+                         that is a realistic starting point
+
+Validation targets †
+
+* β_eff and Λ
+    Target: 360 pcm; 4.0 × 10⁻⁷ s
+    Tolerance: ±5%
+* Bank worths
+    Target: A 2,400; B 1,800; C 1,200; RR 300; SSR 2,970 pcm
+    Tolerance: ±10%
+* Single rod worth shape
+    Target: §3.4 S-curve
+    Tolerance: ±5% of total worth at every 10% of travel
+* Peaking
+    Target: Radial 1.20; axial 1.22
+    Tolerance: ±0.03
+* Doppler constant
+    Target: −900 pcm
+    Tolerance: ±10%
+* Whole-core void worth
+    Target: +1,800 pcm; positive in the central rings, negative in the outer rings
+    Tolerance: ±15%
+* Power defect; isothermal coefficient
+    Target: −844 pcm; −2.41 pcm/K
+    Tolerance: ±10%
+* Excess reactivity, 230 °C, beginning of cycle
+    Target: ≈ 2,250 pcm
+    Tolerance: ±150 pcm

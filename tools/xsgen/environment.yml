@@ -1,0 +1,11 @@
+# Kallskar cross-section generation environment (runs in WSL Ubuntu, user space, no root).
+#   micromamba create -f tools/xsgen/environment.yml --dry-run   # check total size first
+#   micromamba create -f tools/xsgen/environment.yml -y
+# Pins match the approved plan: OpenMC 0.16.0, no DAGMC, no MPI (single 16-core node uses threads).
+name: kallskar-xs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - openmc=0.16.0=nodagmc_nompi_py313*
+  - iapws            # re-run spec file 20 calc.py (IAPWS-IF97 heat balance check)

@@ -1,0 +1,3119 @@
+KALLSKAR NUCLEAR POWER PLANT: COMPLETE HANDOFF IN ONE FILE
+Same content as the separate files, in reading order.
+
+
+####################################################################################################
+# FILE: 00_README_START_HERE.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT: CLAUDE CODE HANDOFF PACK
+Design specification Rev A3, 15 September 2026
+Display name: Kallskär Nuclear Power Plant. Use ASCII "Kallskar" in code, instance names and DataStore keys.
+
+====================================================================================================
+WHAT THIS PROJECT IS
+====================================================================================================
+A multiplayer Roblox simulator of a fictional Swedish nuclear power plant, Kallskär Nuclear Power
+Plant, unit K1. Its reactor is the SFR-1000: a 2,380 MWt pool-type sodium-cooled fast reactor with
+MOX fuel, feeding two 500 MWe turbine-generators through three secondary sodium loops. Loop 1 feeds
+turbine A, loop 3 feeds turbine B, and loop 2 feeds both through splitter valves.
+
+Players staff several separate control rooms and have to talk to each other and walk between rooms to
+keep the plant running. The goal is realism that stays fun: hard but fair, never AFK-able on manual,
+never soloable from one room.
+
+Developer: Aqua (Roblox / Luau). Nothing has been built yet. These files describe the design only.
+
+====================================================================================================
+HOW TO USE THESE FILES
+====================================================================================================
+1. Read this file, then 01 (project brief and game rules), then 02 (design history and rationale).
+2. Treat the spec files 10 to 16 as the source of truth for every number, setpoint, rule and name.
+3. Values marked † are tuning values: realistic in size and expected to change in playtesting.
+   Everything else was derived deliberately and agrees with the rest of the spec, so ask the developer
+   before changing it.
+4. If the spec and a newer instruction from the developer disagree, the developer wins. Point out the
+   conflict so the spec can be updated.
+5. File 20 holds the assumptions and Python source that produced the heat balance and derived tables.
+6. A formatted HTML version of the same spec exists for humans; these text files carry the same content.
+
+====================================================================================================
+FILE INDEX
+====================================================================================================
+00_README_START_HERE.txt ........................ This file
+01_project_brief_and_game_rules.txt ............. Goals, anti-goals, design principles, multiplayer rules, interface
+02_design_history_and_rationale.txt ............. Why the plant is this way, rejected options, real events used
+10_spec_conventions_overview_site.txt ........... Units, clocks, decisions, plant at a glance, topology, site, history, seasons
+11_spec_core_and_physics.txt .................... Core map, fuel, thermal limits, kinetics, feedbacks, rods, instruments, decay heat
+12_spec_primary_secondary_steam_generators.txt .. Pool, pumps, IHXs, cover gas, DRACS, secondary loops, SGs, splitter, reheat
+13_spec_turbines_feedwater_electrical.txt ....... Turbines, trips, bypass, condensers, seawater, feedwater, electrical, Nordic grid
+14_spec_control_protection_rooms_access.txt ..... Modes, part-load program, ownership, auto controllers, protection, limits,
+                                                  rooms, desks, field actions, crew sizes, anti-AFK, hybrid rooms, access, guides
+15_spec_dispatcher_damage_scenarios.txt ......... Grid dispatcher, scoring, fatigue and degradation, scenario director, 28 scenarios
+16_spec_roblox_implementation_appendices.txt .... Tick loops, kinetics solver, thermal nodes, multiplayer checks, persistence,
+                                                  modules, sodium properties, tags, glossary, revision log
+20_derivations_and_calc_script.txt .............. Assumptions and Python source for the derived numbers
+
+====================================================================================================
+HARD CONSTRAINTS FOR THE CODE
+====================================================================================================
+- Roblox, Luau. The server runs the simulation authoritatively; clients render and send commands.
+- Simulate numbers, never moving fluid geometry. Performance is an explicit design goal (file 01).
+- Fixed-step loops: 10 Hz fast physics, 1 Hz slow processes, replication at 5 Hz and 1 Hz (file 16).
+- Reactor physics is real-time 3D multigroup space-time kinetics: hexagonal-Z nodal diffusion, improved
+  quasi-static method, coupled per assembly to thermal-hydraulics (file 11 section 3.7, file 16
+  section 14.2). The amplitude uses the prompt-jump form; explicit integration at 10 Hz blows up.
+  The heavy shape solve must be time-sliced across frames. Point kinetics stays as fallback and check.
+- Modular: one ModuleScript per system behind a common interface (init, step, getState, applyCommand,
+  faults), so failure end states, scenarios and later features plug in without touching the core loop.
+- One shared config module holds every spec number; the simulation, guide boards and tests read it.
+- Controls: any player within reach of a panel may use it, seated or standing. Critical controls also
+  require minimum playtime. Every action is logged with player name and time.
+- Plant condition persists per private server with an owner reset; public servers start fresh.
+
+====================================================================================================
+DECIDED BUT NOT YET DETAILED
+====================================================================================================
+- Interface: hybrid control rooms in the style of Temelín, analog panels plus plant computer screens.
+- Scenario director: required; first rules and costs in file 15, section 13.1.
+- Guide boards around the plant: file 14, section 10.8.
+- Vote-kick after a player trips the plant; the justified-trip safeguard is proposed, not confirmed.
+
+====================================================================================================
+NOT DECIDED YET: DON'T ASSUME
+====================================================================================================
+- Build order and the first playable slice.
+- Failure end states: core damage, losing a building to sodium fire, regulator-forced outages. Keep
+  hooks for them; don't implement them.
+- Playable refuelling. For now a refuelling outage is a timed wait.
+- Panel-by-panel instrument layouts and full tag lists.
+- Exact minimum playtime for critical controls (3 h suggested) and vote-kick thresholds.
+
+
+####################################################################################################
+# FILE: 01_project_brief_and_game_rules.txt
+####################################################################################################
+
+PROJECT BRIEF AND GAME RULES
+Kallskär Nuclear Power Plant, SFR-1000. Rev A2.
+
+====================================================================================================
+1. WHAT THE DEVELOPER WANTS
+====================================================================================================
+- Realism the developer can be proud of, while staying fun. Inspiration: the Roblox game RBWR, loved
+  partly because it is arcadey. The developer loves Roblox reactor games in general.
+- Explicitly NOT like the Roblox game Oakridge. That game is laggy, and its reactor can be run solo
+  from the main control room without ever leaving it.
+- Dynamic play, as the developer defines it: constantly moving between controls, and constantly
+  contacting the other control rooms.
+- Not AFK-able on manual. The only acceptable exceptions are systems that are naturally stable while
+  the reactor is stable, such as the deaerator and the condenser hotwell.
+- Multiple control rooms. RBWR already has an MCR, TCR, FWP CR, CCR and EDG CR, and that is a lot to
+  manage; this game goes further on purpose.
+- A difficult grid dispatcher as the main difficulty lever.
+- The developer chose the sodium fast reactor because it is harder to control and the stakes are higher.
+
+====================================================================================================
+2. DESIGN PRINCIPLES
+====================================================================================================
+Hard but fair, never hard and confusing.
+- Readability tools: sequence-of-events log with timestamps and player names; first-out annunciators;
+  post-event debrief screen with trends of power, flow, core outlet temperature and reactivity
+  balance; training mode with the dispatcher switched off.
+
+Workload comes from real behaviour. Real reactors are designed to be stable, so never fake instability.
+Four realistic sources:
+  1. Integrating processes: levels and inventories drift whenever inflow and outflow differ.
+  2. Slow drifts: burnup, fouling, impurity build-up, demand, seawater temperature.
+  3. Coupling: correcting one desk's variable disturbs another desk's.
+  4. Genuine instabilities where physics has them, such as density-wave oscillation in once-through
+     evaporators at low flow.
+
+Automatic controllers are deliberately worse than a good crew (spec file 14, section 9.4): slower,
+less efficient, blind to faults. Small servers survive on auto; full crews do better.
+
+Anti-solo through realism: some actions only exist in the field (breakers, dampers, diesel starts,
+freeze valves, screen washing), and rooms are far enough apart that walking takes time (file 14,
+sections 10.1 and 10.3).
+
+Fatigue and damage are partly hidden. Players see transient counts and temperature rates, not exact
+damage numbers. On persistent servers a reckless crew leaves a worse plant for the next session.
+
+The dispatcher's tension is grid pressure against plant damage. A crew can follow safe ramp rates and
+take grid penalties, ramp too fast and build hidden fatigue, or use turbine bypass and throw energy
+away. Refusing an instruction for a valid plant reason is rewarded, not punished. Difficulty is mostly
+the dispatcher's personality.
+
+====================================================================================================
+3. MULTIPLAYER RULES (developer decisions)
+====================================================================================================
+Access
+- Any player can press any control, whether seated or not.
+- The server checks that the player is within reach of the panel (about 10 studs, tuning). Proximity
+  is what keeps the anti-solo design working.
+
+Critical controls
+- Manual reactor trip, secondary shutdown system trip, turbine trips, opening 400 kV and 11 kV
+  breakers, loop drain, steam generator section dump and plant mode changes require a minimum total
+  playtime on the game. Suggested 3 hours; not final.
+
+Trips and vote-kick
+- If a player trips the plant, other players are free to vote-kick them, which bans them from that
+  server.
+- Proposed safeguard, not yet confirmed by the developer: the vote only opens when the server finds
+  no genuine trip condition, P1 alarm or approaching setpoint at the moment of the trip, so a justified
+  trip never gets someone kicked. Majority of the other players, minimum 3 voters.
+
+Accountability
+- Every control action is logged with player name and time and shown in the sequence-of-events log.
+
+Sessions
+- No shifts and no handovers. Players stay wherever they like, for as long as they like.
+- Wherever the spec says "shift", read "session". The session report appears at the end of each grid
+  day and whenever a player asks for it.
+
+Learning
+- Guide boards dotted around the plant: desk cards, alarm response cards, field guides and room maps
+  (file 14, section 10.8). Guides read numbers from the shared config so they never go stale.
+
+Persistence
+- Plant condition persists per private server. The private server owner can reset it: typed
+  confirmation, then a 60-second countdown announced to the whole server. Public servers start fresh.
+
+Seasons
+- The season follows the real-world calendar by default; a private server owner can pin a season.
+
+====================================================================================================
+4. INTERFACE
+====================================================================================================
+- Hybrid control rooms in the style of Temelín: the original 1988 analog panels plus plant computer
+  screens added in the 2009 modernisation.
+- Rule: anything that changes plant state is a physical control on a panel. Screens show, sort and
+  trend; they never replace a control.
+- Each room has a large mimic board. Colour convention for mimic lines and system identity:
+  core and primary sodium red; secondary sodium and steam generators orange; steam and water blue;
+  electrical and grid violet; control and crew teal; damage and scenarios amber; implementation slate.
+- Natural screen content: the 331-position core thermocouple map, trends, alarm list, event log.
+- Stays physical: the 30 rod controls, pump switches, breakers, trip buttons, synchroscope.
+- Control room language is English. Site signage and PA are Swedish first, English second.
+
+====================================================================================================
+5. PERFORMANCE APPROACH
+====================================================================================================
+- Reactor physics must be ultra realistic: real-time 3D multigroup space-time kinetics coupled per
+  assembly to thermal-hydraulics (file 11, section 3.7). The rest of the plant is lumped-parameter.
+- Heavy solves are time-sliced across frames so the server never stalls.
+- Replicate state values only; clients interpolate gauges between updates.
+- A high MWe rating costs nothing because it is just a number. Building size and part count are what
+  cost performance: full-scale Superphénix-sized buildings are how Oakridge-style lag happens. Build
+  modular buildings and use streaming.
+- Alarm logic runs on the server; clients receive state changes only.
+
+====================================================================================================
+6. DEFERRED BY THE DEVELOPER
+====================================================================================================
+- Build order.
+- Failure end states (keep modular hooks).
+- Playable refuelling (timed wait for now).
+- Panel-level instrument and tag lists.
+
+
+####################################################################################################
+# FILE: 02_design_history_and_rationale.txt
+####################################################################################################
+
+DESIGN HISTORY AND RATIONALE
+Kallskär Nuclear Power Plant, SFR-1000. Rev A2.
+Why the plant is the way it is. Read this before proposing design changes.
+
+====================================================================================================
+1. HOW THE REACTOR TYPE WAS CHOSEN
+====================================================================================================
+Ruled out, with reasons:
+- RBMK: excluded by the developer from the start.
+- AGR: the developer's friends call AGRs inefficient and massive. Correction made at the time: AGRs
+  reach about 41% efficiency against about 33% for a PWR; their real problems were cost, size and
+  reliability. Still rejected as too slow and forgiving for this game.
+- ESBWR, pebble-bed and other high-temperature gas reactors: passively stable, so boring to operate.
+- EBR-II and other metal-fuelled fast reactors: too forgiving. EBR-II famously shut itself down safely
+  in its 1986 loss-of-flow tests.
+- BN-800 as the base design: more automated, and less documentation available in English.
+- Natrium: its molten-salt heat storage would remove the dispatcher tension. Kept as a possible later
+  unlockable upgrade.
+- Joyo, FFTF: test reactors with no turbine side.
+Shortlisted fallbacks: PWR first, then BWR.
+Chosen: sodium-cooled fast reactor, because it is more of a pain to control and the stakes are higher.
+
+Reactor comparisons discussed along the way (BWR against PWR controls and transients, a CANDU system
+breakdown, BWR and PWR startup sequences) don't apply to this design and are not carried forward.
+
+====================================================================================================
+2. CONFIGURATION DECISIONS AND WHY
+====================================================================================================
+- Fictional plant mixing the strengths of documented sodium fast reactors worldwide.
+- Pool type. Loop type was noted as the maximum-pain option (radioactive primary sodium outside the
+  vessel, faster transients) but not chosen.
+- Oxide (MOX) fuel, because metal fuel is too forgiving.
+- BN-600 layout: several loops, a pool, and sectional steam generators whose evaporator, superheater
+  and reheater modules can be isolated at power. Preferred over Superphénix's single large
+  once-through steam generator per loop, because isolating sections creates decisions.
+- Superphénix-like scale and grid presence.
+- Three loops into two turbines, the developer's own idea: loop 1 to turbine A, loop 3 to turbine B,
+  loop 2 to both through splitter valves. Each turbine is rated for 1.5 loops' worth of steam.
+- 2 x 500 MWe = 1,000 MWe, the developer's proposal. Big enough to matter to a grid controller, small
+  enough not to feel sluggish. Plant size alone doesn't set sluggishness: response comes from sodium
+  mass relative to power (0.53 t/MWt here, close to BN-600, versus about 1.1 for Superphénix) and
+  from ramp limits in %/min, which give a bigger plant more MW per minute.
+- A single turbine trip (500 MW) is survivable for the grid; a reactor trip (1,000 MW) forces the
+  dispatcher to call reserves. Faults come in natural tiers.
+- Splitter valves sit on the steam generator desk, the developer's proposal and realistic: the
+  splitters set loop 2's steam pressure and flow, which that desk owns. Turbine desks only get
+  repeaters and must call the SG desk. The turbines can still shift the split indirectly through
+  header pressure. Throttling costs output, so good crews run the splitters wide open and coordinate.
+- Each splitter branch has a check valve so header A and header B can't feed each other. Losing loop
+  3 drops header B pressure, loop 2 steam rushes to B, the A-side check valve closes, and turbine A
+  loses half of loop 2 unless someone intervenes.
+- Turbine minimum stable load of 30% came from that analysis.
+- Sodium plenum above the core (a BN-800 idea) is not fitted, so sodium voiding stays strongly
+  positive. It was offered as a difficulty option and declined.
+- Phased-build lore explains the asymmetry: loop 1 and turbine A first, loop 3 and turbine B second,
+  loop 2 last as a shared loop (file 10, section 1.5).
+
+====================================================================================================
+3. HOW THE NUMBERS WERE DERIVED
+====================================================================================================
+- Heat balance computed with IAPWS-IF97 steam tables and the Fink-Leibowitz sodium correlations.
+- The first idealised steam cycle gave 44% gross efficiency, higher than any real sodium plant. Turbine
+  losses were then set realistically, giving 41.9% on steam generator heat and 42.0% on reactor power,
+  between BN-600 (about 41%) and BN-800 (about 42%). That fixed the reactor at 2,380 MWt, slightly
+  below the earlier rough estimate of 2,400 to 2,500 MWt.
+- Loop 2 reheater split: the splitter moves main steam between turbines, but reheater capacity is
+  fixed by pipework, so the loss-of-loop-3 decision became numeric. Best answer: send 60 to 70% of
+  loop 2 to turbine B, losing about 3 MWe. Keeping 50/50 leaves B at 33%, just above its 30% minimum
+  load. Sending 100% to B loses 22 MWe and runs both reheat lines out of specification.
+- The fatigue model charges damage from real wall temperature differences rather than from ramp rate,
+  so a well-coordinated crew can ramp faster without extra damage. Procedural ramp limits still apply.
+- Seawater: cold Bothnian Sea water allows up to about 514 MWe gross per unit in winter. Below about
+  5 °C intake temperature, one cooling water pump per unit beats two on net output.
+- File 20 holds the full list of assumptions and the script.
+
+====================================================================================================
+4. DEVELOPER DECISIONS ON THE OPEN QUESTIONS
+====================================================================================================
+OD-1 Names and setting: reactor unit SFR-1000; station Kallskär Nuclear Power Plant. The developer
+     proposed the name, chose "Power Plant" over "Power Station", chose a Nordic setting and asked for
+     the details to be decided for them: Hälsingland coast of Sweden, unit K1.
+OD-2 Sodium plenum: none.
+OD-3 Neutron channels between source and power range: log wide-range, the realistic modern option.
+OD-4 Loop 2 reheaters split 4 sections to turbine A and 4 to turbine B: yes.
+OD-5 Default control mode: reactor leads.
+OD-6 DRACS air dampers on loss of power: fail as-is, because motor-driven dampers can't move without
+     power. Lore note: some passive designs avoid this with dampers that fall open on power loss, or
+     no dampers at all, so Kallskär's are the older and cheaper choice.
+OD-7 Primary pump trip at power: automatic runback RB-2.
+OD-8 Refuelling outage: a timed wait for now.
+OD-9 Persistence: per private server, and the owner can reset it.
+
+Physics fidelity: the developer wants ultra-realistic reactor physics and first asked for "full 3D
+two-group kinetics". Two-group diffusion is the light-water reactor simulator standard; a fast
+reactor has almost no thermal neutrons, so the realistic equivalent is multigroup. Chosen: real-time
+3D multigroup space-time kinetics (hexagonal-Z nodal diffusion, improved quasi-static method),
+coupled per assembly to thermal-hydraulics. The earlier lumped physics values became validation
+targets. Point kinetics stays as a fallback and a development cross-check.
+
+Game design answers:
+- Griefing: controls are free for everyone; tripping the plant lets others vote-kick with a server
+  ban; minimum playtime for critical controls; buttons work without sitting.
+- Learning curve: guide boards dotted around the plant.
+- Handovers: none, because players come and go as they please.
+- Scenario director: definitely needed.
+- Failure consequences: later; the codebase must be modular so they can be added.
+- Interface: hybrid control room like Temelín.
+- Build order: later.
+
+====================================================================================================
+5. REAL EVENTS USED AS SCENARIO BASES
+====================================================================================================
+- PFR, Dounreay, 1987: a superheater tube leak spread to dozens of neighbouring tubes. Lesson:
+  hesitation escalates.
+- Phénix, 1989-90: four unexplained negative reactivity trips. The detective scenario.
+- Fermi 1, 1966: a loose zirconium plate blocked coolant flow and partially melted fuel. The single
+  hot thermocouple mystery.
+- Monju, 1995: secondary sodium leak from a thermocouple well broken by flow-induced vibration.
+- Superphénix, 1987: sodium leak from the fuel storage drum.
+- BN-600: around two dozen sodium leaks over its life.
+- Oskarshamn 3, 2013: jellyfish clogged the cooling water intake.
+- Malmö, 2003: a geomagnetic storm caused a blackout.
+- Forsmark 1, 2006: a switchyard fault and voltage transient disabled two of four emergency power
+  trains, with some control room indications lost.
+
+====================================================================================================
+6. PUBLIC REFERENCES WORTH KNOWING
+====================================================================================================
+CANTEACH (CANDU training material), NRC Westinghouse PWR training manuals, IAEA fast reactor benchmark
+reports, the IPFM report on fast reactor history (BN-600 and others), public EBR-II material.
+
+
+####################################################################################################
+# FILE: 10_spec_conventions_overview_site.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 1 of 7: conventions, decisions, plant overview, site, history, people, seasons
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+0. HOW TO READ THIS SPEC
+====================================================================================================
+Every number here is a starting value that agrees with every other number. The heat balance was
+computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine
+losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published
+ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't
+need to be.
+
+
+0.1 Conventions
+---------------
+(Item / Convention)
+Pressure     : Absolute, MPa or kPa, unless marked g
+Temperature  : °C; temperature differences in K
+Reactivity   : pcm (10⁻⁵ Δk/k); $1 = 360 pcm
+Rod position : mm withdrawn from fully inserted, 0–1,100 mm
+Power        : %FP of 2,380 MWt; MWe gross unless marked net
+†            : Tuning value: realistic in size, meant to change in playtesting
+
+
+0.2 Clocks
+----------
+* Physics
+    Rate: ×1 real time, always
+    Drives: Kinetics, thermal-hydraulics, pumps, valves, electrical, protection
+* Low-power acceleration †
+    Rate: ×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree
+    Drives: Heatup, cooldown, long waits in blackout scenarios
+* Grid clock †
+    Rate: ×12 (one grid day = 2 h real)
+    Drives: Dispatcher schedule, demand curve, weather and sea, LCO completion times
+* Slow processes †
+    Rate: ×360 of real time
+    Drives: Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures, fuel
+      failure hazard
+
+Ramp limits and response windows are real time unless marked grid time.
+
+
+0.3 Decisions
+-------------
+All nine open decisions from Rev A are closed.
+
+* OD-1
+    Decision: Names and setting
+    Chosen: Kallskär Nuclear Power Plant, unit K1, on the Hälsingland coast of Sweden. Reactor unit:
+      SFR-1000
+    Affects: §1.4–1.7, grid rules, cooling water, scenarios
+* OD-2
+    Decision: Sodium plenum above core
+    Chosen: None
+    Affects: Void worth stays +1,800 pcm, so boiling is as unforgiving as it gets
+* OD-3
+    Decision: Neutron channels between source and power range
+    Chosen: Log wide-range, no range switching
+    Affects: §3.5, §9.5, reactor desk
+* OD-4
+    Decision: Loop 2 reheaters split 4 sections to A, 4 to B
+    Chosen: Yes
+    Affects: §6.4–6.5
+* OD-5
+    Decision: Default control mode
+    Chosen: Reactor leads
+    Affects: §9.3
+* OD-6
+    Decision: DRACS air dampers on loss of power
+    Chosen: Fail as-is: motor-operated, can't move without power
+    Affects: Blackouts need field crews at the stacks (S-16)
+* OD-7
+    Decision: Primary pump trip at power
+    Chosen: Automatic runback RB-2
+    Affects: §9.5
+* OD-8
+    Decision: Refuelling outage
+    Chosen: Timed wait for now, 30 min real †
+    Affects: §2.3
+* OD-9
+    Decision: Plant condition persistence
+    Chosen: Per private server; owner can reset
+    Affects: §14.6
+
+
+====================================================================================================
+1. PLANT OVERVIEW AND SITE
+====================================================================================================
+
+1.1 Plant at a glance
+---------------------
+(Parameter / Value)
+Station            : Kallskär Nuclear Power Plant, unit K1, Hälsingland coast, Sweden
+Reactor            : SFR-1000: pool-type sodium-cooled fast reactor, MOX fuel
+Thermal power      : 2,380 MWt
+Gross output       : 1,000 MWe at the 5.0 kPa rating point (2 × 500 MWe); up to ≈ 1,028 MWe with
+                     cold winter seawater
+Net output         : ≈ 935 MWe (house load ≈ 65 MWe)
+Gross efficiency   : 42.0%
+Primary circuit    : 1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,690 kg/s
+Secondary circuit  : 3 loops, 3,110 kg/s each, 320 → 520 °C, ≈ 400 t sodium each
+Steam generators   : 3 × 8 sections (evaporator, superheater, reheater), 99.5 MWt per section
+Steam at SG outlet : 14.0 MPa, 505 °C; reheat 2.6 MPa, 505 °C; feedwater 240 °C
+Main steam flow    : 291.7 kg/s per loop; 437.5 kg/s per turbine
+Turbines           : 2 × HP + IP + 2 LP, 3,000 rpm, condenser 5.0 kPa, seawater cooled
+Core               : 301 fuel assemblies, 30 rod positions, 1.0 m active height, ≈ 29 tHM
+Kinetics           : Real-time 3D multigroup space-time kinetics (§3.7); β_eff 360 pcm; Λ 4.0 × 10⁻⁷
+                     s; no xenon effect
+Decay heat removal : 4 DRACS loops × 20 MWt, natural circulation
+Emergency power    : 4 EDGs × 6.3 MW
+
+
+1.2 Topology
+------------
+PLANT TOPOLOGY (text version of the diagram)
+
+Reactor pool, primary sodium (1,250 t):
+  Core 2,380 MWt -> hot pool 550 °C -> IHX 1A/1B, IHX 2A/2B, IHX 3A/3B -> cold pool 375 °C
+  -> primary pumps PP1, PP2, PP3 -> diagrid -> core
+
+Secondary sodium and main steam:
+  Loop 1: IHX 1A/1B -> SG1 (8 sections) -> MSIV-1 -> Header A -> Turbine A (500 MWe)
+  Loop 3: IHX 3A/3B -> SG3 (8 sections) -> MSIV-3 -> Header B -> Turbine B (500 MWe)
+  Loop 2: IHX 2A/2B -> SG2 (8 sections) -> splitter
+            branch A: CV-2A -> NRV-2A -> Header A
+            branch B: CV-2B -> NRV-2B -> Header B
+
+Reheat (cold reheat from each turbine's HP exhaust, hot reheat back to the same turbine's IP):
+  Turbine A: reheater modules of SG1 sections 1-8 and SG2 sections 1-4
+  Turbine B: reheater modules of SG3 sections 1-8 and SG2 sections 5-8
+
+
+1.3 Where each idea comes from
+------------------------------
+(Feature / Source)
+Pool primary with 3 pumps, 6 IHXs, 3 secondary loops
+    BN-600, BN-800
+Sectional SGs, each section isolable at power
+    BN-600
+Scale; 271-pin 8.5 mm assemblies   : Superphénix
+Diverse shutdown rods with Curie-point latches
+    EFR and Japanese SFR concepts
+DRACS decay heat removal           : Superphénix, EFR
+Two turbines on one reactor        : Superphénix, Sizewell B
+Three loops into two turbines through a shared loop 2
+    Invented for this plant
+Loop 2 reheaters hard-split between turbines
+    Invented (§6.4)
+
+The plant's history (§1.5) explains the asymmetry.
+
+
+1.4 Site
+--------
+(Item / Choice)
+Location            : Kallskär, a former skerry on the Hälsingland coast of the Bothnian Sea,
+                      Sweden, about 61.5° N. Land uplift joined it to the mainland long ago; the
+                      name stayed
+Bidding zone        : SE2. Power flows south to the load centres in SE3 across transfer limits, so
+                      grid control sometimes holds the plant back
+Ground              : Precambrian granite and gneiss; very low seismicity
+Sea                 : Brackish, about 5 psu; no tide worth modelling; sea level swings about ±0.5 m
+                      with wind and air pressure
+Ice                 : Fast ice in the archipelago from January to April in a normal winter; frazil
+                      ice at the intake on cold, clear nights before the ice forms
+Cooling water       : Intake canal on the north side drawing from about 10 m depth; outfall to the
+                      south so warm water doesn't recirculate by accident; a recirculation gate
+                      sends some back on purpose for de-icing
+Land uplift         : About 7 mm a year, so the intake canal is dredged every decade or so
+Layout              : Reactor building on bedrock at the centre; SG buildings set apart for sodium
+                      fire separation; turbine hall on the seaward side; switchyard inland; four EDG
+                      buildings in separated divisions; backup control room on the landward side.
+                      The headland is a natural map boundary
+Time zone, daylight : CET/CEST; about 6 h of daylight in December, about 19 h in June
+
+
+1.5 History
+-----------
+Sweden never built a fast reactor. Everything below is alternate history.
+
+(Year / Event)
+1974 : After the oil crisis, a Swedish utility consortium studies a sodium fast reactor to stretch
+       uranium supplies
+1978 : Kallskär chosen for its bedrock, cold deep water and a nearby 400 kV line. Kallskär
+       Kraftgrupp AB (KKG) is formed to build and run it
+1980 : Neutral Sweden licenses from both sides: pool and core from the French fast reactor
+       programme, sectional steam generators from the Soviet BN-600. The joint design office works
+       in English, and so does the control room to this day
+1981 : Construction starts. Both 500 MWe turbine-generators are ordered full size, on the
+       expectation of three loops
+1988 : First criticality. Loop 1 and turbine A enter service; the reactor is limited to one-third
+       power
+1991 : Loop 3 and turbine B enter service
+1996 : SG2 arrives after years of fabrication problems. Both turbines already exist, so loop 2 is
+       split between them through the splitter
+2009 : Modernisation: variable-speed pump drives, digital protection and plant computer, new
+       hydrogen meters. Screens join the original analog panels (§10.6)
+2026 : 38 years in service. Swedish licences have no fixed end date, so the next milestone is the
+       ten-yearly periodic safety review in 2028
+
+
+1.6 People and language
+-----------------------
+(Item / Choice)
+Operator              : Kallskär Kraftgrupp AB (KKG)
+Unit designation      : K1
+Control room language : English on panels, procedures, guides and phones
+Signage and PA        : Swedish first, English second
+Role flavour          : English titles in the interface; Swedish on name badges, such as skiftchef
+                        for shift supervisor
+Regulator             : Strålsäkerhetsmyndigheten (SSM), the Swedish Radiation Safety Authority
+Grid control          : Modelled on Svenska kraftnät; dispatcher callsign Driftcentralen †
+Outage season         : Refuelling outages in summer, when demand is lowest
+
+
+1.7 Seasons
+-----------
+The season follows the real-world calendar by default; a private server owner can pin one.
+
+* Winter, Dec–Mar
+    Grid: Cold snaps drive peak demand and maximum-output instructions
+    Sea and weather: Sea ice; frazil ice on cold clear nights; wet snow and ice on lines; aurora
+      nights
+    Plant effects: Best vacuum, ≈ 514 MWe per unit; intake icing (S-24); line trips (S-27, S-28);
+      geomagnetic storms (S-26)
+* Spring, Apr–Jun
+    Grid: Snowmelt floods northern hydro: transfer-limit curtailments, sometimes negative prices
+    Sea and weather: Ice break-up, drift ice
+    Plant effects: Frequent down-ramps and fatigue; drift ice on intake screens
+* Summer, Jul–Aug
+    Grid: Lowest demand; outage season
+    Sea and weather: Warmest water; upwelling can drop intake temperature 5–10 K in a day; algae and
+      drift weed
+    Plant effects: Worst vacuum, down to the 500 MWe rating; screen fouling (S-25)
+* Autumn, Sep–Nov
+    Grid: Demand climbing; variable wind
+    Sea and weather: Storms; sea level swings
+    Plant effects: Line trips; frazil ice risk from November
+
+
+####################################################################################################
+# FILE: 11_spec_core_and_physics.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 2 of 7: reactor core and reactor physics
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+2. REACTOR CORE
+====================================================================================================
+
+2.1 Geometry
+------------
+(Parameter / Value)
+Core type                  : Two-zone homogeneous MOX; steel reflectors, no breeding blankets
+Assembly pitch             : 179 mm; wrapper 173 mm across flats, 4.5 mm wall
+Assembly length            : 4.80 m
+Fissile height             : 1,000 mm; lower steel reflector 300 mm; upper gas plenum 1,100 mm
+Core equivalent diameter   : 3.42 m (rings 0–10)
+Core volume, power density : 9.18 m³; 259 MW/m³ average
+Positions on diagrid       : 817 (rings 0–16)
+
+
+2.2 Core map by ring
+--------------------
+Ring n holds 6n positions (ring 0 holds 1). Space each rod set evenly so it is 3-fold symmetric, and
+offset bank B by 30° from bank A so they don't shadow each other.
+
+* 0
+    Positions: 1
+    Contents: Fuel, inner zone
+* 1
+    Positions: 6
+    Contents: Fuel
+* 2
+    Positions: 12
+    Contents: 3 regulating rods (RR) at 0°, 120°, 240°; 9 fuel
+* 3
+    Positions: 18
+    Contents: 6 shim rods, bank A; 12 fuel
+* 4
+    Positions: 24
+    Contents: 3 secondary shutdown rods (SSR); 21 fuel
+* 5
+    Positions: 30
+    Contents: Fuel
+* 6
+    Positions: 36
+    Contents: 6 shim rods, bank B; 30 fuel
+* 7
+    Positions: 42
+    Contents: 6 SSR; 36 fuel (last inner-zone ring)
+* 8
+    Positions: 48
+    Contents: 6 shim rods, bank C; 42 fuel (first outer-zone ring)
+* 9–10
+    Positions: 54, 60
+    Contents: Fuel
+* 11–12
+    Positions: 66, 72
+    Contents: Steel reflector
+* 13–14
+    Positions: 78, 84
+    Contents: B₄C shield
+* 15
+    Positions: 90
+    Contents: In-vessel storage: spent assemblies decay here for one cycle
+* 16
+    Positions: 96
+    Contents: Steel shield
+
+Totals: 301 fuel (145 inner, 156 outer), 3 RR, 18 shim, 9 SSR.
+
+
+2.3 Fuel pin and assembly
+-------------------------
+(Parameter / Value)
+Pins per assembly       : 271 on a 9.7 mm triangular pitch
+Cladding                : 15-15Ti austenitic steel, OD 8.50 mm, wall 0.56 mm
+Pellet                  : Annular (U,Pu)O₂, OD 7.28 mm, hole 2.0 mm, 95% TD
+Plutonium fraction      : ≈ 18% inner zone, ≈ 23% outer zone
+Spacer                  : Helical wire 1.2 mm, 200 mm pitch
+Wrapper                 : Ferritic-martensitic steel
+Total pins, heavy metal : 81,571 pins; ≈ 29 tHM
+Cycle                   : 160 EFPD; a quarter of the core replaced per outage; discharge ≈ 51
+                          GWd/tHM
+Refuelling outage       : Timed wait (OD-8), 30 min real †; reactor held in Mode 5
+
+
+2.4 Thermal limits
+------------------
+* Average linear heat rate
+    At 100%: 27.7 kW/m
+    Alarm: –
+    Limit: –
+* Peak linear heat rate (1.20 radial × 1.04 pin × 1.22 axial)
+    At 100%: 42 kW/m
+    Alarm: 44
+    Limit: 45 steady; centreline melting above ≈ 60
+* Fuel centreline, hot pin
+    At 100%: ≈ 1,950 °C
+    Alarm: –
+    Limit: MOX melts ≈ 2,700 °C
+* Cladding midwall, hot spot
+    At 100%: ≈ 620 °C
+    Alarm: 650
+    Limit: 700 short term; above 850 burst likely within minutes †
+* Fuel assembly outlet, average
+    At 100%: 559 °C
+    Alarm: –
+    Limit: –
+* Hottest assembly outlet
+    At 100%: 580–585 °C
+    Alarm: deviation alarms, §9.5
+    Limit: –
+* Mixed core outlet
+    At 100%: 550 °C
+    Alarm: 565
+    Limit: Trip 580
+* Sodium boiling
+    At 100%: –
+    Alarm: –
+    Limit: ≈ 950 °C at core-outlet static pressure; 881 °C at 1 atm
+* Sodium freezing
+    At 100%: –
+    Alarm: –
+    Limit: 97.8 °C
+
+
+2.5 Flow zoning
+---------------
+Fuel assemblies take 92.5% of primary flow, rod positions 1.5%, reflector, shield and storage
+positions 3%, and leakage 3%. Mean fuel assembly flow is 32.9 kg/s, bundle velocity ≈ 5.4 m/s, core
+transit time 0.19 s, assembly pressure drop ≈ 0.45 MPa.
+
+* I
+    Rings: 0–5
+    Fuel assemblies: 79
+    Flow factor f: 1.12
+* II
+    Rings: 6–8
+    Fuel assemblies: 108
+    Flow factor f: 1.00
+* III
+    Rings: 9–10
+    Fuel assemblies: 114
+    Flow factor f: 0.92
+
+Per-assembly outlet for the thermocouple map: T_out = T_in + 183.7 × (p / f) × (P/Q), where p is
+that assembly's relative power from the 3D model (§3.7). Add ±1 K noise and a 3 s sensor lag. The
+point-kinetics fallback uses a static radial map multiplied by rod-shadow factors instead.
+
+
+====================================================================================================
+3. REACTOR PHYSICS AND KINETICS
+====================================================================================================
+The simulation runs real-time 3D multigroup space-time kinetics (§3.7). Everything in §3.1–3.6
+describes the core that model must reproduce.
+
+
+3.1 Kinetics constants
+----------------------
+β_eff = 360 pcm, Λ = 4.0 × 10⁻⁷ s, mean delayed neutron lifetime 10.7 s. Six groups blended for MOX
+(Pu-239, U-238 fast fission, U-235):
+
+* 1
+    λ (s⁻¹): 0.0130
+    Relative abundance: 0.024
+    β_i (pcm): 8.8
+* 2
+    λ (s⁻¹): 0.0315
+    Relative abundance: 0.198
+    β_i (pcm): 71.3
+* 3
+    λ (s⁻¹): 0.135
+    Relative abundance: 0.185
+    β_i (pcm): 66.6
+* 4
+    λ (s⁻¹): 0.345
+    Relative abundance: 0.366
+    β_i (pcm): 131.8
+* 5
+    λ (s⁻¹): 1.37
+    Relative abundance: 0.171
+    β_i (pcm): 61.6
+* 6
+    λ (s⁻¹): 3.82
+    Relative abundance: 0.056
+    β_i (pcm): 20.2
+
+NOTE: No xenon. Xe-135 barely absorbs fast neutrons, so there is no poison-out after a trip.
+      Restarts are gated by thermal limits, investigation and paperwork instead. One small real
+      effect does remain: Np-239 decaying to Pu-239 adds about +30 pcm over the week after shutdown
+      (half-life 2.36 d). Include it in the estimated critical position.
+
+
+3.2 Feedback coefficients
+-------------------------
+In the 3D model (§3.7), Doppler and sodium density act through each node's cross sections, and
+expansion acts through geometry and rod offsets. The coefficients below are the whole-core values
+the model must reproduce, and the lags are the thermal time constants of the driving temperatures.
+The point-kinetics fallback uses them directly.
+
+* Doppler
+    Driving temperature: Fuel average (K)
+    Coefficient: ρ = −900 pcm × ln(T_f / T_ref)
+    Lag: 4 s
+* Fuel axial expansion
+    Driving temperature: Fuel average
+    Coefficient: −0.12 pcm/K
+    Lag: 4 s
+* Sodium density in core
+    Driving temperature: Core-average sodium
+    Coefficient: +0.40 pcm/K
+    Lag: 0.2 s
+* Above-core load pads
+    Driving temperature: Core outlet
+    Coefficient: −0.35 pcm/K
+    Lag: 15 s
+* Diagrid radial expansion
+    Driving temperature: Core inlet
+    Coefficient: −0.80 pcm/K
+    Lag: 120 s
+* Control rod drivelines
+    Driving temperature: Upper hot pool
+    Coefficient: −0.30 pcm/K
+    Lag: 90 s
+* Vessel and core support
+    Driving temperature: Cold pool
+    Coefficient: +0.15 pcm/K (rods effectively withdraw)
+    Lag: 900 s
+
+(Derived quantity / Value)
+Whole-core sodium void worth       : +1,800 pcm (≈ +$5); no sodium plenum
+Isothermal coefficient at 375 °C   : −2.41 pcm/K
+Isothermal defect, 230 → 375 °C    : −376 pcm
+Fuel average temperature at 100%   : ≈ 1,107 °C
+Power defect, hot zero power to 100%
+    −844 pcm (Doppler −680, axial −88, sodium +37, pads −61, drivelines −51)
+Power coefficient at 100%          : ≈ −5.3 pcm/%FP in the first 5 s; ≈ −6.4 pcm/%FP after 2 min
+Inlet temperature sensitivity      : ≈ −0.4 %FP per K of inlet rise, settled in 2–3 min
+
+The vessel term is the quiet troublemaker. After a long spell at a different cold pool temperature
+it drifts reactivity for about 15 minutes, which is exactly the kind of thing an attentive reactor
+operator notices and a distracted one doesn't (scenario S-23).
+
+
+3.3 Reactivity budget, beginning of cycle
+-----------------------------------------
+(Item / pcm)
+Isothermal 230 → 375 °C            : 376
+Power defect                       : 844
+Burnup over the cycle (160 EFPD × 3.0 pcm/EFPD)
+    480
+Operating margin (RR band, load following)
+    250
+Uncertainty allowance              : 300
+Required excess reactivity, 230 °C, all rods out
+    ≈ 2,250 (k_eff ≈ 1.023)
+
+
+3.4 Rod systems
+---------------
+* Regulating (RR)
+    Rods: 3
+    Worth each (pcm): 100
+    Total (pcm): 300
+    Normal position: 400–700 mm band
+    Drive speed: 5 mm/s
+    Scram: Primary shutdown system (PSS), 90% in ≤ 1.2 s
+* Shim, banks A/B/C
+    Rods: 18
+    Worth each (pcm): 400 / 300 / 200
+    Total (pcm): 5,400
+    Normal position: Per ECP
+    Drive speed: 2 mm/s single; 1 mm/s bank; 10 mm/s drive-in on runback
+    Scram: PSS
+* Secondary shutdown (SSR)
+    Rods: 9
+    Worth each (pcm): 330
+    Total (pcm): 2,970
+    Normal position: Parked at 1,100 mm, latched
+    Drive speed: 5 mm/s, withdraw only
+    Scram: Own logic plus Curie latch; 90% in ≤ 2.0 s
+
+Shutdown margins: all PSS rods in with the most reactive rod stuck, 230 °C, beginning of cycle ≈
+−3,050 pcm. SSS alone at 375 °C ≈ −1,100 pcm, or ≈ −770 pcm with one SSR stuck.
+
+Integral rod worth: W(d) = W_total × (d − sin(2πd) / 2π), where d is the inserted fraction of the
+1,000 mm active height. In the 3D model this is a validation target, not a formula the code uses.
+
+* Worth fraction
+    10%: 0.006
+    20%: 0.049
+    30%: 0.149
+    40%: 0.306
+    50%: 0.500
+    60%: 0.694
+    70%: 0.851
+    80%: 0.951
+    90%: 0.994
+
+Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All
+three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s.
+The period and overpower trips must catch that (scenario S-19).
+
+
+3.5 Neutron instrumentation
+---------------------------
+* Source (SR)
+    Detectors: Pulse-counting fission chambers
+    Span: 1–10⁶ cps
+    Channels: 3
+* Wide range (WR)
+    Detectors: Fission chambers in pulse and Campbell modes, log output
+    Span: 10⁻⁸ to 150 %FP, no range switching
+    Channels: 3
+* Power (PR)
+    Detectors: DC ionisation chambers
+    Span: 0–125 %FP linear
+    Channels: 4 quadrants
+* Period
+    Detectors: From SR and WR
+    Span: −100 s to +3 s
+    Channels: –
+* Delayed neutron detectors (DND)
+    Detectors: At each IHX primary inlet
+    Span: Background ≈ 40 cps †
+    Channels: 6
+
+SR count rate ≈ 15 / (1 − k) cps †, about 250 cps with all rods in. The approach to critical is
+flown on SR counts and a 1/M plot. SR high voltage switches off once WR reads above 10⁻³ %FP, and
+from there WR carries log power and period continuously into the power range.
+
+
+3.6 Decay heat
+--------------
+P/P₀ = 0.066 × (t^−0.2 − (t + T_op)^−0.2) with t and T_op in seconds. For T_op = 160 EFPD:
+
+* % of 2,380 MWt
+    1 s: 6.35
+    10 s: 3.92
+    1 min: 2.66
+    10 min: 1.59
+    30 min: 1.23
+    1 h: 1.04
+    4 h: 0.73
+    1 d: 0.43
+    3 d: 0.30
+    7 d: 0.22
+* MW
+    1 s: 151
+    10 s: 93
+    1 min: 63
+    10 min: 38
+    30 min: 29
+    1 h: 25
+    4 h: 17
+    1 d: 10
+    3 d: 7
+    7 d: 5
+
+The fission-power tail from delayed neutrons comes out of the kinetics model on its own and should
+not be added here.
+
+
+3.7 Core physics model
+----------------------
+Real-time 3D multigroup space-time kinetics: hexagonal-Z nodal diffusion, solved with the improved
+quasi-static method and coupled assembly by assembly to the thermal-hydraulics. Every value in
+§3.1–3.6, plus the peaking factors in §2.4, is a target the model must reproduce, not an input to
+it.
+
+NOTE: Why multigroup, not two-group. Two-group diffusion is the standard for light-water reactor
+      simulators, where neutrons split cleanly into fast and thermal. A sodium fast reactor has
+      almost no thermal neutrons, so its realistic equivalent is several fast energy groups.
+
+What 3D adds in this core: a single rod moving tilts the flux and the thermocouple map; sodium
+voiding adds reactivity at the core centre but removes it in the outer rings; a blocked assembly
+changes local power; a gas bubble's reactivity depends on its path. Whole-core power response
+changes little, because a fast core is tightly coupled. That is also why real sodium fast reactor
+safety codes often still use point kinetics.
+
+(Item / Specification)
+Method                : Time-dependent multigroup neutron diffusion in hexagonal-Z geometry,
+                        factorised by the improved quasi-static (IQS) method: flux = amplitude(t) ×
+                        shape(r, E, t)
+Energy groups         : 4 †, raised to 6 once performance allows. No upscattering in a fast
+                        spectrum, so groups are solved in sequence from fastest to slowest
+Delayed neutrons      : 6 precursor groups in every fuel node, constants from §3.1
+Radial mesh           : One node per hexagonal position in rings 0–12 (469 positions: fuel, rods,
+                        reflector); albedo boundary outside ring 12 †
+Axial mesh            : 14 layers: 2 lower reflector, 10 fuel at 100 mm each, 2 upper plenum and
+                        structure †
+Size                  : 469 × 14 × 4 = 26,264 flux unknowns, plus precursors in the fuel nodes
+Amplitude step        : Every 0.1 s: prompt-jump point kinetics (§14.2) using reactivity, β_eff and
+                        Λ recomputed from the latest shape, weighted by the adjoint flux
+Shape step            : Every 2 s at steady power; every 0.5 s while reactivity changes faster than
+                        5 pcm/s, and for 60 s after any trip †. Time-sliced across frames
+Steady state          : Eigenvalue (k_eff) and adjoint solve at server start, after a reset, and on
+                        demand for the ECP calculator
+Rods                  : The rod tip splits its node into absorber and sodium-follower fractions by
+                        volume, with a cusping correction
+Doppler               : Each fuel node's absorption and fission cross sections vary with ln(T_fuel)
+                        of that node
+Sodium density        : Each node's cross sections vary linearly with that node's sodium density, so
+                        voiding happens node by node
+Axial fuel expansion  : Fuel node height grows with fuel temperature; number densities fall to match
+Radial expansion      : Diagrid (core inlet temperature) and load pads (core outlet temperature)
+                        scale the assembly pitch; cross sections scale with density
+Drivelines and vessel : Offsets added to every rod's effective position, with the §3.2 lags
+Burnup                : Every fuel assembly tracks its own burnup; cross sections interpolate
+                        between tabulated burnup points
+Detectors             : PR quadrant chambers and SR and WR channels read weighted sums of peripheral
+                        node fluxes, so quadrant tilt is physical
+Thermocouple map      : Each outlet temperature comes from that assembly's own nodal power and flow
+                        (§2.5)
+Fallback              : Point kinetics with lumped feedback (§3.2) stays in the code as a low-load
+                        fallback and as a cross-check during development
+
+Cross sections
+
+(Item / Detail)
+Material sets          : Inner fuel, outer fuel, regulating absorber, shim absorber, SSR absorber,
+                         sodium follower, steel reflector, lower structure, upper plenum
+Data per set and group : Diffusion coefficient, removal, νΣf, κΣf, fission spectrum χ, downscatter
+                         matrix
+Feedback tables †      : Fuel temperature at 4 points (600–2,000 K); sodium density at 3 points
+                         including voided; burnup at 3 points
+Best source            : Generated offline with an open-source Monte Carlo code such as OpenMC,
+                         homogenised per material set, collapsed to the chosen groups
+Acceptable source      : A few-group set tuned by hand until every validation target below passes
+Reference compositions : The OECD/NEA sodium fast reactor benchmark cores include a large oxide core
+                         that is a realistic starting point
+
+Validation targets †
+
+* β_eff and Λ
+    Target: 360 pcm; 4.0 × 10⁻⁷ s
+    Tolerance: ±5%
+* Bank worths
+    Target: A 2,400; B 1,800; C 1,200; RR 300; SSR 2,970 pcm
+    Tolerance: ±10%
+* Single rod worth shape
+    Target: §3.4 S-curve
+    Tolerance: ±5% of total worth at every 10% of travel
+* Peaking
+    Target: Radial 1.20; axial 1.22
+    Tolerance: ±0.03
+* Doppler constant
+    Target: −900 pcm
+    Tolerance: ±10%
+* Whole-core void worth
+    Target: +1,800 pcm; positive in the central rings, negative in the outer rings
+    Tolerance: ±15%
+* Power defect; isothermal coefficient
+    Target: −844 pcm; −2.41 pcm/K
+    Tolerance: ±10%
+* Excess reactivity, 230 °C, beginning of cycle
+    Target: ≈ 2,250 pcm
+    Tolerance: ±150 pcm
+
+
+####################################################################################################
+# FILE: 12_spec_primary_secondary_steam_generators.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 3 of 7: primary system, secondary sodium loops, steam generators, splitter, reheat
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+4. PRIMARY SYSTEM
+====================================================================================================
+
+4.1 Vessel and pools
+--------------------
+(Parameter / Value)
+Main vessel                        : 15.0 m ID, 14.5 m high, 316LN, 40 mm wall
+Guard vessel                       : 15.6 m ID, 0.3 m gap, leak detectors in the gap
+Roof                               : 2.5 m shielded slab; large and small rotating plugs
+Primary sodium                     : 1,250 t: hot pool 620 t, cold pool 560 t, core and diagrid 70 t
+Sodium per MWt                     : 0.53 t/MWt, close to BN-600 (Superphénix ≈ 1.1). This is the
+                                     main responsiveness knob
+Free surface                       : Hot pool 95 m²; cold pool annulus 45 m²
+Mixing time constants              : Hot pool 58 s (model as 40 s + 18 s nodes); cold pool 52 s plus
+                                     8 s transport from IHX outlets to pump inlets
+Heat capacity, sodium plus internals
+    ≈ 2,400 MJ/K
+
+Pool levels: the hot pool sits above the cold pool, and that head difference is what pushes sodium
+through the IHXs.
+
+(Level relation / Formula)
+Head difference : ΔL = 1.5 m × (Q/Q₀)²
+Hot pool        : L_mean + 0.32 × ΔL
+Cold pool       : L_mean − 0.68 × ΔL
+Mean level      : +0.26 m from 375 °C isothermal to 100%; +0.64 m from 230 °C to 100%
+
+
+4.2 Primary pumps PP1–PP3
+-------------------------
+(Parameter / Value)
+Type                          : Vertical centrifugal, free surface in pump tank, suction from cold
+                                pool, discharge to diagrid through a flap check valve
+Rated flow                    : 3,565 kg/s each (4.13 m³/s at 375 °C); 10,694 kg/s total
+Head, speed                   : 0.65 MPa (≈ 77 m sodium); 740 rpm
+Power                         : 3.3 MW shaft; 4.0 MW motor on a variable-frequency drive
+Speed range                   : 25–105% on the main motor; ramp ≤ 2 %/s
+Pony motor                    : 250 kW, 10% speed, on essential boards (Divisions 1–3)
+Coastdown                     : Q(t) = Q₀ / (1 + t / 10 s): 50% at 10 s, 25% at 30 s; flywheel J ≈
+                                5,500 kg·m²
+Natural circulation, no pumps : Q_nc ≈ 3.5% × (P / 1 %FP)^(1/3) †
+Start interlocks              : Cover gas ≥ 0.105 MPa; sodium ≥ 180 °C; bearing oil pressure normal
+Cavitation                    : Cover gas below 0.108 MPa with speed above 90%: cavitation alarm and
+                                vibration rise †
+Gas entrainment               : Cold pool 1.3 m below program with speed above 95%: bubbles reach
+                                the core (S-10) †
+Pump heat to sodium           : ≈ 10 MWt total
+
+
+4.3 Intermediate heat exchangers, primary side
+----------------------------------------------
+(Parameter / Value)
+Units                     : 6 (1A, 1B, 2A, 2B, 3A, 3B), 400 MWt each
+Arrangement               : Primary on shell side flowing down; secondary in tubes flowing up
+Primary side              : 1,782 kg/s each; 545 °C in from hot pool, 375 °C out to cold pool
+Secondary side            : 1,556 kg/s each; 320 → 520 °C
+Thermal                   : LMTD ≈ 40 K; UA ≈ 10 MW/K; ≈ 2,000 m²
+Inlet shutter (fictional) : Closes in 60 s with 5% leak-by. Used when a loop is out, so hot sodium
+                            doesn't bypass straight into the cold pool
+Pressure rule             : Secondary side stays ≥ 0.4 MPa above primary, so a tube leak runs
+                            secondary into primary
+
+
+4.4 Cover gas
+-------------
+(Parameter / Value)
+Gas, volume            : Argon, 320 m³ above the pools at 100%
+Pressure               : Setpoint 0.120 MPa; auto band 0.115–0.125
+Limits                 : Alarm low 0.105, high 0.140; trip 0.160; never below 0.102 (air ingress)
+Heatup and cooldown    : Sodium expansion moves the gas volume by ≈ 90 m³ between 230 °C and full
+                         power. With a fixed gas inventory, cooldown alone would pull pressure down
+                         to ≈ 0.074 MPa, so argon has to be admitted on cooldown and vented to decay
+                         tanks on heatup
+Normal activity        : Ar-41 (110 min half-life)
+Fuel failure signature : Xe-133, Xe-135, Kr-85m, Kr-88
+Decay tanks            : 3 × 50 m³, 72 h hold-up before the stack †
+
+
+4.5 Decay heat removal (DRACS)
+------------------------------
+(Parameter / Value)
+Loops       : 4 independent: sodium-sodium exchanger in hot pool, natural-circulation sodium loop,
+              sodium-air exchanger, stack
+Capacity    : 20 MWt per loop at 550 °C hot pool; Q = 20 MW × ((T_hot − 30) / 520)^1.4 †
+Standby     : Dampers 5% open, 0.3 MW loss per loop keeps the loop warm
+Dampers     : 2 per loop, motor-operated from essential boards; fail as-is (OD-6) because the motors
+              can't move them without power; local handwheel 90 s each
+Coping time : With no heat sink at all, the pool rises 200 K in ≈ 5 h after a trip from 100%
+
+
+4.6 Primary purification
+------------------------
+Two 100% cold traps, 8 kg/s each †, trap wall 125 °C. Plugging temperature normal ≤ 125 °C, alarm
+150 °C, LCO 180 °C. Oxygen meter online; tritium and carbon by sampling.
+
+
+====================================================================================================
+5. SECONDARY SODIUM LOOPS
+====================================================================================================
+
+5.1 Loop parameters (each of 3)
+-------------------------------
+(Parameter / Value)
+Duty             : 796 MWt
+Flow             : 3,112 kg/s (3.65 m³/s)
+Temperatures     : IHX outlet and SG inlet 520 °C; SG outlet and IHX inlet 320 °C
+Piping           : DN900 (0.90 m ID), 5.9 m/s; hot leg 180 m; cold leg 180 m
+Transport delays : Hot leg 31 s; SG shell residence 41 s; buffer tank 17 s; cold leg 32 s; IHX tubes
+                   5 s; one lap ≈ 125 s
+Inventory        : ≈ 400 t
+Pump             : Cold leg, free surface, 0.45 MPa head, 980 rpm, 2.0 MW shaft, 2.5 MW motor with
+                   VFD; coastdown Q₀ / (1 + t / 5 s)
+Pressures        : Buffer tank gas 0.30 MPa; pump discharge 0.75; IHX inlet 0.72; IHX outlet 0.62;
+                   SG inlet 0.55; SG outlet 0.32
+Isolation        : Sodium gate valves at IHX secondary inlet and outlet, 180 s stroke
+Dump tank        : 450 m³, gravity drain in 20 min, electrically heated
+Trace heating    : 42 zones per loop †; idle setpoint 200 °C; alarm below 150 °C
+Cold trap        : 1 per loop; plugging temperature normal ≤ 140 °C, alarm 160 °C
+
+
+5.2 Sodium-water reaction protection
+------------------------------------
+* Micro
+    Water leak rate: below 0.05 g/s
+    Detected by: Hydrogen trend over grid-hours
+* Small
+    Water leak rate: 0.05–10 g/s
+    Detected by: Section hydrogen meter within minutes
+* Intermediate
+    Water leak rate: 10 g/s – 2 kg/s
+    Detected by: Acoustic leak detection, seconds
+* Large
+    Water leak rate: above 2 kg/s
+    Detected by: Pressure rise and rupture discs, immediate
+
+Hydrogen signal: a 1 g/s water leak adds +0.28 ppm at its section outlet meter and +0.036 ppm at the
+loop outlet meter about 10 s later. Background is ≈ 0.06 ppm at 100% and 0.02 ppm at hot standby,
+drifting ±0.01 ppm per grid day †.
+
+Large leak, automatic sequence: rupture discs burst at 1.2 MPa, then separator tank, pump trip and
+loop isolation, water side isolated in ≤ 5 s and blown down, nitrogen purge, sodium drained to the
+dump tank, and reactor runback RB-1.
+
+
+====================================================================================================
+6. STEAM GENERATORS, SPLITTER AND REHEAT ROUTING
+====================================================================================================
+
+6.1 Construction
+----------------
+(Parameter / Value)
+Arrangement                  : 3 SGs × 8 identical sections (1-1 … 3-8). Each section has an
+                               evaporator (EV), superheater (SH) and reheater (RH) module; straight
+                               tubes, sodium on shell side
+Materials                    : 2¼Cr-1Mo evaporator; 9Cr-1Mo superheater and reheater †
+Section duty                 : 99.5 MWt: EV 62.6, SH 21.2, RH 15.7
+Loop duty                    : EV 501, SH 170, RH 125 MWt
+Sodium path                  : 520 °C in, split 57.6% SH and 42.4% RH in parallel, both leave at 445
+                               °C, mix, then EV, out at 320 °C
+Water path, per section      : Feed 36.5 kg/s at 16.0 MPa, 240 °C; EV outlet 14.6 MPa, 355 °C (15 K
+                               superheat); SH outlet 14.0 MPa, 505 °C
+Reheat path, per section     : 31.9 kg/s from 2.75 MPa, 292 °C to 2.6 MPa, 505 °C
+Pinch                        : ≈ 20 K where boiling starts (sodium 360 °C, saturation 340 °C)
+Hot-end approach             : 15 K (sodium 520 °C, steam 505 °C)
+Section isolation            : Sodium valves 60 s; feed and steam valves ≤ 5 s; water dump valve; N₂
+                               purge
+One section isolated at 100% : Loop capacity −12.5%; reactor −4.2 %FP
+
+
+6.2 Main steam
+--------------
+(Item / Value)
+Pressure drop : SG outlet 14.0 MPa, header 13.7 MPa, turbine stop valve 13.5 MPa and 500 °C
+Loop 1        : SG1 through MSIV-1 to header A
+Loop 3        : SG3 through MSIV-3 to header B
+Loop 2        : Branch A through CV-2A and NRV-2A to header A; branch B through CV-2B and NRV-2B to
+                header B
+Protection    : SG safety valves 15.8 MPa (3 × 35% per SG); atmospheric relief valve 15.2 MPa, auto
+                or manual; MSIVs close in ≤ 5 s
+
+
+6.3 Splitter valves (steam generator desk)
+------------------------------------------
+(Parameter / Value)
+CV-2A, CV-2B      : Hydraulic control valves; 20 s full stroke; 5 s fast close; fail as-is on loss
+                    of hydraulic pressure †
+Losses            : Fully open 0.10 MPa at full branch flow; equal-percentage trim; throttled to 50%
+                    open costs ≈ 0.8 MPa, about 6 MWe on that branch †
+NRV-2A, NRV-2B    : Swing check valves; close on reverse ΔP above 0.02 MPa
+Turbine desks see : Valve position, branch flow, check valve state, both header pressures. Repeaters
+                    only
+Auto mode         : Holds position. Does nothing on a loop loss
+
+
+6.4 Reheat routing (OD-4)
+-------------------------
+* A
+    Reheater modules: SG1 sections 1–8 plus SG2 sections 1–4 (12 modules)
+    Capacity: 1.5 loops' worth
+* B
+    Reheater modules: SG3 sections 1–8 plus SG2 sections 5–8 (12 modules)
+    Capacity: 1.5 loops' worth
+
+Each reheater group (SG1, SG2-A, SG2-B, SG3) has steam-side isolation valves, 30 s stroke. Each hot
+reheat line has an attemperator spray fed from the feed pump interstage; sprays can only cool.
+
+Why this matters: the splitter moves loop 2's main steam between turbines, but reheater capacity is
+fixed by pipework. Push steam towards B and B's reheat runs cold while A's runs hot. Isolating a
+single SG2 section nudges the balance by about 2 K in each direction, which a good steam generator
+desk trims out with a small split change.
+
+
+6.5 Loss of loop 3: what each split actually gives
+--------------------------------------------------
+Reactor at 67%, loops 1 and 2 at 100%, loop 3 and its reheaters isolated. Output includes the
+efficiency effect of reheat temperature and the turbine reheat load limit (§7.1).
+
+* 50%
+    Turbine A (MWe): 500
+    A hot reheat: 505 °C
+    Turbine B (MWe): 167
+    B hot reheat: 505 °C
+    B load limit: 100%
+    Plant (MWe): 667
+* 60%
+    Turbine A (MWe): 467
+    A hot reheat: 508 °C
+    Turbine B (MWe): 198
+    B hot reheat: 495 °C
+    B load limit: 100%
+    Plant (MWe): 665
+* 70%
+    Turbine A (MWe): 433
+    A hot reheat: 511 °C, spraying
+    Turbine B (MWe): 229
+    B hot reheat: 484 °C
+    B load limit: 94%
+    Plant (MWe): 662
+* 80%
+    Turbine A (MWe): 400
+    A hot reheat: 513 °C, spraying
+    Turbine B (MWe): 259
+    B hot reheat: 473 °C
+    B load limit: 83%
+    Plant (MWe): 659
+* 90%
+    Turbine A (MWe): 367
+    A hot reheat: 516 °C, spraying
+    Turbine B (MWe): 288
+    B hot reheat: 462 °C
+    B load limit: 72%
+    Plant (MWe): 655
+* 100%
+    Turbine A (MWe): 333
+    A hot reheat: 517 °C, spraying
+    Turbine B (MWe): 311, capped by reheat; 6 MWe to bypass
+    B hot reheat: 452 °C
+    B load limit: 62%
+    Plant (MWe): 645
+* Trip B
+    Turbine A (MWe): 500
+    A hot reheat: 505 °C
+    Turbine B (MWe): 0
+    B hot reheat: –
+    B load limit: –
+    Plant (MWe): 500; reactor to 50% or dump 146 kg/s
+
+Reading it: 50/50 keeps reheat perfect but leaves B at 33%, a hair above its 30% minimum load, where
+the next disturbance trips it. Sending everything to B looks balanced, yet it loses 22 MWe and runs
+both reheat lines out of specification. The right answer is 60–70% of loop 2 to B: about 3 MWe lost,
+B comfortably above minimum, reheat within limits. Crews who understand the plant will find it, and
+crews who don't will pick one of the obvious answers.
+
+
+6.6 Startup and low-load behaviour
+----------------------------------
+Once-through modules have no drum. Steam temperature is set by the ratio of feed flow to sodium
+flow.
+
+(Item / Value)
+Startup separator          : One per SG between EV and SH; separator level 2.0 m; drains to
+                             deaerator when hot, condenser when cold
+Minimum evaporator flow    : 25% (73 kg/s per SG) through the separator
+Switch to once-through     : EV outlet superheat ≥ 15 K held for 5 min, around 30–35% load
+Water admission interlocks : Sodium ≥ 250 °C; feed temperature ≥ sodium − 80 K
+Density-wave oscillation   : EV flow below 20% with EV sodium inlet above 400 °C: section flow
+                             oscillates with a 6–10 s period, growing 5% per cycle until flow is
+                             raised or sodium cooled †
+
+
+####################################################################################################
+# FILE: 13_spec_turbines_feedwater_electrical.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 4 of 7: turbine-generators, condensers and seawater, feedwater, electrical, Nordic grid
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+7. TURBINE-GENERATORS, CONDENSERS AND FEEDWATER
+====================================================================================================
+
+7.1 Turbine-generator (each of 2)
+---------------------------------
+(Parameter / Value)
+Rating                      : 500 MWe gross at 5.0 kPa; 590 MVA, 0.85 pf, 22 kV, 3,000 rpm, 2-pole
+Cooling                     : Hydrogen-cooled rotor, water-cooled stator
+Cylinders                   : HP single flow; IP double flow; 2 LP double flow
+Main steam                  : 437.5 kg/s (1,575 t/h) at 13.5 MPa, 500 °C
+Cold reheat                 : 2.8 MPa, 292 °C; reheat flow 87.4% of main steam
+Hot reheat at IP stop valve : 2.5 MPa, 500 °C
+LP exhaust                  : 5.0 kPa, dryness 0.92
+Efficiency                  : 41.9% gross on steam generator heat
+Minimum stable load         : 30% (150 MWe)
+Loading rate                : ≤ 5 %/min hot; ≤ 1 %/min warm. Plant rate is set by the reactor (§9.6)
+Critical speed bands        : 1,050–1,350 and 1,900–2,350 rpm; no dwell, accelerate ≥ 300 rpm/min
+                              through them
+Run-up                      : Turning gear 30 rpm; heat soak at 600 rpm for 10 min warm, 30 min cold
+Synchronising               : Slip ≤ 0.1 Hz, voltage ±5%, phase ±10°; take 25 MWe immediately
+Reheat load limit †         : 100% at ≥ 490 °C; 60% at 450 °C; 30% at 430 °C; trip below 420 °C;
+                              linear between
+
+
+7.2 Turbine protection
+----------------------
+* Speed
+    Normal: 3,000 rpm
+    Alarm: 3,150
+    Trip: 3,300
+* Condenser pressure
+    Normal: 5.0 kPa
+    Alarm: 10
+    Trip: 20
+* LP exhaust hood
+    Normal: 40 °C
+    Alarm: 70 (sprays on at 60)
+    Trip: 90, 60 s delay
+* Bearing vibration
+    Normal: 2 mm/s
+    Alarm: 7.1
+    Trip: 11
+* Thrust position
+    Normal: 0
+    Alarm: ±0.6 mm
+    Trip: ±1.0 mm
+* Lube oil pressure
+    Normal: 0.15 MPa
+    Alarm: 0.10
+    Trip: 0.07
+* Main steam at stop valve
+    Normal: 500 °C
+    Alarm: 480 (tracks program below 40%)
+    Trip: 430, or a 50 K fall within 10 min
+* Main steam superheat
+    Normal: 166 K
+    Alarm: 80 K
+    Trip: 50 K
+* Hot reheat
+    Normal: 500 °C
+    Alarm: 480
+    Trip: 420
+* Generator
+    Normal: –
+    Alarm: –
+    Trip: Differential, loss of field, reverse power 10 s, negative sequence, below 47.5 Hz for 20
+      s, above 52 Hz
+
+
+7.3 Bypass
+----------
+Two-stage bypass on each turbine: HP bypass from main steam to cold reheat, and LP bypass from hot
+reheat to the condenser, each sized for 60% of turbine flow, quick-opening in ≤ 2 s on a turbine
+trip, with desuperheating. The condenser absorbs 60% bypass indefinitely at design cooling water;
+beyond that, condenser pressure rises about 1 kPa per extra 10% †. Bypass buys time. Every kilogram
+through it is output thrown away.
+
+House-load operation: when the grid separates, one unit can run back to the plant's own house load
+(≈ 65 MWe) with the rest of its steam on bypass, while the other unit trips and the reactor runs
+back. Getting it right keeps the plant off its diesels (S-28).
+
+
+7.4 Condenser and cooling water
+-------------------------------
+(Parameter / Value)
+Cooling        : Brackish Bothnian Sea water from about 10 m depth; 2 × 50% CW pumps per unit, 3.7
+                 MW each
+Flow           : Both pumps: 15.3 m³/s per unit, 11 K rise. One pump: ≈ 60% flow because system
+                 resistance falls, 18 K rise
+Condenser duty : 690 MWt per unit
+Rating point   : 500 MWe per unit at 5.0 kPa: late summer, intake water 19 °C, both pumps
+Choke          : Below ≈ 3.0 kPa the last LP stage gains nothing more, so colder water only helps
+                 down to there
+Intake         : Trash racks and travelling band screens with automatic wash; screen ΔP alarm;
+                 warm-water recirculation gate for de-icing
+Hotwell        : 0.8 m normal, auto level control, naturally stable
+Vacuum pumps   : 2 × 100% per unit
+
+Pump lineup is a real decision for the turbine desks. Figures are per unit; net is gross minus that
+unit's CW pump power.
+
+* 3 °C
+    Both pumps: 1.9 kPa, choked: 514 gross, 507 net
+    One pump: 3.0 kPa: 514 gross, 510 net
+    Better: One pump
+* 5 °C
+    Both pumps: 2.2 kPa, choked: 514 gross, 507 net
+    One pump: 3.4 kPa: 511 gross, 507 net
+    Better: Either
+* 8 °C
+    Both pumps: 2.7 kPa, choked: 514 gross, 507 net
+    One pump: 4.1 kPa: 506 gross, 502 net
+    Better: Both
+* 12 °C
+    Both pumps: 3.4 kPa: 511 gross, 504 net
+    One pump: 5.1 kPa: 499 gross, 496 net
+    Better: Both
+* 15 °C
+    Both pumps: 4.0 kPa: 506 gross, 499 net
+    One pump: 6.1 kPa: 494 gross, 491 net
+    Better: Both
+* 19 °C
+    Both pumps: 5.0 kPa: 500 gross, 492 net
+    One pump: 7.5 kPa: 488 gross, 484 net
+    Better: Both
+
+
+7.5 Feed heating (each unit)
+----------------------------
+* LP1
+    Steam from: LP extraction 0.03 MPa
+    Feedwater out: 66 °C
+* LP2
+    Steam from: LP extraction 0.08 MPa
+    Feedwater out: 91 °C
+* LP3
+    Steam from: LP extraction 0.20 MPa
+    Feedwater out: 117 °C
+* LP4
+    Steam from: IP exhaust 0.55 MPa
+    Feedwater out: 152 °C
+* Deaerator
+    Steam from: IP extraction 1.1 MPa
+    Feedwater out: 180 °C at 1.0 MPa; 250 m³ storage ≈ 8 min
+* Main feed pumps
+    Steam from: –
+    Feedwater out: 17.5 MPa
+* HP6
+    Steam from: Cold reheat 2.8 MPa
+    Feedwater out: 227 °C
+* HP7
+    Steam from: HP turbine mid-stage 3.5 MPa
+    Feedwater out: 240 °C
+
+Feed temperature at part load ≈ 170 + 70 × (P/100)^0.6 °C.
+
+
+7.6 Feedwater trains
+--------------------
+(Item / Value)
+Train A and train B each           : 3 × 50% condensate extraction pumps; condensate polishing
+                                     plant; 2 × 55% main feed pumps (12 MW motors on VFDs, 9.8 MW
+                                     absorbed at 100%); 1 × 30% startup feed pump; HP heater bypass
+Capacity                           : 2 main pumps 481 kg/s; with the startup pump 612 kg/s
+Normal lineup                      : Train A feeds SG1 and half of SG2 (437.5 kg/s); train B feeds
+                                     SG3 and the other half
+Loop 2 crosstie                    : XV-2A and XV-2B let either train feed all of SG2
+Train B lost                       : Train A must supply SG1 and SG2, 583 kg/s: both main pumps and
+                                     the startup pump flat out (612 kg/s). Turbine A can only take
+                                     437.5 kg/s, so the rest goes to bypass
+Feed control                       : Per SG: main feed control valve plus low-flow valve, 10 s
+                                     stroke; flow indicated per section
+Chemistry (all-volatile treatment) : O₂ ≤ 5 ppb (alarm 10); pH 9.3–9.6; cation conductivity ≤ 0.2
+                                     µS/cm (alarm 0.3); Na ≤ 3 ppb; Cl ≤ 2 ppb
+
+
+====================================================================================================
+8. ELECTRICAL SYSTEM
+====================================================================================================
+
+8.1 Grid connection and main circuits
+-------------------------------------
+(Item / Value)
+Switchyard            : 400 kV double busbar; bays for GT-A, GT-B, Line 1, Line 2, ST-1
+Generator side        : Generator circuit breakers GCB-A/B; generator transformers GT-A/B, 22/400
+                        kV, 600 MVA
+Unit supplies         : Unit auxiliary transformers UAT-A/B, 22/11 kV, 50 MVA, feeding unit boards
+                        UB-A and UB-B
+Station supplies      : ST-1 400/11 kV 60 MVA feeding station boards SB-1 and SB-2; ST-2 130/11 kV
+                        40 MVA from the regional 130 kV network as backup
+Transfer on unit trip : Fast transfer from UB to SB in ≤ 150 ms with residual voltage check; if that
+                        fails, slow transfer after 2 s bus decay while pumps coast
+
+
+8.2 11 kV load allocation
+-------------------------
+(Board / Loads)
+UB-A : PP1, SP1, MFP-A1, MFP-A2, condensate pumps A, CW pumps A
+UB-B : PP3, SP3, MFP-B1, MFP-B2, condensate pumps B, CW pumps B
+SB-1 : PP2, SP2, startup feed pump A, trace heating boards 1–2, HVAC
+SB-2 : Startup feed pump B, trace heating boards 3–4, cold traps, argon and nitrogen plant, feeds to
+       essential boards
+
+
+8.3 Essential systems
+---------------------
+(Item / Value)
+Divisions        : 4; 3.3 kV essential boards ESS-1 to ESS-4, normally fed from SB-1 and SB-2
+EDG-1 to EDG-4   : 6.3 MW, 3.3 kV; rated voltage and frequency in ≤ 15 s; load steps at 15, 20, 25,
+                   30 and 40 s; 110% for 2 h in 24 h; day tank 8 h; main store 7 days; starting air
+                   for 5 starts
+Essential loads  : Pony motors (Divisions 1–3); DRACS dampers and fans (all 4); essential trace
+                   heating; cover gas control; instrument UPS chargers; control room HVAC; fire
+                   systems
+UPS              : 230 V AC per division, 2 h
+DC               : 220 V per division, 4 h
+Rod hold power   : PSS and SSR hold coils on UPS; losing hold power drops rods
+Station blackout : Batteries only. DRACS works on natural circulation, but only if its dampers are
+                   open
+
+
+8.4 Grid parameters: Nordic synchronous area
+--------------------------------------------
+(Parameter / Value)
+Voltage                   : 400 kV ±5%; backup supply from the 130 kV regional network
+Frequency                 : 50 Hz; normal band 49.9–50.1 Hz
+Generator operating range : Continuous 49.0–51.0 Hz; time-limited down to 47.5 Hz and up to 51.5 Hz
+Automatic load shedding   : From about 48.8 Hz
+Scale of a K1 trip        : The grid is sized to ride through losing its largest unit, which is
+                            bigger than K1. Losing both turbines at once is serious but survivable
+Reactive capability       : +300 / −150 MVAr per unit at rated MW; less above 500 MWe in winter †
+
+* FCR-N
+    What it asks of the plant: Proportional response across 49.9–50.1 Hz; 63% within 60 s, 100%
+      within 3 min
+    K1 contract size †: ±10 MWe per unit
+* FCR-D up
+    What it asks of the plant: Adds power as frequency falls from 49.9 to 49.5 Hz; 50% within 5 s,
+      100% within 30 s
+    K1 contract size †: 25 MWe per unit, held as headroom below the unit's limit
+* FCR-D down
+    What it asks of the plant: Sheds power as frequency rises from 50.1 to 50.5 Hz; same speed
+    K1 contract size †: 25 MWe per unit
+* aFRR
+    What it asks of the plant: Follows a setpoint signal from grid control
+    K1 contract size †: ±20 MWe for the plant, full within 5 min
+* mFRR
+    What it asks of the plant: Manual instruction delivered within 15 min
+    K1 contract size †: The dispatcher's normal MW instructions
+
+
+####################################################################################################
+# FILE: 14_spec_control_protection_rooms_access.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 5 of 7: control, protection, limits, control rooms, desks, crew, anti-AFK, hybrid rooms, access, guides
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+9. CONTROL, PROTECTION AND OPERATING LIMITS
+====================================================================================================
+
+9.1 Operating modes
+-------------------
+* 1
+    Name: Power
+    Conditions: Above 5 %FP
+* 2
+    Name: Startup
+    Conditions: k_eff ≥ 0.99, up to 5 %FP
+* 3
+    Name: Hot standby
+    Conditions: ≥ 1,000 pcm subcritical; core inlet 350–380 °C
+* 4
+    Name: Shutdown
+    Conditions: ≥ 1,000 pcm subcritical; 200–350 °C
+* 5
+    Name: Refuelling
+    Conditions: 230 ± 20 °C; ≥ 3,000 pcm subcritical; rotating plugs unlocked
+
+No sodium that is meant to stay liquid goes below 180 °C in any mode.
+
+
+9.2 Part-load program
+---------------------
+Core inlet is held at 375 °C throughout. With r = P/Q: core outlet 375 + 175r; secondary cold 375 −
+55r; secondary hot 375 + 145r; main steam min(505, secondary hot − 15r).
+
+* 100%
+    Primary and secondary flow: 100%
+    Core outlet: 550 °C
+    Secondary cold / hot: 320 / 520 °C
+    Main steam: 505 °C
+    SG pressure: 14.0 MPa
+    Feed: 240 °C
+    Gross MWe: 1,000
+* 80%
+    Primary and secondary flow: 80%
+    Core outlet: 550
+    Secondary cold / hot: 320 / 520
+    Main steam: 505
+    SG pressure: 14.0
+    Feed: 231
+    Gross MWe: 783
+* 60%
+    Primary and secondary flow: 60%
+    Core outlet: 550
+    Secondary cold / hot: 320 / 520
+    Main steam: 505
+    SG pressure: 14.0
+    Feed: 222
+    Gross MWe: 573
+* 40%
+    Primary and secondary flow: 40%
+    Core outlet: 550
+    Secondary cold / hot: 320 / 520
+    Main steam: 505
+    SG pressure: 14.0
+    Feed: 210
+    Gross MWe: 371
+* 30%
+    Primary and secondary flow: 40% (minimum)
+    Core outlet: 506
+    Secondary cold / hot: 334 / 484
+    Main steam: 472
+    SG pressure: 14.0
+    Feed: 204
+    Gross MWe: 273
+* 20%
+    Primary and secondary flow: 40%
+    Core outlet: 462
+    Secondary cold / hot: 348 / 448
+    Main steam: 440
+    SG pressure: 11.5
+    Feed: 197
+    Gross MWe: 178
+* 10%
+    Primary and secondary flow: 40%
+    Core outlet: 419
+    Secondary cold / hot: 361 / 411
+    Main steam: 408
+    SG pressure: 9.0
+    Feed: 188
+    Gross MWe: 86
+* 5%
+    Primary and secondary flow: 25%
+    Core outlet: 410
+    Secondary cold / hot: 364 / 404
+    Main steam: 401
+    SG pressure: 7.75
+    Feed: 182
+    Gross MWe: 42
+
+Below 40% the core outlet falls with power, so load changes down there cost fatigue even when
+coordination is perfect.
+
+
+9.3 Who controls what
+---------------------
+* Neutron power, core outlet temperature
+    Owner: Reactor desk (MCR)
+    Main actuator: RR, shim banks
+    Upset by: Inlet temperature, flow, burnup, anomalies
+* Core flow, P/Q = 1.00
+    Owner: Primary desk (MCR)
+    Main actuator: PP speeds
+    Upset by: Power changes, pump trips
+* Core inlet temperature
+    Owner: Secondary sodium desk (SGCR)
+    Main actuator: SP speeds
+    Upset by: Feed flow and temperature, loop loss
+* SG sodium outlet, main steam temperature
+    Owner: Steam generator desk (SGCR) with feedwater desk
+    Main actuator: Feed flow per SG, sprays
+    Upset by: Turbine load, feed temperature
+* Loop 2 split, reheat balance
+    Owner: Steam generator desk
+    Main actuator: CV-2A/2B, sprays, reheater isolation
+    Upset by: Turbine loads, section isolations
+* Header pressure, MWe
+    Owner: Turbine A and B desks (TCR)
+    Main actuator: Control valves, bypass
+    Upset by: Reactor power, grid frequency
+* Feed supply, deaerator, hotwell
+    Owner: Feedwater desk (FWCR)
+    Main actuator: Feed pump speeds, crosstie
+    Upset by: Load, pump trips
+* Boards, EDGs, MVAr
+    Owner: Electrical desk (ECR)
+    Main actuator: Breakers, AVR setpoints
+    Upset by: Grid events, trips
+* Trace heating, cold traps, argon
+    Owner: Sodium services desk (NSCR)
+    Main actuator: Zone heaters, trap flows
+    Upset by: Faults, drift
+* Water and sodium chemistry, activity
+    Owner: Chemistry desk (NSCR)
+    Main actuator: Sampling, polishing, dosing
+    Upset by: Leaks, fuel failures
+
+In reactor leads mode (default), the shift supervisor sets reactor power and the turbines hold
+header pressure. In turbine leads mode (OD-5), the supervisor sets MWe: header pressure falls, the
+SG and feedwater desks follow, the core inlet cools, and reactor power rises through inlet feedback
+about 1–2 minutes later while the reactor desk trims. It's slower and needs four desks to cooperate.
+
+
+9.4 Automatic controllers, deliberately worse than a crew
+---------------------------------------------------------
+* Rod auto
+    Holds: Core outlet 550 ±2 K using RR only
+    Weakness built in: Never moves shims; stops and alarms when RR leave the 400–700 mm band; reacts
+      after thermocouples move
+* Primary flow auto
+    Holds: P/Q at 1.00
+    Weakness built in: 10 s filter on power, so P/Q swings ±5% on fast changes; ignores a pump trip
+* Secondary flow auto
+    Holds: Core inlet 375 ±3 K
+    Weakness built in: Drives all three loops equally even with isolated sections; 60 s integral
+      time
+* Feed auto
+    Holds: Main steam 505 ±3 K
+    Weakness built in: Overshoots ±8 K on 10% steps; no turbine feedforward; off in separator mode
+* Attemperation auto
+    Holds: Hot reheat ≤ 505 °C
+    Weakness built in: Can only cool
+* Splitter auto
+    Holds: Valve position
+    Weakness built in: Holds it and nothing more
+* Turbine auto, pressure mode
+    Holds: Header 13.5 ±0.2 MPa, plus FCR response when contracted
+    Weakness built in: Ignores the reheat load limit; A and B don't coordinate
+* Bypass auto
+    Holds: Opens at header + 0.4 MPa
+    Weakness built in: Slow; pressure swings ±0.3 MPa
+* Cover gas auto
+    Holds: 0.115–0.125 MPa
+    Weakness built in: Cycles on heatup; vents without checking activity
+* Trace heating auto
+    Holds: Zone setpoints
+    Weakness built in: Can't see failed heaters or stuck contactors
+* Deaerator and hotwell auto
+    Holds: Levels
+    Weakness built in: Robust: naturally stable by design
+* EDGs and sequencer
+    Holds: Essential boards
+    Weakness built in: Robust, but restores essential loads only
+* Load-follow master
+    Holds: Dispatcher MW at exactly 1 %/min
+    Weakness built in: Follows dispatch straight into violations
+
+
+9.5 Reactor protection
+----------------------
+Primary shutdown system (PSS) logic is 2-out-of-3 on independent channels.
+
+* PR high flux
+    Normal: 100%
+    Alarm or first action: 105%
+    Trip: 115%
+* PR high flux, low setpoint (below 10% permissive)
+    Normal: –
+    Alarm or first action: –
+    Trip: 25%
+* Period, SR and WR below 10%
+    Normal: Infinite
+    Alarm or first action: 30 s rod block
+    Trip: 10 s
+* Flux rate
+    Normal: 0
+    Alarm or first action: –
+    Trip: +10 %FP/s, or −5 %FP/s (Phénix-style)
+* P/Q, above 5 %FP
+    Normal: 1.00
+    Alarm or first action: 1.05
+    Trip: 1.12
+* Core outlet, mixed
+    Normal: 550 °C
+    Alarm or first action: 565
+    Trip: 580
+* Assembly outlet vs expected
+    Normal: 0 K
+    Alarm or first action: +20 K alarm; +30 K rod block
+    Trip: +45 K on 2 adjacent thermocouples
+* Core inlet
+    Normal: 375 °C
+    Alarm or first action: 390 high, 360 low
+    Trip: 405 high, 345 low
+* Hot pool level vs program
+    Normal: 0 m
+    Alarm or first action: ±0.25 m
+    Trip: −0.50 m
+* Cover gas
+    Normal: 0.120 MPa
+    Alarm or first action: 0.140
+    Trip: 0.160
+* DND
+    Normal: Background
+    Alarm or first action: ×3
+    Trip: ×20
+* Primary pumps
+    Normal: 3 running
+    Alarm or first action: 1 lost: RB-2
+    Trip: 2 lost
+* Secondary loops
+    Normal: 3 running
+    Alarm or first action: 1 lost: RB-1
+    Trip: 2 lost
+* Both turbines lost
+    Normal: –
+    Alarm or first action: RB-3 to bypass capacity
+    Trip: If bypass unavailable
+* Large sodium-water reaction
+    Normal: –
+    Alarm or first action: Loop isolation plus RB-1
+    Trip: –
+* All 11 kV boards lost
+    Normal: –
+    Alarm or first action: –
+    Trip: Immediate
+* Seismic
+    Normal: –
+    Alarm or first action: 0.04 g
+    Trip: 0.08 g
+* Manual
+    Normal: –
+    Alarm or first action: –
+    Trip: 2 buttons in MCR, 1 in the backup control room
+
+Secondary shutdown system, diverse sensors: flux 118%, P/Q 1.15 using pump-speed-derived flow, core
+outlet 590 °C, manual. Each SSR also has a Curie-point latch that releases at 640 °C local sodium,
+with ≈ 20 s thermal lag.
+
+* RB-1
+    Trigger: One secondary loop lost
+    Target: 64 %FP
+    Rate: 30 %/min: shim drive-in at 10 mm/s plus flow program
+* RB-2
+    Trigger: One primary pump lost
+    Target: 60 %FP
+    Rate: 60 %/min
+* RB-3
+    Trigger: One or both turbines lost
+    Target: Bypass-limited power
+    Rate: 20 %/min
+
+Rod withdrawal blocks: period below 30 s; P/Q above 1.05; any assembly rod block; reactivity balance
+beyond ±50 pcm; RR out of band during a bank move; more than one bank selected.
+
+
+9.6 Operating limits
+--------------------
+* LCO-1
+    Limit: SSS: at least 8 of 9 rods operable
+    If exceeded: Hot shutdown
+    Completion (grid time): 6 h
+* LCO-2
+    Limit: DRACS: at least 3 of 4 loops
+    If exceeded: Restore or shut down
+    Completion (grid time): 72 h
+* LCO-3
+    Limit: EDGs: at least 3 of 4
+    If exceeded: Restore or shut down
+    Completion (grid time): 72 h
+* LCO-4
+    Limit: DND: at least 4 of 6 channels
+    If exceeded: ≤ 30 %FP
+    Completion (grid time): 12 h
+* LCO-5
+    Limit: Reactivity balance within ±50 pcm
+    If exceeded: No power increase; explain the deviation
+    Completion (grid time): 1 h
+* LCO-6
+    Limit: Primary plugging temperature ≤ 180 °C
+    If exceeded: ≤ 60 %FP and restore
+    Completion (grid time): 24 h
+* LCO-7
+    Limit: IHX secondary minus primary pressure ≥ 0.2 MPa
+    If exceeded: Isolate the loop
+    Completion (grid time): 1 h
+* LCO-8
+    Limit: Every running SG section has a working hydrogen meter
+    If exceeded: Isolate the section
+    Completion (grid time): 4 h
+* LCO-9
+    Limit: Feed O₂ ≤ 10 ppb and cation conductivity ≤ 0.5 µS/cm
+    If exceeded: ≤ 50 %FP
+    Completion (grid time): 24 h
+* LCO-10
+    Limit: Ramp ≤ 1 %/min above 40% (≤ 3 %/min with supervisor approval, logged)
+    If exceeded: Report
+    Completion (grid time): –
+* LCO-11
+    Limit: Hot pool rate of change ≤ 1.5 K/min, trips excepted
+    If exceeded: Report and fatigue review
+    Completion (grid time): –
+* LCO-12
+    Limit: Cover gas Xe-133 below limit †
+    If exceeded: ≤ 30 %FP and locate failed fuel
+    Completion (grid time): 8 h
+
+
+====================================================================================================
+10. CONTROL ROOMS, DESKS AND CREW
+====================================================================================================
+
+10.1 Rooms and walking times
+----------------------------
+* Main control room (MCR)
+    Desks: Reactor, primary, shift supervisor
+    Walk from MCR †: –
+* Electrical control room (ECR)
+    Desks: Electrical
+    Walk from MCR †: 40 s; EDG rooms a further 90–120 s
+* Steam generator control room (SGCR)
+    Desks: Secondary sodium, steam generator
+    Walk from MCR †: 60 s
+* Sodium services control room (NSCR)
+    Desks: Sodium services, chemistry
+    Walk from MCR †: 60 s
+* Turbine control room (TCR)
+    Desks: Turbine A, turbine B
+    Walk from MCR †: 75 s
+* Feedwater control room (FWCR)
+    Desks: Feedwater
+    Walk from MCR †: 90 s
+* Backup control room (BCR)
+    Desks: Emergency shutdown panel
+    Walk from MCR †: 150 s, separate building
+* DRACS stacks
+    Desks: Local dampers only
+    Walk from MCR †: 150 s
+
+Place rooms so that no two desks that have to talk during a fault can see each other.
+
+
+10.2 Desk contents
+------------------
+* Reactor (RO)
+    Controls: RR 1–3; shim rod or bank select A/B/C, in/out; rod mode; SSR latch and withdraw (key);
+      ECP calculator with 1/M plot; trip buttons
+    Indications: SR, WR log power, PR, period; 30 rod positions; 331-position core map with
+      temperature and deviation views; mixed outlet and inlet; P/Q ×3; reactivity balance; DND ×6;
+      quadrant tilt; first-out annunciator
+* Primary (PO)
+    Controls: PP1–3 start, stop, speed, mode; pony motors; IHX shutters ×6; cover gas admit and
+      vent; DRACS dampers ×8 and mode
+    Indications: Pump speed, flow, current, bearing and winding temperatures, vibration, check valve
+      state; hot and cold pool levels and temperatures; level difference; cover gas pressure and
+      temperature; IHX inlet and outlet ×6; DRACS temperatures and airflow; guard vessel leak
+      detector
+* Shift supervisor (SS)
+    Controls: Mode key; control mode; plant load master; reserve contracts FCR-N, FCR-D and aFRR;
+      dispatcher line; room phones; authorisations for bypasses, isolations and fast ramps;
+      emergency declaration
+    Indications: Plant mimic; gross and net MWe; frequency; dispatcher instructions; LCO status;
+      event log; end-of-shift report
+* Secondary sodium (SSO)
+    Controls: SP1–3; IHX secondary isolation valves; buffer tank argon; loop drain; SWR protection
+      reset
+    Indications: Loop flows, temperatures and pressures; pump data; buffer and dump tank levels;
+      rupture disc status; cell leak detectors; IHX pressure difference
+* Steam generator (SGO)
+    Controls: Section isolation ×24 (grouped, individual override); water dump and N₂ purge; MSIV-1
+      and MSIV-3; SG relief valves; CV-2A/2B; reheater isolation groups; sprays A/B; separator mode
+      and level ×3
+    Indications: Hydrogen meters ×27; acoustic detectors ×24; section EV, SH and RH outlet
+      temperatures; section feed flows; SG outlet pressure and temperature; header A/B pressure;
+      splitter branch flows and check valve state; hot reheat A/B; separator levels; oscillation
+      monitor
+* Turbine A, Turbine B (TO-A, TO-B)
+    Controls: Latch and trip; speed target and run-up; synchroscope and breaker close; load setpoint
+      and rate; speed, load, pressure or limit mode; FCR response enable; HP and LP bypass; vacuum
+      pumps; CW pumps; hood sprays; turning gear; oil pumps; AVR
+    Indications: Speed, MWe, MVAr, frequency; valve positions; stop-valve steam conditions; bypass
+      flows; condenser pressure; CW temperatures; hood temperature; vibration on 8 bearings;
+      eccentricity; differential expansion; thrust; oil pressure and temperature; rotor stress
+      margin; reheat load limit; splitter repeaters
+* Feedwater (FWO)
+    Controls: Condensate pumps ×6; polishing in or bypassed; LP and HP heater bypasses; main feed
+      pumps ×4; startup feed pumps ×2; feed control valves ×3 plus low-flow valves; crosstie
+      XV-2A/2B; makeup
+    Indications: Feed flow per SG and section; heater outlet temperatures; pump suction and
+      discharge; deaerator level and pressure; hotwell levels; condensate conductivity and O₂; pump
+      speeds and currents; recirculation valves
+* Electrical (EO)
+    Controls: Switchyard breakers and isolators; generator, station and unit transformer breakers;
+      11 kV incomers and bus sections; essential board incomers; EDG start, stop, sync, load;
+      sequencer reset; UPS and charger lineups; trace heating feeders
+    Indications: Voltage, current and frequency on every board; transformer temperatures and taps;
+      EDG speed, voltage, kW, fuel, coolant, starting air; battery voltage, current and time
+      remaining; relay flags
+* Sodium services (NSO)
+    Controls: Trace heating zones (≈ 180); cold traps; fill, drain and dump tanks; argon and
+      nitrogen systems; cell ventilation and fire dampers; nitrogen flooding; leak detector resets
+    Indications: Zone temperatures and heater currents; plugging temperatures; oxygen and hydrogen
+      meters; cell O₂ and temperature; aerosol detectors; tank levels; gas inventories
+* Chemistry (CHO)
+    Controls: Sample selectors; failed fuel location scan; cover gas routing to decay tanks; dosing;
+      polishing regeneration
+    Indications: Cover gas gamma spectrum; DND; sodium impurities and tritium; feedwater chemistry;
+      stack and area radiation
+* Backup control room
+    Controls: PSS and SSS trip; pony motors; DRACS dampers; SG relief valves; essential boards
+    Indications: Trends for core outlet, pools, DRACS and flux
+
+
+10.3 Local-only actions
+-----------------------
+* EDG local start or reset after a trip
+    Where: EDG room
+    Time on the spot †: 60 s
+* DRACS damper by handwheel
+    Where: Air cooler stack
+    Time on the spot †: 90 s per damper, 8 dampers
+* 11 kV breaker rack out or in
+    Where: Switchgear room
+    Time on the spot †: 120 s
+* Trace heating breaker reset; heater replacement
+    Where: Local boards
+    Time on the spot †: 45 s; 10 min
+* Thaw a freeze valve
+    Where: Loop cells
+    Time on the spot †: 10–20 min, heating from the free end
+* Cold trap valve lineup and regeneration
+    Where: Purification cell
+    Time on the spot †: 5 min
+* SG section water isolation by hand (backup)
+    Where: SG building
+    Time on the spot †: 120 s
+* Hydrogen meter restart or recalibration
+    Where: SG building
+    Time on the spot †: 5 min
+* Isolate half a condenser waterbox
+    Where: Condenser pit
+    Time on the spot †: 4 min
+* Lube oil filter changeover; engage turning gear
+    Where: Turbine hall
+    Time on the spot †: 60 s
+* Fire dampers, sodium fire powder, manual nitrogen release
+    Where: Affected cell
+    Time on the spot †: 30–90 s
+* Argon bottle bank changeover
+    Where: Gas yard
+    Time on the spot †: 3 min
+* Collect a failed fuel sample
+    Where: Chemistry lab
+    Time on the spot †: 5 min
+
+
+10.4 Crew sizes
+---------------
+* Minimum
+    Positions: 3: SS, RO, field operator; everything else on auto
+    What it can handle: Steady operation only; the first real fault will get away from them
+* Standard
+    Positions: 8: SS, RO, PO, SGO, TO-A, TO-B, EO, field
+    What it can handle: Most scenarios
+* Full
+    Positions: 13: standard plus SSO, FWO, NSO, CHO, second field operator
+    What it can handle: Everything; dispatcher can be a 14th player
+
+
+10.5 Attention intervals on manual
+----------------------------------
+This is the check against AFK play. Each row is how long a variable stays in band with nobody
+touching it.
+
+* Main steam temperature
+    Drifts out of band in about: 1–2 min
+    Why: Frequency response, feed temperature noise, once-through sensitivity
+* Header pressure and MWe
+    Drifts out of band in about: Continuously while FCR-N is active
+    Why: Grid frequency random walk
+* P/Q
+    Drifts out of band in about: Minutes, during any power change
+    Why: Coupling
+* Reheat balance
+    Drifts out of band in about: 5 min after any split change
+    Why: Coupling
+* Cover gas pressure
+    Drifts out of band in about: 5–10 min
+    Why: Temperature and level changes
+* Regulating rod band
+    Drifts out of band in about: ≈ 20 min
+    Why: Burnup drift at ×360
+* Hydrogen background
+    Drifts out of band in about: 30 min or more
+    Why: Drift and meter noise
+* Trace heating
+    Drifts out of band in about: Random
+    Why: Zone failures
+* Deaerator, hotwell
+    Drifts out of band in about: Stable
+    Why: Buffered by design, as intended
+
+Disturbance sources: feed temperature random walk ±0.5 K with 120 s time constant; CW intake drift
+±1 K over grid-hours, plus summer upwelling steps of 5–10 K; grid frequency (§11.2); hydrogen meter
+noise ±0.003 ppm; thermocouple noise ±1 K.
+
+
+10.6 Hybrid control rooms
+-------------------------
+The 1988 analog panels stayed when the 2009 modernisation added screens, giving every room a hybrid
+layout in the style of Temelín.
+
+* Controls
+    Analog, 1988: Rod, pump, breaker and valve switches; trip buttons; synchroscope
+    Digital, 2009: None: screens never change plant state
+* Indication
+    Analog, 1988: Edgewise meters, chart recorders, mimic lines in system colours, lamp-box
+      annunciators with first-out
+    Digital, 2009: Plant computer: trends, core map, alarm list, sequence-of-events log
+* Protection
+    Analog, 1988: Trip status lamps
+    Digital, 2009: Digital protection system displays and test panels
+* Each room
+    Analog, 1988: A large mimic board as the at-a-glance wall
+    Digital, 2009: One or two operator screens per desk
+
+Build rule: anything that changes plant state is a physical control on a panel. Screens show, sort
+and trend.
+
+
+10.7 Access, trust and griefing
+-------------------------------
+(Rule / Detail)
+Access              : Any player can use any control, seated or standing, within reach of the panel
+                      (≈ 10 studs) †. Proximity still matters, because the anti-solo design relies
+                      on walking between rooms
+Critical controls   : Manual reactor trip, SSS trip, turbine trips, opening 400 kV and 11 kV
+                      breakers, loop drain, SG section dump and plant mode changes need a minimum
+                      total playtime (suggested 3 h †)
+Accountability      : Every control action is logged with player name and time in the
+                      sequence-of-events log
+Trips and vote-kick : After a player trips the plant, other players can vote-kick them, which bans
+                      them from that server
+Proposed safeguard  : The vote opens only if the server finds no trip condition, P1 alarm or
+                      approaching setpoint at the moment of the trip, so a justified trip is never
+                      punished. Majority of other players, minimum 3 voters †
+Shifts              : None. Players stay on any desk for as long as they like. Where this spec says
+                      shift, read session; the session report appears at the end of each grid day
+                      and on request
+
+
+10.8 Guides
+-----------
+Guide boards are dotted around the plant †.
+
+* Desk card
+    Where: At every desk
+    Content: What the desk owns, its main controls, normal values, and which desks it has to talk to
+* Alarm response card
+    Where: Next to each annunciator panel
+    Content: For each P1 and P2 alarm on that panel: what it means, first actions, who to call
+* Field guide
+    Where: At each local-only action point
+    Content: What the action does, how long it takes, what to report back
+* Room map
+    Where: At each room entrance
+    Content: Where the other rooms are and how long the walk is
+
+Guides read their numbers from the same config module as the simulation, so they never go out of
+date.
+
+
+####################################################################################################
+# FILE: 15_spec_dispatcher_damage_scenarios.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 6 of 7: grid dispatcher, damage and degradation, scenario director, scenario library
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+11. GRID DISPATCHER
+====================================================================================================
+
+11.1 Instruction types
+----------------------
+* mFRR dispatch
+    Example: "Plant to 800 MWe by 14:30"
+    Rules: Deadline achievable at 1 %/min on Calm; needs 1.5–2 %/min on Winter Peak
+* Reserve contract
+    Example: "FCR-D up 25 MWe per unit from 06:00 to 22:00"
+    Rules: Headroom must be in place before the window opens
+* aFRR
+    Example: Setpoint signal, ±20 MWe
+    Rules: Follow continuously while active
+* Emergency instruction
+    Example: "Maximum generation now" or "Reduce 300 MWe within 10 min"
+    Rules: Real time; can be refused with a valid code
+* Reactive power
+    Example: "Unit A to +150 MVAr"
+    Rules: 2 min to comply
+* Transfer-limit curtailment
+    Example: "SE2 to SE3 limit reached: reduce 200 MWe"
+    Rules: Common in spring floods and on windy nights; planned ones are announced a grid-hour ahead
+
+Valid refusal codes, each checked against the simulation before it's accepted: runback in progress;
+SG section or loop isolated; LCO in force; reheat load limit reached; bypass above 40%; fatigue
+review open (§12).
+
+
+11.2 Frequency model
+--------------------
+f = 50 + x, with dx = −(x / τ) dt + σ √(2/τ) dW and τ = 90 s.
+
+* Calm
+    σ: 0.03 Hz
+    Loss events: 1 per 60 min
+    Instruction rate: 1 per 40 min; never stacked
+* Standard
+    σ: 0.05 Hz
+    Loss events: 1 per 40 min
+    Instruction rate: 1 per 25 min; emergency 1 per 2 h
+* Winter Peak
+    σ: 0.07 Hz
+    Loss events: 1 per 25 min
+    Instruction rate: 1 per 15 min; instructions arrive mid-fault; reactive requests
+* Blackout Recovery
+    σ: ±0.5 Hz swings
+    Loss events: –
+    Instruction rate: Islanded restart with block loads of 50–150 MWe
+
+Loss event shape: nadir −0.2 to −0.45 Hz reached in 8–12 s, recovery time constant 120 s. Expected
+plant response is the sum of whichever reserve contracts are active (§8.4): FCR-N proportional
+inside 49.9–50.1 Hz, FCR-D up below 49.9 Hz, FCR-D down above 50.1 Hz.
+
+
+11.3 Scoring
+------------
+(Item / Rule)
+Dispatch error            : Integral of max(0, abs(MW − target) − 10) after the deadline, in MW·min
+Frequency response        : How closely actual ΔMW tracked expected ΔMW
+Penalties                 : Reactor trip; turbine trip; LCO breach; ramp above limit without
+                            approval
+Refusals                  : Valid refusals cost nothing; invalid ones cost the same as a missed
+                            instruction
+Hidden until end of shift : Fatigue usage added during the shift (§12.1)
+
+
+====================================================================================================
+12. DAMAGE AND DEGRADATION MODEL
+====================================================================================================
+
+12.1 Thermal fatigue
+--------------------
+Each monitored component has a wall temperature that chases its fluid: dT_w/dt = (T_fluid − T_w) /
+τ_w, with τ_w = L² / (2α) and α ≈ 4 × 10⁻⁶ m²/s for steel. The stress proxy is abs(T_fluid − T_w).
+Count half-cycles between turning points of that value, ignore ranges below 10 K, and charge D = 0.5
+× (range / ΔT_ref)³ / N_ref per half-cycle.
+
+What this does to play: slow, well-coordinated changes create tiny wall differences and cost almost
+nothing, while trips and sloppy coordination cost a lot. A crew that holds P/Q and the
+feed-to-sodium ratio tight can ramp faster than a sloppy crew without extra damage. The procedural
+ramp limit still applies either way.
+
+* Upper internals above core
+    Fluid temperature: Mixed core outlet
+    Wall: 40 mm
+    τ_w: 200 s
+    ΔT_ref: 150 K
+    N_ref †: 400
+    Failure it unlocks: Lost thermocouples; striping cracks
+* IHX upper tubesheet
+    Fluid temperature: Hot pool
+    Wall: 100 mm
+    τ_w: 1,250 s
+    ΔT_ref: 120 K
+    N_ref †: 500
+    Failure it unlocks: IHX tube leak (S-21)
+* SG evaporator tube bank
+    Fluid temperature: Feed inlet vs sodium
+    Wall: Tube and shell
+    τ_w: 30 s
+    ΔT_ref: 120 K
+    N_ref †: 800
+    Failure it unlocks: Micro leak (S-01)
+* SG sodium inlet header
+    Fluid temperature: SG sodium inlet
+    Wall: 60 mm
+    τ_w: 450 s
+    ΔT_ref: 150 K
+    N_ref †: 400
+    Failure it unlocks: Sodium leak at weld
+* Secondary hot leg thermowells and tees
+    Fluid temperature: IHX outlet
+    Wall: 25 mm
+    τ_w: 80 s
+    ΔT_ref: 150 K
+    N_ref †: 600
+    Failure it unlocks: Monju-type leak (S-11)
+* Turbine HP and IP rotors
+    Fluid temperature: Steam vs rotor metal
+    Wall: –
+    τ_w: 1,800 s
+    ΔT_ref: 100 K
+    N_ref †: 1,000
+    Failure it unlocks: Vibration, derate
+* Diagrid
+    Fluid temperature: Core inlet
+    Wall: 80 mm
+    τ_w: 800 s
+    ΔT_ref: 80 K
+    N_ref †: 600
+    Failure it unlocks: Flow distribution anomaly
+
+Failure hazard per grid day for a component with usage U: λ = 0.002 × e^(6U) †. That's about 4% per
+grid day at U = 0.5 and about 80% at U = 1. Thermal striping: adjacent assembly outlets more than 40
+K apart, held, add upper-internals damage at 1/5,000 per minute †.
+
+
+12.2 Fuel
+---------
+(Mechanism / Model †)
+Cladding creep above 650 °C midwall
+    dD/dt = e^((T − 650) / 25) / 100 h; failure at D = 1
+Random failure                     : 2 × 10⁻⁵ per assembly per grid day × (burnup / 50 GWd/t)² ×
+                                     overpower multiplier
+Gas leaker                         : Cover gas Xe-133 and krypton rise over grid-hours; DND stays
+                                     quiet
+Open failure                       : DND rises. Left above 30 %FP for more than 8 grid-hours,
+                                     fuel-sodium reaction swells the pin and threatens neighbours
+Failed fuel location               : Reduce to ≤ 30 %FP; scan samples one group of 7 assemblies
+                                     every 2 min
+
+
+12.3 Sodium systems
+-------------------
+(Mechanism / Model †)
+Cold trap loading                  : Impurity ingress 0.2 kg per grid day at power, 1 kg per fuel
+                                     handling campaign; capacity 150 kg; trap ΔP proportional to
+                                     loading²; plugging temperature rises 2 K per 10% loading above
+                                     70%
+Trace heating failures             : 1 per 2,000 zone-hours real: 60% open circuit, 30% stuck on,
+                                     10% thermocouple failure
+Drained line cooling with heater off
+    DN50 from 200 °C to freezing in ≈ 40 min; DN900 in ≈ 20 h
+Thawing a frozen line              : Heat from the free end only. Heating the middle first ruptures
+                                     the pipe, because sodium expands 2.5% on melting
+
+
+12.4 SG tube leak growth
+------------------------
+(Stage / Model †)
+Micro, below 0.05 g/s  : Self-wastage doubles the leak every 2–6 grid-hours
+Small, 0.05–10 g/s     : Jet wastage penetrates a neighbouring tube in 10–30 min at 1 g/s, 1–3 min
+                         at 10 g/s. Each new failure adds a leak of the same size, which is the PFR
+                         1987 cascade
+Intermediate and large : Protection sequence in §5.2
+
+What players learn to read: a real leak shows at its section meter first, and the loop outlet meter
+follows about 10 s later at an eighth of the size. A failing meter steps or spikes on its own.
+Background drift moves every section together.
+
+
+====================================================================================================
+13. SCENARIO LIBRARY
+====================================================================================================
+
+13.1 Scenario director
+----------------------
+The director decides what goes wrong and when. It never cheats: every fault it starts is a real
+initiating event in the simulation, and everything after that is physics and crew.
+
+(Input / Used for)
+Crew            : Occupied desks and players on site in the last 5 min
+Performance     : Recent P/Q, steam temperature and dispatch errors; trips; how the last fault went
+Plant state     : Mode, power, isolated equipment, fatigue usage, active LCOs
+Season and time : Season (§1.7), grid clock hour, weather
+Difficulty      : Calm, Standard, Winter Peak, Blackout Recovery
+
+(Rule / Detail †)
+Intensity budget : Each scenario has a cost: minor 1, moderate 3, major 8. The director earns 1
+                   point per 10 min on Standard, scaled ×0.5 with 1–3 players, ×1 with 4–8, ×1.5
+                   with 9 or more
+Spacing          : At least 8 min between director-started faults; never a new one while a major
+                   fault is unresolved
+Crew fit         : Only pick faults whose first actions land on occupied desks, or on auto
+                   controllers that can cope
+Eligibility      : Every scenario has prerequisites: season, mode, power, equipment state. Frazil
+                   ice needs winter and open water; S-04 needs loop 2 running
+Escalation       : A mishandled fault can grow into its poor-crew outcome. That growth is physics
+                   and costs no budget
+Recovery         : After a reactor trip, no new faults until the plant is stable in Mode 3 or back
+                   above 30%
+Ageing           : High fatigue usage (§12.1) raises the weight of that component's own failure
+                   scenarios
+Admin            : Private server owners can disable scenarios, force one, or change the budget rate
+
+Cost classes †: minor S-01, S-06, S-10, S-12, S-13, S-14, S-17, S-23, S-24, S-26; moderate S-03,
+S-05, S-07, S-08, S-11, S-19, S-20, S-21, S-22, S-25; major S-02, S-04, S-09, S-15, S-16, S-18,
+S-27, S-28.
+
+
+13.2 Scenarios
+--------------
+* S-01
+    Scenario: SG section micro leak
+    Real basis: PFR 1987, BN-600
+    First cue: One section hydrogen meter creeping
+    Window: 20–60 min
+    Good crew: Confirm against loop meter, isolate section, trim reactor 4% and split
+    Poor crew: Cascade to large leak, loop dumped
+* S-02
+    Scenario: Large sodium-water reaction
+    Real basis: –
+    First cue: Pressure spike, rupture discs
+    Window: Automatic
+    Good crew: Verify isolation, drain and purge; manage RB-1 and turbines
+    Poor crew: Steam temperature trip, P/Q trip
+* S-03
+    Scenario: Loop 3 pump trip
+    Real basis: –
+    First cue: SP3 tripped, inlet rising
+    Window: 2 min
+    Good crew: Close IHX 3 shutters, RB-1, send 60–70% of loop 2 to B
+    Poor crew: Inlet trip, or B tripped at minimum load
+* S-04
+    Scenario: Loop 2 pump trip
+    Real basis: –
+    First cue: SP2 tripped
+    Window: 2 min
+    Good crew: Both turbines to 67% on their own loops; isolate SG2 reheaters
+    Poor crew: Reheat mismatch, unstable turbines
+* S-05
+    Scenario: Turbine B trip
+    Real basis: –
+    First cue: Stop valves shut, bypass open
+    Window: 1 min
+    Good crew: RB-3, shift loop 2 to A, feed crosstie
+    Poor crew: Condenser B overloaded, second trip
+* S-06
+    Scenario: CV-2B stuck
+    Real basis: –
+    First cue: Valve ignores demand
+    Window: 5 min
+    Good crew: Balance with turbine loads; field hydraulic reset
+    Poor crew: Throttling losses, reheat drift
+* S-07
+    Scenario: Primary pump trip with stuck check valve
+    Real basis: –
+    First cue: PP2 trip, flow lower than expected
+    Window: 20 s
+    Good crew: RB-2, then manual trip if P/Q keeps climbing
+    Poor crew: P/Q trip
+* S-08
+    Scenario: Blocked assembly
+    Real basis: Fermi 1, 1966
+    First cue: One thermocouple creeping, neighbours normal
+    Window: 10–30 min
+    Good crew: Power down, locate, shut down
+    Poor crew: Cladding failure, DND trip, core damage flag
+* S-09
+    Scenario: Unexplained negative reactivity trips
+    Real basis: Phénix 1989–90
+    First cue: Fast flux dip, trip
+    Window: –
+    Good crew: Restart only after checks; look for a pattern
+    Poor crew: Repeated trips, LCO breach
+* S-10
+    Scenario: Gas entrainment
+    Real basis: –
+    First cue: Rod auto hunting; +5–20 pcm blips
+    Window: 5–15 min
+    Good crew: Slow pumps, raise level, check cover gas
+    Poor crew: Fuel damage over time
+* S-11
+    Scenario: Secondary sodium leak and fire
+    Real basis: Monju 1995
+    First cue: Cell aerosol and temperature
+    Window: 10–20 min
+    Good crew: Isolate, drain, nitrogen
+    Poor crew: Large fire, building damage
+* S-12
+    Scenario: Heater fault on a drained line
+    Real basis: –
+    First cue: Zone cold
+    Window: 40 min on DN50
+    Good crew: Field repair, thaw from the free end
+    Poor crew: Frozen line; ruptured pipe after a bad thaw
+* S-13
+    Scenario: Cold trap plugging
+    Real basis: –
+    First cue: Plugging temperature rising
+    Window: Grid-hours
+    Good crew: Swap or regenerate trap
+    Poor crew: LCO-6 derate
+* S-14
+    Scenario: Condenser seawater leak
+    Real basis: –
+    First cue: Cation conductivity and chloride up
+    Window: 30 min
+    Good crew: Isolate half, polish, derate
+    Poor crew: SG tube corrosion, micro leaks later
+* S-15
+    Scenario: Loss of offsite power
+    Real basis: –
+    First cue: Boards dead
+    Window: 15 s
+    Good crew: EDGs, pony motors, DRACS, relief valves
+    Poor crew: Pool heatup, DRACS dampers forgotten
+* S-16
+    Scenario: Station blackout
+    Real basis: –
+    First cue: EDGs fail too
+    Window: ≈ 5 h, ≈ 30 min with ×10 acceleration
+    Good crew: Field crews open dampers; recover an EDG locally
+    Poor crew: Pool over-temperature
+* S-17
+    Scenario: Cover gas excursion on heatup
+    Real basis: –
+    First cue: Pressure high
+    Window: 10 min
+    Good crew: Vent to decay tanks
+    Poor crew: Trip, roof seal leakage
+* S-18
+    Scenario: Grid frequency collapse
+    Real basis: –
+    First cue: −0.4 Hz and an emergency instruction
+    Window: 1 min
+    Good crew: Respond within limits; refuse the unsafe part
+    Poor crew: Under-frequency trip
+* S-19
+    Scenario: Regulating rod runaway
+    Real basis: –
+    First cue: RR moving without demand, short period
+    Window: 30 s
+    Good crew: Kill drive power, insert shims
+    Poor crew: Overpower trip
+* S-20
+    Scenario: Train B feed loss
+    Real basis: –
+    First cue: MFP-B trips
+    Window: 1 min
+    Good crew: Crosstie, startup pump, runback
+    Poor crew: SG3 overheats, inlet trip
+* S-21
+    Scenario: IHX tube leak
+    Real basis: –
+    First cue: Pool level up, buffer tank down
+    Window: Grid-hours
+    Good crew: Isolate loop, confirm, plan outage
+    Poor crew: Na-24 in secondary if pressures reverse
+* S-22
+    Scenario: Open fuel failure
+    Real basis: –
+    First cue: DND rising
+    Window: 8 grid-hours
+    Good crew: ≤ 30 %FP, locate, shut down and remove
+    Poor crew: DND trip, contamination
+* S-23
+    Scenario: Vessel expansion drift
+    Real basis: –
+    First cue: Slow positive reactivity after a long low-temperature spell
+    Window: 15 min
+    Good crew: Reactor desk notices and trims
+    Poor crew: Outlet creep, thermocouple alarms
+* S-24
+    Scenario: Frazil ice at the intake
+    Real basis: Nordic intakes in early winter
+    First cue: Screen ΔP climbing on a cold, clear, windy night
+    Window: 20–60 min
+    Good crew: Open recirculation gate, go to one CW pump, wash screens
+    Poor crew: Screens block, vacuum lost, turbine trips
+* S-25
+    Scenario: Summer intake fouling
+    Real basis: Oskarshamn 3, 2013 (jellyfish)
+    First cue: Screen ΔP up and CW flow falling after a storm or bloom
+    Window: 30 min
+    Good crew: Wash screens, isolate half a condenser, derate
+    Poor crew: Vacuum trip on one or both units
+* S-26
+    Scenario: Geomagnetic storm
+    Real basis: Malmö blackout, 2003
+    First cue: Aurora night; transformer hot-spot and neutral current alarms
+    Window: Grid-hours
+    Good crew: Cut MVAr and load on the hot transformer; tell grid control
+    Poor crew: Generator transformer trips
+* S-27
+    Scenario: Switchyard fault with a voltage transient
+    Real basis: Forsmark 1, 2006
+    First cue: Both generator breakers open; two essential divisions dead; some indications frozen
+    Window: 20 min
+    Good crew: Distrust frozen readings, connect EDGs by hand, confirm DRACS on the live divisions
+    Poor crew: Crew acts on false indications
+* S-28
+    Scenario: Grid separation and house-load operation
+    Real basis: –
+    First cue: Both 400 kV lines trip in a winter storm
+    Window: 30 s
+    Good crew: One unit to house load on bypass, trip the other, run back the reactor
+    Poor crew: Both turbines trip; plant falls onto its EDGs
+
+
+####################################################################################################
+# FILE: 16_spec_roblox_implementation_appendices.txt
+####################################################################################################
+
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 7 of 7: Roblox implementation, persistence, modules, sodium properties, tags, glossary, revisions
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+14. SIMULATION IMPLEMENTATION IN ROBLOX
+====================================================================================================
+
+14.1 Tick structure
+-------------------
+The server is authoritative, running a fixed-step accumulator on Heartbeat.
+
+* Fast
+    Rate: 10 Hz
+    Contents: Kinetic amplitude, fuel and cladding, pools, IHXs, SG sections, turbines, pumps,
+      valves, protection logic
+* Shape
+    Rate: Every 0.5–2 s, time-sliced
+    Contents: 3D multigroup flux shape and precursors (§14.2)
+* Slow
+    Rate: 1 Hz
+    Contents: Trace heating, cold traps, chemistry, fatigue counting, dispatcher, hydrogen
+* Replication
+    Rate: 5 Hz fast gauges; 1 Hz slow gauges and core map
+    Contents: UnreliableRemoteEvent for gauges; RemoteEvent for alarms and events
+
+Pack the 331 core-map temperatures into a buffer as u16 at 0.05 K resolution: 662 bytes per update.
+
+
+14.2 Space-time kinetics in real time
+-------------------------------------
+The improved quasi-static method splits the flux into an amplitude that changes fast and a shape
+that changes slowly, so each part runs only as often as it needs to (§3.7).
+
+Amplitude, every 0.1 s. Λ is 4 × 10⁻⁷ s, so explicit integration at 10 Hz is hopeless. Use the
+prompt-jump form with scaled precursors s_i = λ_i Λ C_i, which removes Λ entirely. Reactivity, β_eff
+and Λ come from the latest shape, weighted by the adjoint flux.
+
+    -- amplitude, once per 0.1 s tick
+    for i = 1, 6 do
+      local e = math.exp(-lambda[i] * dt)
+      s[i] = s[i] * e + beta[i] * n * (1 - e)
+    end
+    n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
+
+Initialise at steady state with s[i] = beta[i]  n. The form holds while ρ stays below about 0.9β.
+Above that, flag a prompt-critical excursion and hand over to a scripted core-damage event rather
+than integrating through it.
+
+Shape, every 0.5–2 s. One implicit time step of the multigroup diffusion equations over the whole
+mesh, renormalised so shape and amplitude stay consistent.
+
+(Step / Detail)
+Group order       : Fastest group first, one group at a time. A fast spectrum has no upscattering,
+                    so each group sees a source that is already known
+Inner solver      : Red-black successive over-relaxation, warm-started from the previous shape; 4–8
+                    sweeps per group †
+Outer loop        : Repeat the group pass until the fission source changes by less than 10⁻⁴,
+                    usually 2–3 passes with a warm start
+Precursors        : Updated per node with the same exponential form as the amplitude
+Time slicing      : Runs in a coroutine that yields once the frame has used 4 ms †; the amplitude
+                    keeps power moving in the meantime
+Cost              : About 26,000 unknowns; a warm-started shape step is a few hundred thousand node
+                    updates. Put --!native at the top of the solver module
+Development check : For a uniform perturbation, the 3D amplitude must match the point-kinetics
+                    fallback
+
+
+14.3 Thermal nodes
+------------------
+Update every lumped node with T = T_eq + (T − T_eq) × e^(−dt/τ), taking T_eq and τ from current
+flows. It's stable at any time step. Treat the 0.19 s coolant rise through the core as algebraic,
+and model pipe and pool transport delays as ring buffers with fractional interpolation.
+
+(Block / Suggested states)
+Fuel                : Every fuel assembly × 10 axial layers, with fuel and cladding temperature per
+                      layer feeding its own neutronics node: 301 × 10 × 2 states. Sodium temperature
+                      per layer is algebraic
+Pools               : Hot pool 2; cold pool 1
+IHXs                : 6 × 3
+Steam generators    : 24 sections × 3 modules × 2 nodes
+Secondary transport : 6 delay lines
+Turbines            : 2 × rotor speed and metal temperature
+Feed trains         : 2 × 5
+Totals              : ≈ 6,300 thermal states, mostly fuel pins; ≈ 150 valves; ≈ 180 heater zones; ≈
+                      600 alarm points
+
+
+14.4 Keeping it multiplayer
+---------------------------
+Any player within reach of a panel can use its controls, seated or standing; the server checks
+distance, not seats (§10.7). Critical controls also check playtime. Local-only actions (§10.3) are
+ProximityPrompts with hold durations. Room phones connect desks, and the dispatcher line rings only
+at the shift supervisor console.
+
+
+14.5 Performance guardrails
+---------------------------
+Simulate numbers, not parts; there is no moving fluid geometry anywhere. Build the turbine hall and
+SG building as modular, streamed instances. Run alarm logic on the server and send clients state
+changes only.
+
+
+14.6 Persistence and reset
+--------------------------
+Plant condition persists per private server (OD-9). Between sessions it keeps the cycle day and
+burnup, fatigue usage for every component, failed, isolated and drained equipment, cold trap
+loading, LCO clocks and the sequence-of-events log. Public servers always start fresh.
+
+The private server owner can reset from a settings panel. A reset needs typed confirmation, then
+runs a 60-second countdown announced to everyone on the server, and returns the plant to hot standby
+at beginning of cycle with every component as new †. Key the save on game.PrivateServerId, check
+game.PrivateServerOwnerId before allowing a reset, and version the save format so later spec changes
+can migrate old plants.
+
+
+14.7 Modules
+------------
+Keep every system in its own ModuleScript behind the same interface, so failure end states,
+scenarios and later features plug in without touching the core loop: init(config), step(dt),
+getState(), applyCommand(player, command), plus a faults table each module registers with the
+scenario director. Every number in this spec lives in one shared config module that the simulation,
+guide boards and tests all read.
+
+
+====================================================================================================
+APPENDIX A. SODIUM PROPERTIES
+====================================================================================================
+Correlations with T in kelvin:
+
+(Property / Correlation)
+Density, kg/m³         : 219 + 275.32 (1 − T/2503.7) + 511.58 (1 − T/2503.7)^0.5
+Specific heat, kJ/kg·K : 1.6582 − 8.479e-4 T + 4.4541e-7 T² − 2992.6 / T²
+Conductivity, W/m·K    : 124.67 − 0.11381 T + 5.5226e-5 T² − 1.1842e-8 T³
+Viscosity, Pa·s        : exp(−6.4406 − 0.3958 ln T + 556.835 / T)
+Vapour pressure, MPa   : exp(11.9463 − 12633.73 / T − 0.4672 ln T)
+
+* 98
+    Density: 925.6
+    cp: 1.383
+    k: 89.4
+    Viscosity (mPa·s): 0.688
+    Vapour pressure (MPa): 1.6 × 10⁻¹¹
+* 200
+    Density: 903.0
+    cp: 1.343
+    k: 81.9
+    Viscosity (mPa·s): 0.452
+    Vapour pressure (MPa): 2.2 × 10⁻⁸
+* 300
+    Density: 880.5
+    cp: 1.309
+    k: 75.4
+    Viscosity (mPa·s): 0.341
+    Vapour pressure (MPa): 2.1 × 10⁻⁶
+* 375
+    Density: 863.5
+    cp: 1.289
+    k: 70.9
+    Viscosity (mPa·s): 0.290
+    Vapour pressure (MPa): 2.6 × 10⁻⁵
+* 450
+    Density: 846.2
+    cp: 1.272
+    k: 66.8
+    Viscosity (mPa·s): 0.254
+    Vapour pressure (MPa): 1.8 × 10⁻⁴
+* 520
+    Density: 830.0
+    cp: 1.261
+    k: 63.2
+    Viscosity (mPa·s): 0.229
+    Vapour pressure (MPa): 8.2 × 10⁻⁴
+* 550
+    Density: 822.9
+    cp: 1.258
+    k: 61.8
+    Viscosity (mPa·s): 0.220
+    Vapour pressure (MPa): 1.4 × 10⁻³
+* 600
+    Density: 811.2
+    cp: 1.254
+    k: 59.5
+    Viscosity (mPa·s): 0.207
+    Vapour pressure (MPa): 3.4 × 10⁻³
+* 700
+    Density: 787.3
+    cp: 1.252
+    k: 55.3
+    Viscosity (mPa·s): 0.186
+    Vapour pressure (MPa): 1.4 × 10⁻²
+* 800
+    Density: 763.0
+    cp: 1.259
+    k: 51.5
+    Viscosity (mPa·s): 0.169
+    Vapour pressure (MPa): 4.6 × 10⁻²
+* 900
+    Density: 738.3
+    cp: 1.274
+    k: 48.0
+    Viscosity (mPa·s): 0.156
+    Vapour pressure (MPa): 0.120
+* 950
+    Density: 725.7
+    cp: 1.286
+    k: 46.4
+    Viscosity (mPa·s): 0.151
+    Vapour pressure (MPa): 0.182
+
+
+====================================================================================================
+APPENDIX B. TAGS AND GLOSSARY
+====================================================================================================
+Tag format SYS-L-TYPE-NN, for example SG-2-HM-05 for loop 2 section 5 hydrogen meter. Use the tag as
+the Roblox instance name and as the replication key. Write the station as Kallskar in instance names
+and DataStore keys, and as Kallskär in displayed text.
+
+(System codes / Type codes)
+RX core; PN primary sodium; SN secondary sodium; SG steam generators; MS main steam; TG turbine-generator; CD condensate; FW feedwater; CW cooling water; EL electrical; DG diesels; DR DRACS; NS sodium services; CH chemistry; PR protection
+    P pump; CV control valve; IV isolation valve; NRV check valve; T temperature; PT pressure; F
+    flow; L level; HM hydrogen meter; TC thermocouple; SPD speed; RD rod
+
+(Term / Meaning)
+aFRR, mFRR   : Automatic and manual frequency restoration reserves
+BCR          : Backup control room
+BOC          : Beginning of cycle
+DND          : Delayed neutron detector, which sees fuel exposed to sodium
+DRACS        : Direct reactor auxiliary cooling system
+ECP          : Estimated critical position
+EFPD         : Effective full-power day
+FCR-N, FCR-D : Frequency containment reserves for normal operation and for disturbances
+K1           : Kallskär unit 1, the SFR-1000
+IHX          : Intermediate heat exchanger
+LCO          : Limiting condition for operation
+P/Q          : Neutron power divided by primary flow, both in % of rated
+PSS          : Primary shutdown system: regulating and shim rods
+RB           : Runback
+RR           : Regulating rod
+SE2, SE3     : Swedish electricity bidding zones
+SR           : Source range (shim rods are tagged SM to avoid a clash)
+SSM          : Strålsäkerhetsmyndigheten, the Swedish Radiation Safety Authority
+SSR, SSS     : Secondary shutdown rods and system
+SWR          : Sodium-water reaction
+WR           : Wide-range neutron channel
+
+
+====================================================================================================
+APPENDIX C. REVISION LOG
+====================================================================================================
+* A
+    Date: 15 Sep 2026
+    Change: First full draft. Reactor rated at 2,380 MWt from the computed heat balance (earlier
+      estimate 2,400–2,500). Loop 2 reheater split, splitter losses and the loop-3-loss table added
+* A1
+    Date: 15 Sep 2026
+    Change: All open decisions closed (§0.3). Station named Kallskär Nuclear Power Station.
+      Wide-range log neutron channels replace IR range switching. DRACS dampers fail as-is.
+      Refuelling as a timed wait. Persistence per private server with owner reset (§14.6)
+* A2
+    Date: 15 Sep 2026
+    Change: Setting fixed: Kallskär Nuclear Power Plant (K1), Hälsingland coast, Sweden. Site,
+      history, language and seasons added (§1.4–1.7). Grid switched to Nordic rules with FCR-N,
+      FCR-D, aFRR and mFRR (§8.4, §11). Cooling water re-based on the Bothnian Sea (§7.4). Hybrid
+      control rooms, access rules and guides added (§10.6–10.8). Scenario director and S-24 to S-28
+      added (§13). Modules section added (§14.7)
+* A3
+    Date: 15 Sep 2026
+    Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
+      diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
+      §14.2). Former lumped values became validation targets; point kinetics kept as fallback
+
+
+####################################################################################################
+# FILE: 20_derivations_and_calc_script.txt
+####################################################################################################
+
+DERIVATIONS AND CALCULATION SCRIPT
+How the heat balance and derived tables in the spec were produced. Rerun to check or re-derive.
+
+====================================================================================================
+TOOLS
+====================================================================================================
+Python 3 with the iapws package (IAPWS-IF97 steam tables): pip install iapws
+Sodium properties: Fink-Leibowitz correlations, listed in file 16, Appendix A.
+
+====================================================================================================
+STEAM CYCLE ASSUMPTIONS (per turbine)
+====================================================================================================
+- Main steam 14.0 MPa, 505 °C at SG outlet; 13.5 MPa, 500 °C at the stop valve; throttled to 13.0 MPa.
+- HP turbine isentropic efficiency 0.84: 13.0 to 3.5 MPa (HP7 extraction), then to 2.8 MPa (exhaust).
+- Reheat to 505 °C at 2.6 MPa at the SG; 2.5 MPa and 500 °C at the IP stop valve.
+- IP efficiency 0.88: 2.5 to 1.1 MPa (deaerator extraction), then to 0.55 MPa (crossover, LP4).
+- LP efficiency 0.85: 0.55, 0.20, 0.08, 0.03 MPa, then condenser; exhaust loss 35 kJ/kg.
+- Mechanical and leakage factor 0.978; generator efficiency 0.988.
+- Closed feed heaters with 3 K terminal difference, drains cascaded backwards; deaerator at 1.0 MPa.
+- Feed pump 1.0 to 17.5 MPa at 83% efficiency; condensate pump to 2.5 MPa at 80%.
+- SG feed inlet 16.0 MPa; evaporator outlet 14.6 MPa with 15 K superheat.
+- Condenser 5.0 kPa at the rating point.
+Note: calc.py was first run with idealised efficiencies (HP 0.87, IP 0.91, LP 0.88, exhaust loss
+20 kJ/kg, factor 0.995), which gave an unrealistic 44%. The source below has the corrected values.
+
+====================================================================================================
+PLANT ASSUMPTIONS
+====================================================================================================
+- Secondary sodium 520 to 320 °C through the SG. Reactor thermal = SG total minus 10.5 MW.
+- Primary sodium 375 to 550 °C; 92.5% of flow through fuel assemblies carrying 97% of the power.
+- Pool: hot pool 620 t at 545 °C, cold pool 560 t at 375 °C, core region 70 t; free surface 140 m2.
+- Reheater modules: epsilon-NTU with UA fixed at the design point. Turbine reheat load limit 100% at
+  490 °C or above, 60% at 450 °C, 30% at 430 °C, trip below 420 °C.
+- Condenser: 3 K terminal difference; one CW pump gives 60% flow; last-stage choke at 3.0 kPa;
+  3.7 MW per CW pump.
+
+====================================================================================================
+HEADLINE RESULTS (all recorded in files 10 to 16)
+====================================================================================================
+Main steam 437.5 kg/s per turbine and 291.7 kg/s per loop; efficiency 41.9% on SG heat and 42.0% on
+reactor power; reactor 2,380 MWt; 796 MWt per loop; 99.5 MWt per SG section; secondary sodium
+3,112 kg/s per loop; primary flow 10,694 kg/s; cold reheat 292 °C; LP exhaust dryness 0.92; peak
+linear heat rate 42 kW/m; condenser duty 690 MWt per unit; CW 15.3 m3/s per unit.
+
+====================================================================================================
+SCRIPT SOURCE: calc.py
+====================================================================================================
+import math
+from iapws import IAPWS97 as W97
+def S(**k):
+    if 'T' in k: k['T']+=273.15
+    return W97(**k)
+hf=lambda P:S(P=P,x=0).h
+ts=lambda P:S(P=P,x=0).T-273.15
+def rho(T): t=1-(T+273.15)/2503.7; return 219+275.32*t+511.58*t**.5
+def cp(T): K=T+273.15; return 1.6582-8.479e-4*K+4.4541e-7*K*K-2992.6/K/K
+def dh(a,b,n=100): d=(b-a)/n; return sum(cp(a+(i+.5)*d)*d for i in range(n))
+def psat(T): K=T+273.15; return math.exp(11.9463-12633.73/K-.4672*math.log(K))
+def kNa(T): K=T+273.15; return 124.67-.11381*K+5.5226e-5*K*K-1.1842e-8*K**3
+def mu(T): K=T+273.15; return math.exp(-6.4406-.3958*math.log(K)+556.835/K)
+def ex(h,P0,P1,eta):
+    s=S(P=P0,h=h).s; return h-eta*(h-S(P=P1,s=s).h)
+def cycle(Trh=500.0,Pc=0.005):
+    h1=S(P=13.5,T=500).h
+    h2=ex(h1,13.0,3.5,.84); h3=ex(h2,3.5,2.8,.84)
+    h4=S(P=2.5,T=Trh).h
+    h5=ex(h4,2.5,1.1,.88); h6=ex(h5,1.1,.55,.88)
+    h7=ex(h6,.55,.2,.85); h8=ex(h7,.2,.08,.85); h9=ex(h8,.08,.03,.85); h10=ex(h9,.03,Pc,.85)
+    T=3; hc=hf(Pc); hcp=hc+S(P=Pc,x=0).v*2.5e3/.8
+    hL=[S(P=2.5,T=ts(P)-T).h for P in (.03,.08,.2,.55)]
+    hda=hf(1.0); hfp=hda+S(P=1.0,x=0).v*16.5e3/.83
+    hH6=S(P=17.5,T=ts(2.8)-T).h; hH7=S(P=17.5,T=ts(3.5)-T).h
+    m7=(hH7-hH6)/(h2-hf(3.5))
+    m6=((hH6-hfp)-m7*(hf(3.5)-hf(2.8)))/(h3-hf(2.8))
+    mda=(hda-(m6+m7)*hf(2.8)-(1-m6-m7)*hL[3])/(h5-hL[3]); mc=1-mda-m6-m7
+    m4=mc*(hL[3]-hL[2])/(h6-hf(.55))
+    m3=(mc*(hL[2]-hL[1])-m4*(hf(.55)-hf(.2)))/(h7-hf(.2))
+    m2=(mc*(hL[1]-hL[0])-(m3+m4)*(hf(.2)-hf(.08)))/(h8-hf(.08))
+    m1=(mc*(hL[0]-hcp)-(m2+m3+m4)*(hf(.08)-hf(.03)))/(h9-hf(.03))
+    mrh=1-m7-m6; mlp=mrh-mda-m4
+    Wt=(h1-h2)+(1-m7)*(h2-h3)+mrh*(h4-h5)+(mrh-mda)*(h5-h6)+mlp*(h6-h7)+(mlp-m3)*(h7-h8)+(mlp-m3-m2)*(h8-h9)+(mlp-m3-m2-m1)*(h9-h10-35)
+    hsg=S(P=14.0,T=505).h; hrho=S(P=2.6,T=505).h
+    return dict(We=Wt*.978*.988,Qms=hsg-hH7,Qrh=mrh*(hrho-h3),mrh=mrh,h3=h3,T3=S(P=2.8,h=h3).T-273.15,
+      Tfw=S(P=16.0,h=hH7).T-273.15,x=S(P=Pc,h=h10).x,ext=(m1,m2,m3,m4,mda,m6,m7),hfp=hfp,hda=hda,hfw=hH7,hsg=hsg,hrho=hrho,
+      Tcr=S(P=2.8,h=h3).T-273.15, Tsat_c=ts(Pc), mc=mc)
+c=cycle(); mt=500e3/c['We']; Qt=mt*(c['Qms']+c['Qrh'])/1e3
+print(f"TURBINE: We/kg={c['We']:.1f} kJ/kg  m_main/turbine={mt:.1f} kg/s  heat/turbine={Qt:.1f} MWt  eta_gross={500/Qt*100:.2f}%")
+print(f" cold RH {c['Tcr']:.0f}C, reheat frac {c['mrh']:.3f}, FW {c['Tfw']:.1f}C, LP exhaust x={c['x']:.3f}, Tsat cond {c['Tsat_c']:.1f}")
+print(" extraction fractions m1..m7:", [round(v,4) for v in c['ext']], "cond flow frac", round(c['mc'],3))
+FPpump=(c['hfp']-c['hda'])*mt/1e3; print(f" MFP power/train {FPpump:.1f} MW")
+SG=2*Qt; loop=SG/3; Pth=SG-10.5
+print(f"PLANT: SG total {SG:.0f} MWt, per loop {loop:.1f}; reactor {Pth:.0f} MWt; gross eta on reactor {1000/Pth*100:.2f}%")
+cw=(Qt-500-5)*1e3/(4.0*11); print(f" condenser duty/turbine {Qt-505:.0f} MWt, CW {cw/1025:.1f} m3/s at dT 11K")
+ml=2*mt/3; Pev=14.6; hev=S(P=Pev,T=ts(Pev)+15).h
+Qev=ml*(hev-c['hfw'])/1e3; Qsh=ml*(c['hsg']-hev)/1e3; Qr=ml*c['Qrh']/1e3
+mna=loop*1e3/dh(320,520)
+lo,hi=320,520
+for _ in range(50):
+    mid=(lo+hi)/2
+    if mna*dh(mid,520)/1e3>Qsh+Qr: lo=mid
+    else: hi=mid
+Tmid=mid
+Qsub=ml*(hf(Pev)-c['hfw'])/1e3
+lo,hi=320,520
+for _ in range(50):
+    mid=(lo+hi)/2
+    if mna*dh(320,mid)/1e3<Qsub: lo=mid
+    else: hi=mid
+print(f"SG/loop: steam {ml:.1f} kg/s, EV {Qev:.1f} SH {Qsh:.1f} RH {Qr:.1f} MW; Na {mna:.0f} kg/s; Tmid {Tmid:.1f}; EV exit {ts(Pev)+15:.1f}C h={hev:.0f}; pinch Na {mid:.1f} vs sat {ts(Pev):.1f} -> {mid-ts(Pev):.1f}K")
+print(f" section: {loop/8:.1f} MWt, steam {ml/8:.2f} kg/s, RH steam {ml/8*c['mrh']:.2f} kg/s")
+# reheat eps-NTU
+frac=Qr/(Qsh+Qr); Cna=(mna/8)*frac*dh(Tmid,520)/(520-Tmid)
+ms=ml/8*c['mrh']; cps=(c['hrho']-c['h3'])/(505-c['T3']); Cs=ms*cps
+Cmin,Cmax=min(Cs,Cna),max(Cs,Cna); Cr=Cmin/Cmax; eps=(505-c['T3'])/(520-c['T3'])*(Cs/Cmin)
+x=(1-eps)/(1-Cr*eps); NTU=-math.log(x)/(1-Cr); UA=NTU*Cmin
+def Trh(m):
+    C=m*cps; cmin=min(C,Cna); cr=cmin/max(C,Cna); ntu=UA/cmin; e=math.exp(-ntu*(1-cr))
+    ep=(1-e)/(1-cr*e); return c['T3']+ep*cmin/C*(520-c['T3'])
+def lim(T): return 1.0 if T>=490 else (0.6+0.4*(T-450)/40 if T>=450 else (0.3+0.3*(T-430)/20 if T>=430 else 0.0))
+print(f"RH module UA {UA:.0f} kW/K; check design T {Trh(ms):.1f}")
+print("LOOP3 OUT split table (sB = share of loop2 steam to B):")
+for sB in (0.5,0.6,0.7,0.75,0.8,0.9,1.0):
+    mA=ml*(2-sB); mB=ml*sB
+    TA=Trh(c['mrh']*mA/12); TB=Trh(c['mrh']*mB/4)
+    eA=cycle(min(TA,505)-5)['We']/c['We']; eB=cycle(min(TB,505)-5)['We']/c['We']
+    MA=500*mA/mt*eA; MBs=500*mB/mt*eB; MB=min(MBs,500*lim(TB))
+    print(f" sB={sB:.2f} A {MA:5.0f} MWe RH {TA:5.1f}C | B {MB:5.0f} MWe (steam-limited {MBs:4.0f}) RH {TB:5.1f}C lim {lim(TB)*100:3.0f}% | total {MA+MB:5.0f}")
+# primary
+mp=Pth*1e3/dh(375,550); print(f"PRIMARY flow {mp:.0f} kg/s, per pump {mp/3:.0f} kg/s = {mp/3/rho(375):.2f} m3/s; pump shaft {mp/3/rho(375)*0.65e6/0.82/1e6:.2f} MW")
+mf=0.925*mp; dTfa=0.97*Pth*1e3/(mf*1.27); print(f" fuel asm avg dT {dTfa:.1f}K outlet {375+dTfa:.1f}; hot asm inner {375+dTfa*1.2/1.08:.0f}, outer {375+dTfa*1.05/0.925:.0f}; LHR avg {0.95*Pth*1e3/(301*271):.1f} kW/m")
+print(f" secondary per pump shaft {mna/rho(320)*0.45e6/0.80/1e6:.2f} MW; vol {mna/rho(420):.2f} m3/s; pipe v DN900 {mna/rho(520)/0.636:.1f} m/s; hot leg delay {180*0.636*rho(520)/mna:.0f}s cold {180*0.636*rho(320)/mna:.0f}s")
+Vfp=620e3/rho(545)+560e3/rho(375)+70e3/rho(460); V230=1250e3/rho(230); V375=1250e3/rho(375)
+print(f"POOL: V fp {Vfp:.0f} m3, V375 {V375:.0f}, V230 {V230:.0f}; level fp-230 {(Vfp-V230)/140:.2f} m; fp-375 {(Vfp-V375)/140:.2f} m; tau hot {620e3/mp:.0f}s cold {560e3/mp:.0f}s")
+Vg2=320+(Vfp-V230); print(f" cover gas at 230C (fixed moles): {0.12*320/Vg2*(453/573):.3f} MPa (gas 180C vs 300C)")
+Top=160*86400
+print("DECAY HEAT %:", [(t, round(6.6*(t**-0.2-(t+Top)**-0.2),2)) for t in (1,10,60,100,600,1800,3600,14400,28800,86400,259200,604800)])
+Cp=1250e3*1.27+1500e3*0.55; E=Cp*200/1e3; P0=Pth
+t=(E/(0.066*P0/0.8)+60**0.8)**1.25; print(f"SBO no heat sink: pool +200K after {t/3600:.1f} h")
+print("Na props T,rho,cp,k,mu(mPa s),psat(MPa):")
+for T in (98,150,200,250,300,375,450,520,550,600,700,800,900,950):
+    print(f" {T} {rho(T):.1f} {cp(T):.4f} {kNa(T):.1f} {mu(T)*1e3:.3f} {psat(T):.3e}")
+print("PART LOAD:")
+for P in (100,80,60,40,30,20,10,5):
+    Q=max(P,40) if P>=10 else 25; r=P/Q
+    pms=14.0 if P>=30 else 14.0-(30-P)*0.25
+    Tso=375-55*r; Tsh=375+145*r
+    print(f" {P}% Q{Q} out {375+175*r:.0f} Ns {Tso:.0f}/{Tsh:.0f} ms {min(505,Tsh-15*r):.0f} p {pms:.2f} Tsat {ts(pms):.0f} fw {170+70*(P/100)**0.6:.0f} MWe {10*P*(0.8+0.2*(P/100)**0.5):.0f}")
+print("ROD S-curve (inserted frac -> worth frac):",[ (d/10, round(d/10-math.sin(2*math.pi*d/10)/(2*math.pi),3)) for d in range(11)])
+dop=-900*math.log(1380/648); ax=-0.12*(1380-648); na=0.40*92; pad=-0.35*175; crd=-0.30*170
+iso=-900*math.log(648/503)+(-0.12+0.40-0.35-0.80-0.30+0.15)*145
+print(f"REACTIVITY: power defect {dop+ax+na+pad+crd:.0f} (Dop {dop:.0f} ax {ax:.0f} Na {na:.0f} pad {pad:.0f} crdl {crd:.0f}); iso 230->375 {iso:.0f}; iso coeff@375 {-900/648-0.12+0.40-0.35-0.80-0.30+0.15:.2f}")
+
+====================================================================================================
+CONDENSER LINEUP SNIPPET (run after the function definitions in calc.py)
+====================================================================================================
+base = cycle(Pc=0.005)['We']
+def gross(PkPa): return 500*cycle(Pc=max(PkPa,3.0)/1000)['We']/base
+for Tin in (3,5,8,12,15,19):
+    for pumps, rise in ((2,11.0),(1,18.3)):
+        Ts = Tin+rise+3; P = S(T=Ts,x=0).P*1000; g = gross(P)
+        print(Tin, pumps, round(P,2), round(g,1), round(g-3.7*pumps,1))

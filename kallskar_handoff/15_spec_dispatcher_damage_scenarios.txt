@@ -1,0 +1,425 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 6 of 7: grid dispatcher, damage and degradation, scenario director, scenario library
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+11. GRID DISPATCHER
+====================================================================================================
+
+11.1 Instruction types
+----------------------
+* mFRR dispatch
+    Example: "Plant to 800 MWe by 14:30"
+    Rules: Deadline achievable at 1 %/min on Calm; needs 1.5–2 %/min on Winter Peak
+* Reserve contract
+    Example: "FCR-D up 25 MWe per unit from 06:00 to 22:00"
+    Rules: Headroom must be in place before the window opens
+* aFRR
+    Example: Setpoint signal, ±20 MWe
+    Rules: Follow continuously while active
+* Emergency instruction
+    Example: "Maximum generation now" or "Reduce 300 MWe within 10 min"
+    Rules: Real time; can be refused with a valid code
+* Reactive power
+    Example: "Unit A to +150 MVAr"
+    Rules: 2 min to comply
+* Transfer-limit curtailment
+    Example: "SE2 to SE3 limit reached: reduce 200 MWe"
+    Rules: Common in spring floods and on windy nights; planned ones are announced a grid-hour ahead
+
+Valid refusal codes, each checked against the simulation before it's accepted: runback in progress;
+SG section or loop isolated; LCO in force; reheat load limit reached; bypass above 40%; fatigue
+review open (§12).
+
+
+11.2 Frequency model
+--------------------
+f = 50 + x, with dx = −(x / τ) dt + σ √(2/τ) dW and τ = 90 s.
+
+* Calm
+    σ: 0.03 Hz
+    Loss events: 1 per 60 min
+    Instruction rate: 1 per 40 min; never stacked
+* Standard
+    σ: 0.05 Hz
+    Loss events: 1 per 40 min
+    Instruction rate: 1 per 25 min; emergency 1 per 2 h
+* Winter Peak
+    σ: 0.07 Hz
+    Loss events: 1 per 25 min
+    Instruction rate: 1 per 15 min; instructions arrive mid-fault; reactive requests
+* Blackout Recovery
+    σ: ±0.5 Hz swings
+    Loss events: –
+    Instruction rate: Islanded restart with block loads of 50–150 MWe
+
+Loss event shape: nadir −0.2 to −0.45 Hz reached in 8–12 s, recovery time constant 120 s. Expected
+plant response is the sum of whichever reserve contracts are active (§8.4): FCR-N proportional
+inside 49.9–50.1 Hz, FCR-D up below 49.9 Hz, FCR-D down above 50.1 Hz.
+
+
+11.3 Scoring
+------------
+(Item / Rule)
+Dispatch error            : Integral of max(0, abs(MW − target) − 10) after the deadline, in MW·min
+Frequency response        : How closely actual ΔMW tracked expected ΔMW
+Penalties                 : Reactor trip; turbine trip; LCO breach; ramp above limit without
+                            approval
+Refusals                  : Valid refusals cost nothing; invalid ones cost the same as a missed
+                            instruction
+Hidden until end of shift : Fatigue usage added during the shift (§12.1)
+
+
+====================================================================================================
+12. DAMAGE AND DEGRADATION MODEL
+====================================================================================================
+
+12.1 Thermal fatigue
+--------------------
+Each monitored component has a wall temperature that chases its fluid: dT_w/dt = (T_fluid − T_w) /
+τ_w, with τ_w = L² / (2α) and α ≈ 4 × 10⁻⁶ m²/s for steel. The stress proxy is abs(T_fluid − T_w).
+Count half-cycles between turning points of that value, ignore ranges below 10 K, and charge D = 0.5
+× (range / ΔT_ref)³ / N_ref per half-cycle.
+
+What this does to play: slow, well-coordinated changes create tiny wall differences and cost almost
+nothing, while trips and sloppy coordination cost a lot. A crew that holds P/Q and the
+feed-to-sodium ratio tight can ramp faster than a sloppy crew without extra damage. The procedural
+ramp limit still applies either way.
+
+* Upper internals above core
+    Fluid temperature: Mixed core outlet
+    Wall: 40 mm
+    τ_w: 200 s
+    ΔT_ref: 150 K
+    N_ref †: 400
+    Failure it unlocks: Lost thermocouples; striping cracks
+* IHX upper tubesheet
+    Fluid temperature: Hot pool
+    Wall: 100 mm
+    τ_w: 1,250 s
+    ΔT_ref: 120 K
+    N_ref †: 500
+    Failure it unlocks: IHX tube leak (S-21)
+* SG evaporator tube bank
+    Fluid temperature: Feed inlet vs sodium
+    Wall: Tube and shell
+    τ_w: 30 s
+    ΔT_ref: 120 K
+    N_ref †: 800
+    Failure it unlocks: Micro leak (S-01)
+* SG sodium inlet header
+    Fluid temperature: SG sodium inlet
+    Wall: 60 mm
+    τ_w: 450 s
+    ΔT_ref: 150 K
+    N_ref †: 400
+    Failure it unlocks: Sodium leak at weld
+* Secondary hot leg thermowells and tees
+    Fluid temperature: IHX outlet
+    Wall: 25 mm
+    τ_w: 80 s
+    ΔT_ref: 150 K
+    N_ref †: 600
+    Failure it unlocks: Monju-type leak (S-11)
+* Turbine HP and IP rotors
+    Fluid temperature: Steam vs rotor metal
+    Wall: –
+    τ_w: 1,800 s
+    ΔT_ref: 100 K
+    N_ref †: 1,000
+    Failure it unlocks: Vibration, derate
+* Diagrid
+    Fluid temperature: Core inlet
+    Wall: 80 mm
+    τ_w: 800 s
+    ΔT_ref: 80 K
+    N_ref †: 600
+    Failure it unlocks: Flow distribution anomaly
+
+Failure hazard per grid day for a component with usage U: λ = 0.002 × e^(6U) †. That's about 4% per
+grid day at U = 0.5 and about 80% at U = 1. Thermal striping: adjacent assembly outlets more than 40
+K apart, held, add upper-internals damage at 1/5,000 per minute †.
+
+
+12.2 Fuel
+---------
+(Mechanism / Model †)
+Cladding creep above 650 °C midwall
+    dD/dt = e^((T − 650) / 25) / 100 h; failure at D = 1
+Random failure                     : 2 × 10⁻⁵ per assembly per grid day × (burnup / 50 GWd/t)² ×
+                                     overpower multiplier
+Gas leaker                         : Cover gas Xe-133 and krypton rise over grid-hours; DND stays
+                                     quiet
+Open failure                       : DND rises. Left above 30 %FP for more than 8 grid-hours,
+                                     fuel-sodium reaction swells the pin and threatens neighbours
+Failed fuel location               : Reduce to ≤ 30 %FP; scan samples one group of 7 assemblies
+                                     every 2 min
+
+
+12.3 Sodium systems
+-------------------
+(Mechanism / Model †)
+Cold trap loading                  : Impurity ingress 0.2 kg per grid day at power, 1 kg per fuel
+                                     handling campaign; capacity 150 kg; trap ΔP proportional to
+                                     loading²; plugging temperature rises 2 K per 10% loading above
+                                     70%
+Trace heating failures             : 1 per 2,000 zone-hours real: 60% open circuit, 30% stuck on,
+                                     10% thermocouple failure
+Drained line cooling with heater off
+    DN50 from 200 °C to freezing in ≈ 40 min; DN900 in ≈ 20 h
+Thawing a frozen line              : Heat from the free end only. Heating the middle first ruptures
+                                     the pipe, because sodium expands 2.5% on melting
+
+
+12.4 SG tube leak growth
+------------------------
+(Stage / Model †)
+Micro, below 0.05 g/s  : Self-wastage doubles the leak every 2–6 grid-hours
+Small, 0.05–10 g/s     : Jet wastage penetrates a neighbouring tube in 10–30 min at 1 g/s, 1–3 min
+                         at 10 g/s. Each new failure adds a leak of the same size, which is the PFR
+                         1987 cascade
+Intermediate and large : Protection sequence in §5.2
+
+What players learn to read: a real leak shows at its section meter first, and the loop outlet meter
+follows about 10 s later at an eighth of the size. A failing meter steps or spikes on its own.
+Background drift moves every section together.
+
+
+====================================================================================================
+13. SCENARIO LIBRARY
+====================================================================================================
+
+13.1 Scenario director
+----------------------
+The director decides what goes wrong and when. It never cheats: every fault it starts is a real
+initiating event in the simulation, and everything after that is physics and crew.
+
+(Input / Used for)
+Crew            : Occupied desks and players on site in the last 5 min
+Performance     : Recent P/Q, steam temperature and dispatch errors; trips; how the last fault went
+Plant state     : Mode, power, isolated equipment, fatigue usage, active LCOs
+Season and time : Season (§1.7), grid clock hour, weather
+Difficulty      : Calm, Standard, Winter Peak, Blackout Recovery
+
+(Rule / Detail †)
+Intensity budget : Each scenario has a cost: minor 1, moderate 3, major 8. The director earns 1
+                   point per 10 min on Standard, scaled ×0.5 with 1–3 players, ×1 with 4–8, ×1.5
+                   with 9 or more
+Spacing          : At least 8 min between director-started faults; never a new one while a major
+                   fault is unresolved
+Crew fit         : Only pick faults whose first actions land on occupied desks, or on auto
+                   controllers that can cope
+Eligibility      : Every scenario has prerequisites: season, mode, power, equipment state. Frazil
+                   ice needs winter and open water; S-04 needs loop 2 running
+Escalation       : A mishandled fault can grow into its poor-crew outcome. That growth is physics
+                   and costs no budget
+Recovery         : After a reactor trip, no new faults until the plant is stable in Mode 3 or back
+                   above 30%
+Ageing           : High fatigue usage (§12.1) raises the weight of that component's own failure
+                   scenarios
+Admin            : Private server owners can disable scenarios, force one, or change the budget rate
+
+Cost classes †: minor S-01, S-06, S-10, S-12, S-13, S-14, S-17, S-23, S-24, S-26; moderate S-03,
+S-05, S-07, S-08, S-11, S-19, S-20, S-21, S-22, S-25; major S-02, S-04, S-09, S-15, S-16, S-18,
+S-27, S-28.
+
+
+13.2 Scenarios
+--------------
+* S-01
+    Scenario: SG section micro leak
+    Real basis: PFR 1987, BN-600
+    First cue: One section hydrogen meter creeping
+    Window: 20–60 min
+    Good crew: Confirm against loop meter, isolate section, trim reactor 4% and split
+    Poor crew: Cascade to large leak, loop dumped
+* S-02
+    Scenario: Large sodium-water reaction
+    Real basis: –
+    First cue: Pressure spike, rupture discs
+    Window: Automatic
+    Good crew: Verify isolation, drain and purge; manage RB-1 and turbines
+    Poor crew: Steam temperature trip, P/Q trip
+* S-03
+    Scenario: Loop 3 pump trip
+    Real basis: –
+    First cue: SP3 tripped, inlet rising
+    Window: 2 min
+    Good crew: Close IHX 3 shutters, RB-1, send 60–70% of loop 2 to B
+    Poor crew: Inlet trip, or B tripped at minimum load
+* S-04
+    Scenario: Loop 2 pump trip
+    Real basis: –
+    First cue: SP2 tripped
+    Window: 2 min
+    Good crew: Both turbines to 67% on their own loops; isolate SG2 reheaters
+    Poor crew: Reheat mismatch, unstable turbines
+* S-05
+    Scenario: Turbine B trip
+    Real basis: –
+    First cue: Stop valves shut, bypass open
+    Window: 1 min
+    Good crew: RB-3, shift loop 2 to A, feed crosstie
+    Poor crew: Condenser B overloaded, second trip
+* S-06
+    Scenario: CV-2B stuck
+    Real basis: –
+    First cue: Valve ignores demand
+    Window: 5 min
+    Good crew: Balance with turbine loads; field hydraulic reset
+    Poor crew: Throttling losses, reheat drift
+* S-07
+    Scenario: Primary pump trip with stuck check valve
+    Real basis: –
+    First cue: PP2 trip, flow lower than expected
+    Window: 20 s
+    Good crew: RB-2, then manual trip if P/Q keeps climbing
+    Poor crew: P/Q trip
+* S-08
+    Scenario: Blocked assembly
+    Real basis: Fermi 1, 1966
+    First cue: One thermocouple creeping, neighbours normal
+    Window: 10–30 min
+    Good crew: Power down, locate, shut down
+    Poor crew: Cladding failure, DND trip, core damage flag
+* S-09
+    Scenario: Unexplained negative reactivity trips
+    Real basis: Phénix 1989–90
+    First cue: Fast flux dip, trip
+    Window: –
+    Good crew: Restart only after checks; look for a pattern
+    Poor crew: Repeated trips, LCO breach
+* S-10
+    Scenario: Gas entrainment
+    Real basis: –
+    First cue: Rod auto hunting; +5–20 pcm blips
+    Window: 5–15 min
+    Good crew: Slow pumps, raise level, check cover gas
+    Poor crew: Fuel damage over time
+* S-11
+    Scenario: Secondary sodium leak and fire
+    Real basis: Monju 1995
+    First cue: Cell aerosol and temperature
+    Window: 10–20 min
+    Good crew: Isolate, drain, nitrogen
+    Poor crew: Large fire, building damage
+* S-12
+    Scenario: Heater fault on a drained line
+    Real basis: –
+    First cue: Zone cold
+    Window: 40 min on DN50
+    Good crew: Field repair, thaw from the free end
+    Poor crew: Frozen line; ruptured pipe after a bad thaw
+* S-13
+    Scenario: Cold trap plugging
+    Real basis: –
+    First cue: Plugging temperature rising
+    Window: Grid-hours
+    Good crew: Swap or regenerate trap
+    Poor crew: LCO-6 derate
+* S-14
+    Scenario: Condenser seawater leak
+    Real basis: –
+    First cue: Cation conductivity and chloride up
+    Window: 30 min
+    Good crew: Isolate half, polish, derate
+    Poor crew: SG tube corrosion, micro leaks later
+* S-15
+    Scenario: Loss of offsite power
+    Real basis: –
+    First cue: Boards dead
+    Window: 15 s
+    Good crew: EDGs, pony motors, DRACS, relief valves
+    Poor crew: Pool heatup, DRACS dampers forgotten
+* S-16
+    Scenario: Station blackout
+    Real basis: –
+    First cue: EDGs fail too
+    Window: ≈ 5 h, ≈ 30 min with ×10 acceleration
+    Good crew: Field crews open dampers; recover an EDG locally
+    Poor crew: Pool over-temperature
+* S-17
+    Scenario: Cover gas excursion on heatup
+    Real basis: –
+    First cue: Pressure high
+    Window: 10 min
+    Good crew: Vent to decay tanks
+    Poor crew: Trip, roof seal leakage
+* S-18
+    Scenario: Grid frequency collapse
+    Real basis: –
+    First cue: −0.4 Hz and an emergency instruction
+    Window: 1 min
+    Good crew: Respond within limits; refuse the unsafe part
+    Poor crew: Under-frequency trip
+* S-19
+    Scenario: Regulating rod runaway
+    Real basis: –
+    First cue: RR moving without demand, short period
+    Window: 30 s
+    Good crew: Kill drive power, insert shims
+    Poor crew: Overpower trip
+* S-20
+    Scenario: Train B feed loss
+    Real basis: –
+    First cue: MFP-B trips
+    Window: 1 min
+    Good crew: Crosstie, startup pump, runback
+    Poor crew: SG3 overheats, inlet trip
+* S-21
+    Scenario: IHX tube leak
+    Real basis: –
+    First cue: Pool level up, buffer tank down
+    Window: Grid-hours
+    Good crew: Isolate loop, confirm, plan outage
+    Poor crew: Na-24 in secondary if pressures reverse
+* S-22
+    Scenario: Open fuel failure
+    Real basis: –
+    First cue: DND rising
+    Window: 8 grid-hours
+    Good crew: ≤ 30 %FP, locate, shut down and remove
+    Poor crew: DND trip, contamination
+* S-23
+    Scenario: Vessel expansion drift
+    Real basis: –
+    First cue: Slow positive reactivity after a long low-temperature spell
+    Window: 15 min
+    Good crew: Reactor desk notices and trims
+    Poor crew: Outlet creep, thermocouple alarms
+* S-24
+    Scenario: Frazil ice at the intake
+    Real basis: Nordic intakes in early winter
+    First cue: Screen ΔP climbing on a cold, clear, windy night
+    Window: 20–60 min
+    Good crew: Open recirculation gate, go to one CW pump, wash screens
+    Poor crew: Screens block, vacuum lost, turbine trips
+* S-25
+    Scenario: Summer intake fouling
+    Real basis: Oskarshamn 3, 2013 (jellyfish)
+    First cue: Screen ΔP up and CW flow falling after a storm or bloom
+    Window: 30 min
+    Good crew: Wash screens, isolate half a condenser, derate
+    Poor crew: Vacuum trip on one or both units
+* S-26
+    Scenario: Geomagnetic storm
+    Real basis: Malmö blackout, 2003
+    First cue: Aurora night; transformer hot-spot and neutral current alarms
+    Window: Grid-hours
+    Good crew: Cut MVAr and load on the hot transformer; tell grid control
+    Poor crew: Generator transformer trips
+* S-27
+    Scenario: Switchyard fault with a voltage transient
+    Real basis: Forsmark 1, 2006
+    First cue: Both generator breakers open; two essential divisions dead; some indications frozen
+    Window: 20 min
+    Good crew: Distrust frozen readings, connect EDGs by hand, confirm DRACS on the live divisions
+    Poor crew: Crew acts on false indications
+* S-28
+    Scenario: Grid separation and house-load operation
+    Real basis: –
+    First cue: Both 400 kV lines trip in a winter storm
+    Window: 30 s
+    Good crew: One unit to house load on bypass, trip the other, run back the reactor
+    Poor crew: Both turbines trip; plant falls onto its EDGs

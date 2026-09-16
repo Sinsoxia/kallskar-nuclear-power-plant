@@ -1,0 +1,272 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 7 of 7: Roblox implementation, persistence, modules, sodium properties, tags, glossary, revisions
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+14. SIMULATION IMPLEMENTATION IN ROBLOX
+====================================================================================================
+
+14.1 Tick structure
+-------------------
+The server is authoritative, running a fixed-step accumulator on Heartbeat.
+
+* Fast
+    Rate: 10 Hz
+    Contents: Kinetic amplitude, fuel and cladding, pools, IHXs, SG sections, turbines, pumps,
+      valves, protection logic
+* Shape
+    Rate: Every 0.5–2 s, time-sliced
+    Contents: 3D multigroup flux shape and precursors (§14.2)
+* Slow
+    Rate: 1 Hz
+    Contents: Trace heating, cold traps, chemistry, fatigue counting, dispatcher, hydrogen
+* Replication
+    Rate: 5 Hz fast gauges; 1 Hz slow gauges and core map
+    Contents: UnreliableRemoteEvent for gauges; RemoteEvent for alarms and events
+
+Pack the 331 core-map temperatures into a buffer as u16 at 0.05 K resolution: 662 bytes per update.
+
+
+14.2 Space-time kinetics in real time
+-------------------------------------
+The improved quasi-static method splits the flux into an amplitude that changes fast and a shape
+that changes slowly, so each part runs only as often as it needs to (§3.7).
+
+Amplitude, every 0.1 s. Λ is 4 × 10⁻⁷ s, so explicit integration at 10 Hz is hopeless. Use the
+prompt-jump form with scaled precursors s_i = λ_i Λ C_i, which removes Λ entirely. Reactivity, β_eff
+and Λ come from the latest shape, weighted by the adjoint flux.
+
+    -- amplitude, once per 0.1 s tick
+    for i = 1, 6 do
+      local e = math.exp(-lambda[i] * dt)
+      s[i] = s[i] * e + beta[i] * n * (1 - e)
+    end
+    n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
+
+Initialise at steady state with s[i] = beta[i]  n. The form holds while ρ stays below about 0.9β.
+Above that, flag a prompt-critical excursion and hand over to a scripted core-damage event rather
+than integrating through it.
+
+Shape, every 0.5–2 s. One implicit time step of the multigroup diffusion equations over the whole
+mesh, renormalised so shape and amplitude stay consistent.
+
+(Step / Detail)
+Group order       : Fastest group first, one group at a time. A fast spectrum has no upscattering,
+                    so each group sees a source that is already known
+Inner solver      : Red-black successive over-relaxation, warm-started from the previous shape; 4–8
+                    sweeps per group †
+Outer loop        : Repeat the group pass until the fission source changes by less than 10⁻⁴,
+                    usually 2–3 passes with a warm start
+Precursors        : Updated per node with the same exponential form as the amplitude
+Time slicing      : Runs in a coroutine that yields once the frame has used 4 ms †; the amplitude
+                    keeps power moving in the meantime
+Cost              : About 26,000 unknowns; a warm-started shape step is a few hundred thousand node
+                    updates. Put --!native at the top of the solver module
+Development check : For a uniform perturbation, the 3D amplitude must match the point-kinetics
+                    fallback
+
+
+14.3 Thermal nodes
+------------------
+Update every lumped node with T = T_eq + (T − T_eq) × e^(−dt/τ), taking T_eq and τ from current
+flows. It's stable at any time step. Treat the 0.19 s coolant rise through the core as algebraic,
+and model pipe and pool transport delays as ring buffers with fractional interpolation.
+
+(Block / Suggested states)
+Fuel                : Every fuel assembly × 10 axial layers, with fuel and cladding temperature per
+                      layer feeding its own neutronics node: 301 × 10 × 2 states. Sodium temperature
+                      per layer is algebraic
+Pools               : Hot pool 2; cold pool 1
+IHXs                : 6 × 3
+Steam generators    : 24 sections × 3 modules × 2 nodes
+Secondary transport : 6 delay lines
+Turbines            : 2 × rotor speed and metal temperature
+Feed trains         : 2 × 5
+Totals              : ≈ 6,300 thermal states, mostly fuel pins; ≈ 150 valves; ≈ 180 heater zones; ≈
+                      600 alarm points
+
+
+14.4 Keeping it multiplayer
+---------------------------
+Any player within reach of a panel can use its controls, seated or standing; the server checks
+distance, not seats (§10.7). Critical controls also check playtime. Local-only actions (§10.3) are
+ProximityPrompts with hold durations. Room phones connect desks, and the dispatcher line rings only
+at the shift supervisor console.
+
+
+14.5 Performance guardrails
+---------------------------
+Simulate numbers, not parts; there is no moving fluid geometry anywhere. Build the turbine hall and
+SG building as modular, streamed instances. Run alarm logic on the server and send clients state
+changes only.
+
+
+14.6 Persistence and reset
+--------------------------
+Plant condition persists per private server (OD-9). Between sessions it keeps the cycle day and
+burnup, fatigue usage for every component, failed, isolated and drained equipment, cold trap
+loading, LCO clocks and the sequence-of-events log. Public servers always start fresh.
+
+The private server owner can reset from a settings panel. A reset needs typed confirmation, then
+runs a 60-second countdown announced to everyone on the server, and returns the plant to hot standby
+at beginning of cycle with every component as new †. Key the save on game.PrivateServerId, check
+game.PrivateServerOwnerId before allowing a reset, and version the save format so later spec changes
+can migrate old plants.
+
+
+14.7 Modules
+------------
+Keep every system in its own ModuleScript behind the same interface, so failure end states,
+scenarios and later features plug in without touching the core loop: init(config), step(dt),
+getState(), applyCommand(player, command), plus a faults table each module registers with the
+scenario director. Every number in this spec lives in one shared config module that the simulation,
+guide boards and tests all read.
+
+
+====================================================================================================
+APPENDIX A. SODIUM PROPERTIES
+====================================================================================================
+Correlations with T in kelvin:
+
+(Property / Correlation)
+Density, kg/m³         : 219 + 275.32 (1 − T/2503.7) + 511.58 (1 − T/2503.7)^0.5
+Specific heat, kJ/kg·K : 1.6582 − 8.479e-4 T + 4.4541e-7 T² − 2992.6 / T²
+Conductivity, W/m·K    : 124.67 − 0.11381 T + 5.5226e-5 T² − 1.1842e-8 T³
+Viscosity, Pa·s        : exp(−6.4406 − 0.3958 ln T + 556.835 / T)
+Vapour pressure, MPa   : exp(11.9463 − 12633.73 / T − 0.4672 ln T)
+
+* 98
+    Density: 925.6
+    cp: 1.383
+    k: 89.4
+    Viscosity (mPa·s): 0.688
+    Vapour pressure (MPa): 1.6 × 10⁻¹¹
+* 200
+    Density: 903.0
+    cp: 1.343
+    k: 81.9
+    Viscosity (mPa·s): 0.452
+    Vapour pressure (MPa): 2.2 × 10⁻⁸
+* 300
+    Density: 880.5
+    cp: 1.309
+    k: 75.4
+    Viscosity (mPa·s): 0.341
+    Vapour pressure (MPa): 2.1 × 10⁻⁶
+* 375
+    Density: 863.5
+    cp: 1.289
+    k: 70.9
+    Viscosity (mPa·s): 0.290
+    Vapour pressure (MPa): 2.6 × 10⁻⁵
+* 450
+    Density: 846.2
+    cp: 1.272
+    k: 66.8
+    Viscosity (mPa·s): 0.254
+    Vapour pressure (MPa): 1.8 × 10⁻⁴
+* 520
+    Density: 830.0
+    cp: 1.261
+    k: 63.2
+    Viscosity (mPa·s): 0.229
+    Vapour pressure (MPa): 8.2 × 10⁻⁴
+* 550
+    Density: 822.9
+    cp: 1.258
+    k: 61.8
+    Viscosity (mPa·s): 0.220
+    Vapour pressure (MPa): 1.4 × 10⁻³
+* 600
+    Density: 811.2
+    cp: 1.254
+    k: 59.5
+    Viscosity (mPa·s): 0.207
+    Vapour pressure (MPa): 3.4 × 10⁻³
+* 700
+    Density: 787.3
+    cp: 1.252
+    k: 55.3
+    Viscosity (mPa·s): 0.186
+    Vapour pressure (MPa): 1.4 × 10⁻²
+* 800
+    Density: 763.0
+    cp: 1.259
+    k: 51.5
+    Viscosity (mPa·s): 0.169
+    Vapour pressure (MPa): 4.6 × 10⁻²
+* 900
+    Density: 738.3
+    cp: 1.274
+    k: 48.0
+    Viscosity (mPa·s): 0.156
+    Vapour pressure (MPa): 0.120
+* 950
+    Density: 725.7
+    cp: 1.286
+    k: 46.4
+    Viscosity (mPa·s): 0.151
+    Vapour pressure (MPa): 0.182
+
+
+====================================================================================================
+APPENDIX B. TAGS AND GLOSSARY
+====================================================================================================
+Tag format SYS-L-TYPE-NN, for example SG-2-HM-05 for loop 2 section 5 hydrogen meter. Use the tag as
+the Roblox instance name and as the replication key. Write the station as Kallskar in instance names
+and DataStore keys, and as Kallskär in displayed text.
+
+(System codes / Type codes)
+RX core; PN primary sodium; SN secondary sodium; SG steam generators; MS main steam; TG turbine-generator; CD condensate; FW feedwater; CW cooling water; EL electrical; DG diesels; DR DRACS; NS sodium services; CH chemistry; PR protection
+    P pump; CV control valve; IV isolation valve; NRV check valve; T temperature; PT pressure; F
+    flow; L level; HM hydrogen meter; TC thermocouple; SPD speed; RD rod
+
+(Term / Meaning)
+aFRR, mFRR   : Automatic and manual frequency restoration reserves
+BCR          : Backup control room
+BOC          : Beginning of cycle
+DND          : Delayed neutron detector, which sees fuel exposed to sodium
+DRACS        : Direct reactor auxiliary cooling system
+ECP          : Estimated critical position
+EFPD         : Effective full-power day
+FCR-N, FCR-D : Frequency containment reserves for normal operation and for disturbances
+K1           : Kallskär unit 1, the SFR-1000
+IHX          : Intermediate heat exchanger
+LCO          : Limiting condition for operation
+P/Q          : Neutron power divided by primary flow, both in % of rated
+PSS          : Primary shutdown system: regulating and shim rods
+RB           : Runback
+RR           : Regulating rod
+SE2, SE3     : Swedish electricity bidding zones
+SR           : Source range (shim rods are tagged SM to avoid a clash)
+SSM          : Strålsäkerhetsmyndigheten, the Swedish Radiation Safety Authority
+SSR, SSS     : Secondary shutdown rods and system
+SWR          : Sodium-water reaction
+WR           : Wide-range neutron channel
+
+
+====================================================================================================
+APPENDIX C. REVISION LOG
+====================================================================================================
+* A
+    Date: 15 Sep 2026
+    Change: First full draft. Reactor rated at 2,380 MWt from the computed heat balance (earlier
+      estimate 2,400–2,500). Loop 2 reheater split, splitter losses and the loop-3-loss table added
+* A1
+    Date: 15 Sep 2026
+    Change: All open decisions closed (§0.3). Station named Kallskär Nuclear Power Station.
+      Wide-range log neutron channels replace IR range switching. DRACS dampers fail as-is.
+      Refuelling as a timed wait. Persistence per private server with owner reset (§14.6)
+* A2
+    Date: 15 Sep 2026
+    Change: Setting fixed: Kallskär Nuclear Power Plant (K1), Hälsingland coast, Sweden. Site,
+      history, language and seasons added (§1.4–1.7). Grid switched to Nordic rules with FCR-N,
+      FCR-D, aFRR and mFRR (§8.4, §11). Cooling water re-based on the Bothnian Sea (§7.4). Hybrid
+      control rooms, access rules and guides added (§10.6–10.8). Scenario director and S-24 to S-28
+      added (§13). Modules section added (§14.7)
+* A3
+    Date: 15 Sep 2026
+    Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
+      diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
+      §14.2). Former lumped values became validation targets; point kinetics kept as fallback

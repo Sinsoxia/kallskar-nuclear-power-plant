@@ -1,0 +1,34 @@
+# Duplicate of kallskar_handoff/ (the unzipped copy is committed)
+kallskar_claude_code_handoff.zip
+
+# Third-party reference documents (not ours to redistribute)
+references/
+
+# OpenMC run output lives in WSL (~/kallskar-xs-runs); guard against strays
+tools/xsgen/runs/
+*.h5
+*.xml.gz
+statepoint.*.h5
+summary.h5
+tallies.out
+
+# Roblox place/model files are build products, not source
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+*.rbxl.lock
+*.rbxlx.lock
+
+# Tooling
+sourcemap.json
+__pycache__/
+*.pyc
+.venv/
+
+# OS / editor
+Thumbs.db
+.DS_Store
+desktop.ini
+.vscode/*
+!.vscode/settings.json

@@ -1,0 +1,130 @@
+DESIGN HISTORY AND RATIONALE
+Kallskär Nuclear Power Plant, SFR-1000. Rev A2.
+Why the plant is the way it is. Read this before proposing design changes.
+
+====================================================================================================
+1. HOW THE REACTOR TYPE WAS CHOSEN
+====================================================================================================
+Ruled out, with reasons:
+- RBMK: excluded by the developer from the start.
+- AGR: the developer's friends call AGRs inefficient and massive. Correction made at the time: AGRs
+  reach about 41% efficiency against about 33% for a PWR; their real problems were cost, size and
+  reliability. Still rejected as too slow and forgiving for this game.
+- ESBWR, pebble-bed and other high-temperature gas reactors: passively stable, so boring to operate.
+- EBR-II and other metal-fuelled fast reactors: too forgiving. EBR-II famously shut itself down safely
+  in its 1986 loss-of-flow tests.
+- BN-800 as the base design: more automated, and less documentation available in English.
+- Natrium: its molten-salt heat storage would remove the dispatcher tension. Kept as a possible later
+  unlockable upgrade.
+- Joyo, FFTF: test reactors with no turbine side.
+Shortlisted fallbacks: PWR first, then BWR.
+Chosen: sodium-cooled fast reactor, because it is more of a pain to control and the stakes are higher.
+
+Reactor comparisons discussed along the way (BWR against PWR controls and transients, a CANDU system
+breakdown, BWR and PWR startup sequences) don't apply to this design and are not carried forward.
+
+====================================================================================================
+2. CONFIGURATION DECISIONS AND WHY
+====================================================================================================
+- Fictional plant mixing the strengths of documented sodium fast reactors worldwide.
+- Pool type. Loop type was noted as the maximum-pain option (radioactive primary sodium outside the
+  vessel, faster transients) but not chosen.
+- Oxide (MOX) fuel, because metal fuel is too forgiving.
+- BN-600 layout: several loops, a pool, and sectional steam generators whose evaporator, superheater
+  and reheater modules can be isolated at power. Preferred over Superphénix's single large
+  once-through steam generator per loop, because isolating sections creates decisions.
+- Superphénix-like scale and grid presence.
+- Three loops into two turbines, the developer's own idea: loop 1 to turbine A, loop 3 to turbine B,
+  loop 2 to both through splitter valves. Each turbine is rated for 1.5 loops' worth of steam.
+- 2 x 500 MWe = 1,000 MWe, the developer's proposal. Big enough to matter to a grid controller, small
+  enough not to feel sluggish. Plant size alone doesn't set sluggishness: response comes from sodium
+  mass relative to power (0.53 t/MWt here, close to BN-600, versus about 1.1 for Superphénix) and
+  from ramp limits in %/min, which give a bigger plant more MW per minute.
+- A single turbine trip (500 MW) is survivable for the grid; a reactor trip (1,000 MW) forces the
+  dispatcher to call reserves. Faults come in natural tiers.
+- Splitter valves sit on the steam generator desk, the developer's proposal and realistic: the
+  splitters set loop 2's steam pressure and flow, which that desk owns. Turbine desks only get
+  repeaters and must call the SG desk. The turbines can still shift the split indirectly through
+  header pressure. Throttling costs output, so good crews run the splitters wide open and coordinate.
+- Each splitter branch has a check valve so header A and header B can't feed each other. Losing loop
+  3 drops header B pressure, loop 2 steam rushes to B, the A-side check valve closes, and turbine A
+  loses half of loop 2 unless someone intervenes.
+- Turbine minimum stable load of 30% came from that analysis.
+- Sodium plenum above the core (a BN-800 idea) is not fitted, so sodium voiding stays strongly
+  positive. It was offered as a difficulty option and declined.
+- Phased-build lore explains the asymmetry: loop 1 and turbine A first, loop 3 and turbine B second,
+  loop 2 last as a shared loop (file 10, section 1.5).
+
+====================================================================================================
+3. HOW THE NUMBERS WERE DERIVED
+====================================================================================================
+- Heat balance computed with IAPWS-IF97 steam tables and the Fink-Leibowitz sodium correlations.
+- The first idealised steam cycle gave 44% gross efficiency, higher than any real sodium plant. Turbine
+  losses were then set realistically, giving 41.9% on steam generator heat and 42.0% on reactor power,
+  between BN-600 (about 41%) and BN-800 (about 42%). That fixed the reactor at 2,380 MWt, slightly
+  below the earlier rough estimate of 2,400 to 2,500 MWt.
+- Loop 2 reheater split: the splitter moves main steam between turbines, but reheater capacity is
+  fixed by pipework, so the loss-of-loop-3 decision became numeric. Best answer: send 60 to 70% of
+  loop 2 to turbine B, losing about 3 MWe. Keeping 50/50 leaves B at 33%, just above its 30% minimum
+  load. Sending 100% to B loses 22 MWe and runs both reheat lines out of specification.
+- The fatigue model charges damage from real wall temperature differences rather than from ramp rate,
+  so a well-coordinated crew can ramp faster without extra damage. Procedural ramp limits still apply.
+- Seawater: cold Bothnian Sea water allows up to about 514 MWe gross per unit in winter. Below about
+  5 °C intake temperature, one cooling water pump per unit beats two on net output.
+- File 20 holds the full list of assumptions and the script.
+
+====================================================================================================
+4. DEVELOPER DECISIONS ON THE OPEN QUESTIONS
+====================================================================================================
+OD-1 Names and setting: reactor unit SFR-1000; station Kallskär Nuclear Power Plant. The developer
+     proposed the name, chose "Power Plant" over "Power Station", chose a Nordic setting and asked for
+     the details to be decided for them: Hälsingland coast of Sweden, unit K1.
+OD-2 Sodium plenum: none.
+OD-3 Neutron channels between source and power range: log wide-range, the realistic modern option.
+OD-4 Loop 2 reheaters split 4 sections to turbine A and 4 to turbine B: yes.
+OD-5 Default control mode: reactor leads.
+OD-6 DRACS air dampers on loss of power: fail as-is, because motor-driven dampers can't move without
+     power. Lore note: some passive designs avoid this with dampers that fall open on power loss, or
+     no dampers at all, so Kallskär's are the older and cheaper choice.
+OD-7 Primary pump trip at power: automatic runback RB-2.
+OD-8 Refuelling outage: a timed wait for now.
+OD-9 Persistence: per private server, and the owner can reset it.
+
+Physics fidelity: the developer wants ultra-realistic reactor physics and first asked for "full 3D
+two-group kinetics". Two-group diffusion is the light-water reactor simulator standard; a fast
+reactor has almost no thermal neutrons, so the realistic equivalent is multigroup. Chosen: real-time
+3D multigroup space-time kinetics (hexagonal-Z nodal diffusion, improved quasi-static method),
+coupled per assembly to thermal-hydraulics. The earlier lumped physics values became validation
+targets. Point kinetics stays as a fallback and a development cross-check.
+
+Game design answers:
+- Griefing: controls are free for everyone; tripping the plant lets others vote-kick with a server
+  ban; minimum playtime for critical controls; buttons work without sitting.
+- Learning curve: guide boards dotted around the plant.
+- Handovers: none, because players come and go as they please.
+- Scenario director: definitely needed.
+- Failure consequences: later; the codebase must be modular so they can be added.
+- Interface: hybrid control room like Temelín.
+- Build order: later.
+
+====================================================================================================
+5. REAL EVENTS USED AS SCENARIO BASES
+====================================================================================================
+- PFR, Dounreay, 1987: a superheater tube leak spread to dozens of neighbouring tubes. Lesson:
+  hesitation escalates.
+- Phénix, 1989-90: four unexplained negative reactivity trips. The detective scenario.
+- Fermi 1, 1966: a loose zirconium plate blocked coolant flow and partially melted fuel. The single
+  hot thermocouple mystery.
+- Monju, 1995: secondary sodium leak from a thermocouple well broken by flow-induced vibration.
+- Superphénix, 1987: sodium leak from the fuel storage drum.
+- BN-600: around two dozen sodium leaks over its life.
+- Oskarshamn 3, 2013: jellyfish clogged the cooling water intake.
+- Malmö, 2003: a geomagnetic storm caused a blackout.
+- Forsmark 1, 2006: a switchyard fault and voltage transient disabled two of four emergency power
+  trains, with some control room indications lost.
+
+====================================================================================================
+6. PUBLIC REFERENCES WORTH KNOWING
+====================================================================================================
+CANTEACH (CANDU training material), NRC Westinghouse PWR training manuals, IAEA fast reactor benchmark
+reports, the IPFM report on fast reactor history (BN-600 and others), public EBR-II material.

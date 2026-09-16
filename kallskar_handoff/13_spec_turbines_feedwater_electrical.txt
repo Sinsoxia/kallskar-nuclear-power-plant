@@ -1,0 +1,255 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 4 of 7: turbine-generators, condensers and seawater, feedwater, electrical, Nordic grid
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+7. TURBINE-GENERATORS, CONDENSERS AND FEEDWATER
+====================================================================================================
+
+7.1 Turbine-generator (each of 2)
+---------------------------------
+(Parameter / Value)
+Rating                      : 500 MWe gross at 5.0 kPa; 590 MVA, 0.85 pf, 22 kV, 3,000 rpm, 2-pole
+Cooling                     : Hydrogen-cooled rotor, water-cooled stator
+Cylinders                   : HP single flow; IP double flow; 2 LP double flow
+Main steam                  : 437.5 kg/s (1,575 t/h) at 13.5 MPa, 500 °C
+Cold reheat                 : 2.8 MPa, 292 °C; reheat flow 87.4% of main steam
+Hot reheat at IP stop valve : 2.5 MPa, 500 °C
+LP exhaust                  : 5.0 kPa, dryness 0.92
+Efficiency                  : 41.9% gross on steam generator heat
+Minimum stable load         : 30% (150 MWe)
+Loading rate                : ≤ 5 %/min hot; ≤ 1 %/min warm. Plant rate is set by the reactor (§9.6)
+Critical speed bands        : 1,050–1,350 and 1,900–2,350 rpm; no dwell, accelerate ≥ 300 rpm/min
+                              through them
+Run-up                      : Turning gear 30 rpm; heat soak at 600 rpm for 10 min warm, 30 min cold
+Synchronising               : Slip ≤ 0.1 Hz, voltage ±5%, phase ±10°; take 25 MWe immediately
+Reheat load limit †         : 100% at ≥ 490 °C; 60% at 450 °C; 30% at 430 °C; trip below 420 °C;
+                              linear between
+
+
+7.2 Turbine protection
+----------------------
+* Speed
+    Normal: 3,000 rpm
+    Alarm: 3,150
+    Trip: 3,300
+* Condenser pressure
+    Normal: 5.0 kPa
+    Alarm: 10
+    Trip: 20
+* LP exhaust hood
+    Normal: 40 °C
+    Alarm: 70 (sprays on at 60)
+    Trip: 90, 60 s delay
+* Bearing vibration
+    Normal: 2 mm/s
+    Alarm: 7.1
+    Trip: 11
+* Thrust position
+    Normal: 0
+    Alarm: ±0.6 mm
+    Trip: ±1.0 mm
+* Lube oil pressure
+    Normal: 0.15 MPa
+    Alarm: 0.10
+    Trip: 0.07
+* Main steam at stop valve
+    Normal: 500 °C
+    Alarm: 480 (tracks program below 40%)
+    Trip: 430, or a 50 K fall within 10 min
+* Main steam superheat
+    Normal: 166 K
+    Alarm: 80 K
+    Trip: 50 K
+* Hot reheat
+    Normal: 500 °C
+    Alarm: 480
+    Trip: 420
+* Generator
+    Normal: –
+    Alarm: –
+    Trip: Differential, loss of field, reverse power 10 s, negative sequence, below 47.5 Hz for 20
+      s, above 52 Hz
+
+
+7.3 Bypass
+----------
+Two-stage bypass on each turbine: HP bypass from main steam to cold reheat, and LP bypass from hot
+reheat to the condenser, each sized for 60% of turbine flow, quick-opening in ≤ 2 s on a turbine
+trip, with desuperheating. The condenser absorbs 60% bypass indefinitely at design cooling water;
+beyond that, condenser pressure rises about 1 kPa per extra 10% †. Bypass buys time. Every kilogram
+through it is output thrown away.
+
+House-load operation: when the grid separates, one unit can run back to the plant's own house load
+(≈ 65 MWe) with the rest of its steam on bypass, while the other unit trips and the reactor runs
+back. Getting it right keeps the plant off its diesels (S-28).
+
+
+7.4 Condenser and cooling water
+-------------------------------
+(Parameter / Value)
+Cooling        : Brackish Bothnian Sea water from about 10 m depth; 2 × 50% CW pumps per unit, 3.7
+                 MW each
+Flow           : Both pumps: 15.3 m³/s per unit, 11 K rise. One pump: ≈ 60% flow because system
+                 resistance falls, 18 K rise
+Condenser duty : 690 MWt per unit
+Rating point   : 500 MWe per unit at 5.0 kPa: late summer, intake water 19 °C, both pumps
+Choke          : Below ≈ 3.0 kPa the last LP stage gains nothing more, so colder water only helps
+                 down to there
+Intake         : Trash racks and travelling band screens with automatic wash; screen ΔP alarm;
+                 warm-water recirculation gate for de-icing
+Hotwell        : 0.8 m normal, auto level control, naturally stable
+Vacuum pumps   : 2 × 100% per unit
+
+Pump lineup is a real decision for the turbine desks. Figures are per unit; net is gross minus that
+unit's CW pump power.
+
+* 3 °C
+    Both pumps: 1.9 kPa, choked: 514 gross, 507 net
+    One pump: 3.0 kPa: 514 gross, 510 net
+    Better: One pump
+* 5 °C
+    Both pumps: 2.2 kPa, choked: 514 gross, 507 net
+    One pump: 3.4 kPa: 511 gross, 507 net
+    Better: Either
+* 8 °C
+    Both pumps: 2.7 kPa, choked: 514 gross, 507 net
+    One pump: 4.1 kPa: 506 gross, 502 net
+    Better: Both
+* 12 °C
+    Both pumps: 3.4 kPa: 511 gross, 504 net
+    One pump: 5.1 kPa: 499 gross, 496 net
+    Better: Both
+* 15 °C
+    Both pumps: 4.0 kPa: 506 gross, 499 net
+    One pump: 6.1 kPa: 494 gross, 491 net
+    Better: Both
+* 19 °C
+    Both pumps: 5.0 kPa: 500 gross, 492 net
+    One pump: 7.5 kPa: 488 gross, 484 net
+    Better: Both
+
+
+7.5 Feed heating (each unit)
+----------------------------
+* LP1
+    Steam from: LP extraction 0.03 MPa
+    Feedwater out: 66 °C
+* LP2
+    Steam from: LP extraction 0.08 MPa
+    Feedwater out: 91 °C
+* LP3
+    Steam from: LP extraction 0.20 MPa
+    Feedwater out: 117 °C
+* LP4
+    Steam from: IP exhaust 0.55 MPa
+    Feedwater out: 152 °C
+* Deaerator
+    Steam from: IP extraction 1.1 MPa
+    Feedwater out: 180 °C at 1.0 MPa; 250 m³ storage ≈ 8 min
+* Main feed pumps
+    Steam from: –
+    Feedwater out: 17.5 MPa
+* HP6
+    Steam from: Cold reheat 2.8 MPa
+    Feedwater out: 227 °C
+* HP7
+    Steam from: HP turbine mid-stage 3.5 MPa
+    Feedwater out: 240 °C
+
+Feed temperature at part load ≈ 170 + 70 × (P/100)^0.6 °C.
+
+
+7.6 Feedwater trains
+--------------------
+(Item / Value)
+Train A and train B each           : 3 × 50% condensate extraction pumps; condensate polishing
+                                     plant; 2 × 55% main feed pumps (12 MW motors on VFDs, 9.8 MW
+                                     absorbed at 100%); 1 × 30% startup feed pump; HP heater bypass
+Capacity                           : 2 main pumps 481 kg/s; with the startup pump 612 kg/s
+Normal lineup                      : Train A feeds SG1 and half of SG2 (437.5 kg/s); train B feeds
+                                     SG3 and the other half
+Loop 2 crosstie                    : XV-2A and XV-2B let either train feed all of SG2
+Train B lost                       : Train A must supply SG1 and SG2, 583 kg/s: both main pumps and
+                                     the startup pump flat out (612 kg/s). Turbine A can only take
+                                     437.5 kg/s, so the rest goes to bypass
+Feed control                       : Per SG: main feed control valve plus low-flow valve, 10 s
+                                     stroke; flow indicated per section
+Chemistry (all-volatile treatment) : O₂ ≤ 5 ppb (alarm 10); pH 9.3–9.6; cation conductivity ≤ 0.2
+                                     µS/cm (alarm 0.3); Na ≤ 3 ppb; Cl ≤ 2 ppb
+
+
+====================================================================================================
+8. ELECTRICAL SYSTEM
+====================================================================================================
+
+8.1 Grid connection and main circuits
+-------------------------------------
+(Item / Value)
+Switchyard            : 400 kV double busbar; bays for GT-A, GT-B, Line 1, Line 2, ST-1
+Generator side        : Generator circuit breakers GCB-A/B; generator transformers GT-A/B, 22/400
+                        kV, 600 MVA
+Unit supplies         : Unit auxiliary transformers UAT-A/B, 22/11 kV, 50 MVA, feeding unit boards
+                        UB-A and UB-B
+Station supplies      : ST-1 400/11 kV 60 MVA feeding station boards SB-1 and SB-2; ST-2 130/11 kV
+                        40 MVA from the regional 130 kV network as backup
+Transfer on unit trip : Fast transfer from UB to SB in ≤ 150 ms with residual voltage check; if that
+                        fails, slow transfer after 2 s bus decay while pumps coast
+
+
+8.2 11 kV load allocation
+-------------------------
+(Board / Loads)
+UB-A : PP1, SP1, MFP-A1, MFP-A2, condensate pumps A, CW pumps A
+UB-B : PP3, SP3, MFP-B1, MFP-B2, condensate pumps B, CW pumps B
+SB-1 : PP2, SP2, startup feed pump A, trace heating boards 1–2, HVAC
+SB-2 : Startup feed pump B, trace heating boards 3–4, cold traps, argon and nitrogen plant, feeds to
+       essential boards
+
+
+8.3 Essential systems
+---------------------
+(Item / Value)
+Divisions        : 4; 3.3 kV essential boards ESS-1 to ESS-4, normally fed from SB-1 and SB-2
+EDG-1 to EDG-4   : 6.3 MW, 3.3 kV; rated voltage and frequency in ≤ 15 s; load steps at 15, 20, 25,
+                   30 and 40 s; 110% for 2 h in 24 h; day tank 8 h; main store 7 days; starting air
+                   for 5 starts
+Essential loads  : Pony motors (Divisions 1–3); DRACS dampers and fans (all 4); essential trace
+                   heating; cover gas control; instrument UPS chargers; control room HVAC; fire
+                   systems
+UPS              : 230 V AC per division, 2 h
+DC               : 220 V per division, 4 h
+Rod hold power   : PSS and SSR hold coils on UPS; losing hold power drops rods
+Station blackout : Batteries only. DRACS works on natural circulation, but only if its dampers are
+                   open
+
+
+8.4 Grid parameters: Nordic synchronous area
+--------------------------------------------
+(Parameter / Value)
+Voltage                   : 400 kV ±5%; backup supply from the 130 kV regional network
+Frequency                 : 50 Hz; normal band 49.9–50.1 Hz
+Generator operating range : Continuous 49.0–51.0 Hz; time-limited down to 47.5 Hz and up to 51.5 Hz
+Automatic load shedding   : From about 48.8 Hz
+Scale of a K1 trip        : The grid is sized to ride through losing its largest unit, which is
+                            bigger than K1. Losing both turbines at once is serious but survivable
+Reactive capability       : +300 / −150 MVAr per unit at rated MW; less above 500 MWe in winter †
+
+* FCR-N
+    What it asks of the plant: Proportional response across 49.9–50.1 Hz; 63% within 60 s, 100%
+      within 3 min
+    K1 contract size †: ±10 MWe per unit
+* FCR-D up
+    What it asks of the plant: Adds power as frequency falls from 49.9 to 49.5 Hz; 50% within 5 s,
+      100% within 30 s
+    K1 contract size †: 25 MWe per unit, held as headroom below the unit's limit
+* FCR-D down
+    What it asks of the plant: Sheds power as frequency rises from 50.1 to 50.5 Hz; same speed
+    K1 contract size †: 25 MWe per unit
+* aFRR
+    What it asks of the plant: Follows a setpoint signal from grid control
+    K1 contract size †: ±20 MWe for the plant, full within 5 min
+* mFRR
+    What it asks of the plant: Manual instruction delivered within 15 min
+    K1 contract size †: The dispatcher's normal MW instructions

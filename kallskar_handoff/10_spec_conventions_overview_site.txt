@@ -1,0 +1,241 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 1 of 7: conventions, decisions, plant overview, site, history, people, seasons
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+0. HOW TO READ THIS SPEC
+====================================================================================================
+Every number here is a starting value that agrees with every other number. The heat balance was
+computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine
+losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published
+ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't
+need to be.
+
+
+0.1 Conventions
+---------------
+(Item / Convention)
+Pressure     : Absolute, MPa or kPa, unless marked g
+Temperature  : °C; temperature differences in K
+Reactivity   : pcm (10⁻⁵ Δk/k); $1 = 360 pcm
+Rod position : mm withdrawn from fully inserted, 0–1,100 mm
+Power        : %FP of 2,380 MWt; MWe gross unless marked net
+†            : Tuning value: realistic in size, meant to change in playtesting
+
+
+0.2 Clocks
+----------
+* Physics
+    Rate: ×1 real time, always
+    Drives: Kinetics, thermal-hydraulics, pumps, valves, electrical, protection
+* Low-power acceleration †
+    Rate: ×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree
+    Drives: Heatup, cooldown, long waits in blackout scenarios
+* Grid clock †
+    Rate: ×12 (one grid day = 2 h real)
+    Drives: Dispatcher schedule, demand curve, weather and sea, LCO completion times
+* Slow processes †
+    Rate: ×360 of real time
+    Drives: Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures, fuel
+      failure hazard
+
+Ramp limits and response windows are real time unless marked grid time.
+
+
+0.3 Decisions
+-------------
+All nine open decisions from Rev A are closed.
+
+* OD-1
+    Decision: Names and setting
+    Chosen: Kallskär Nuclear Power Plant, unit K1, on the Hälsingland coast of Sweden. Reactor unit:
+      SFR-1000
+    Affects: §1.4–1.7, grid rules, cooling water, scenarios
+* OD-2
+    Decision: Sodium plenum above core
+    Chosen: None
+    Affects: Void worth stays +1,800 pcm, so boiling is as unforgiving as it gets
+* OD-3
+    Decision: Neutron channels between source and power range
+    Chosen: Log wide-range, no range switching
+    Affects: §3.5, §9.5, reactor desk
+* OD-4
+    Decision: Loop 2 reheaters split 4 sections to A, 4 to B
+    Chosen: Yes
+    Affects: §6.4–6.5
+* OD-5
+    Decision: Default control mode
+    Chosen: Reactor leads
+    Affects: §9.3
+* OD-6
+    Decision: DRACS air dampers on loss of power
+    Chosen: Fail as-is: motor-operated, can't move without power
+    Affects: Blackouts need field crews at the stacks (S-16)
+* OD-7
+    Decision: Primary pump trip at power
+    Chosen: Automatic runback RB-2
+    Affects: §9.5
+* OD-8
+    Decision: Refuelling outage
+    Chosen: Timed wait for now, 30 min real †
+    Affects: §2.3
+* OD-9
+    Decision: Plant condition persistence
+    Chosen: Per private server; owner can reset
+    Affects: §14.6
+
+
+====================================================================================================
+1. PLANT OVERVIEW AND SITE
+====================================================================================================
+
+1.1 Plant at a glance
+---------------------
+(Parameter / Value)
+Station            : Kallskär Nuclear Power Plant, unit K1, Hälsingland coast, Sweden
+Reactor            : SFR-1000: pool-type sodium-cooled fast reactor, MOX fuel
+Thermal power      : 2,380 MWt
+Gross output       : 1,000 MWe at the 5.0 kPa rating point (2 × 500 MWe); up to ≈ 1,028 MWe with
+                     cold winter seawater
+Net output         : ≈ 935 MWe (house load ≈ 65 MWe)
+Gross efficiency   : 42.0%
+Primary circuit    : 1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,690 kg/s
+Secondary circuit  : 3 loops, 3,110 kg/s each, 320 → 520 °C, ≈ 400 t sodium each
+Steam generators   : 3 × 8 sections (evaporator, superheater, reheater), 99.5 MWt per section
+Steam at SG outlet : 14.0 MPa, 505 °C; reheat 2.6 MPa, 505 °C; feedwater 240 °C
+Main steam flow    : 291.7 kg/s per loop; 437.5 kg/s per turbine
+Turbines           : 2 × HP + IP + 2 LP, 3,000 rpm, condenser 5.0 kPa, seawater cooled
+Core               : 301 fuel assemblies, 30 rod positions, 1.0 m active height, ≈ 29 tHM
+Kinetics           : Real-time 3D multigroup space-time kinetics (§3.7); β_eff 360 pcm; Λ 4.0 × 10⁻⁷
+                     s; no xenon effect
+Decay heat removal : 4 DRACS loops × 20 MWt, natural circulation
+Emergency power    : 4 EDGs × 6.3 MW
+
+
+1.2 Topology
+------------
+PLANT TOPOLOGY (text version of the diagram)
+
+Reactor pool, primary sodium (1,250 t):
+  Core 2,380 MWt -> hot pool 550 °C -> IHX 1A/1B, IHX 2A/2B, IHX 3A/3B -> cold pool 375 °C
+  -> primary pumps PP1, PP2, PP3 -> diagrid -> core
+
+Secondary sodium and main steam:
+  Loop 1: IHX 1A/1B -> SG1 (8 sections) -> MSIV-1 -> Header A -> Turbine A (500 MWe)
+  Loop 3: IHX 3A/3B -> SG3 (8 sections) -> MSIV-3 -> Header B -> Turbine B (500 MWe)
+  Loop 2: IHX 2A/2B -> SG2 (8 sections) -> splitter
+            branch A: CV-2A -> NRV-2A -> Header A
+            branch B: CV-2B -> NRV-2B -> Header B
+
+Reheat (cold reheat from each turbine's HP exhaust, hot reheat back to the same turbine's IP):
+  Turbine A: reheater modules of SG1 sections 1-8 and SG2 sections 1-4
+  Turbine B: reheater modules of SG3 sections 1-8 and SG2 sections 5-8
+
+
+1.3 Where each idea comes from
+------------------------------
+(Feature / Source)
+Pool primary with 3 pumps, 6 IHXs, 3 secondary loops
+    BN-600, BN-800
+Sectional SGs, each section isolable at power
+    BN-600
+Scale; 271-pin 8.5 mm assemblies   : Superphénix
+Diverse shutdown rods with Curie-point latches
+    EFR and Japanese SFR concepts
+DRACS decay heat removal           : Superphénix, EFR
+Two turbines on one reactor        : Superphénix, Sizewell B
+Three loops into two turbines through a shared loop 2
+    Invented for this plant
+Loop 2 reheaters hard-split between turbines
+    Invented (§6.4)
+
+The plant's history (§1.5) explains the asymmetry.
+
+
+1.4 Site
+--------
+(Item / Choice)
+Location            : Kallskär, a former skerry on the Hälsingland coast of the Bothnian Sea,
+                      Sweden, about 61.5° N. Land uplift joined it to the mainland long ago; the
+                      name stayed
+Bidding zone        : SE2. Power flows south to the load centres in SE3 across transfer limits, so
+                      grid control sometimes holds the plant back
+Ground              : Precambrian granite and gneiss; very low seismicity
+Sea                 : Brackish, about 5 psu; no tide worth modelling; sea level swings about ±0.5 m
+                      with wind and air pressure
+Ice                 : Fast ice in the archipelago from January to April in a normal winter; frazil
+                      ice at the intake on cold, clear nights before the ice forms
+Cooling water       : Intake canal on the north side drawing from about 10 m depth; outfall to the
+                      south so warm water doesn't recirculate by accident; a recirculation gate
+                      sends some back on purpose for de-icing
+Land uplift         : About 7 mm a year, so the intake canal is dredged every decade or so
+Layout              : Reactor building on bedrock at the centre; SG buildings set apart for sodium
+                      fire separation; turbine hall on the seaward side; switchyard inland; four EDG
+                      buildings in separated divisions; backup control room on the landward side.
+                      The headland is a natural map boundary
+Time zone, daylight : CET/CEST; about 6 h of daylight in December, about 19 h in June
+
+
+1.5 History
+-----------
+Sweden never built a fast reactor. Everything below is alternate history.
+
+(Year / Event)
+1974 : After the oil crisis, a Swedish utility consortium studies a sodium fast reactor to stretch
+       uranium supplies
+1978 : Kallskär chosen for its bedrock, cold deep water and a nearby 400 kV line. Kallskär
+       Kraftgrupp AB (KKG) is formed to build and run it
+1980 : Neutral Sweden licenses from both sides: pool and core from the French fast reactor
+       programme, sectional steam generators from the Soviet BN-600. The joint design office works
+       in English, and so does the control room to this day
+1981 : Construction starts. Both 500 MWe turbine-generators are ordered full size, on the
+       expectation of three loops
+1988 : First criticality. Loop 1 and turbine A enter service; the reactor is limited to one-third
+       power
+1991 : Loop 3 and turbine B enter service
+1996 : SG2 arrives after years of fabrication problems. Both turbines already exist, so loop 2 is
+       split between them through the splitter
+2009 : Modernisation: variable-speed pump drives, digital protection and plant computer, new
+       hydrogen meters. Screens join the original analog panels (§10.6)
+2026 : 38 years in service. Swedish licences have no fixed end date, so the next milestone is the
+       ten-yearly periodic safety review in 2028
+
+
+1.6 People and language
+-----------------------
+(Item / Choice)
+Operator              : Kallskär Kraftgrupp AB (KKG)
+Unit designation      : K1
+Control room language : English on panels, procedures, guides and phones
+Signage and PA        : Swedish first, English second
+Role flavour          : English titles in the interface; Swedish on name badges, such as skiftchef
+                        for shift supervisor
+Regulator             : Strålsäkerhetsmyndigheten (SSM), the Swedish Radiation Safety Authority
+Grid control          : Modelled on Svenska kraftnät; dispatcher callsign Driftcentralen †
+Outage season         : Refuelling outages in summer, when demand is lowest
+
+
+1.7 Seasons
+-----------
+The season follows the real-world calendar by default; a private server owner can pin one.
+
+* Winter, Dec–Mar
+    Grid: Cold snaps drive peak demand and maximum-output instructions
+    Sea and weather: Sea ice; frazil ice on cold clear nights; wet snow and ice on lines; aurora
+      nights
+    Plant effects: Best vacuum, ≈ 514 MWe per unit; intake icing (S-24); line trips (S-27, S-28);
+      geomagnetic storms (S-26)
+* Spring, Apr–Jun
+    Grid: Snowmelt floods northern hydro: transfer-limit curtailments, sometimes negative prices
+    Sea and weather: Ice break-up, drift ice
+    Plant effects: Frequent down-ramps and fatigue; drift ice on intake screens
+* Summer, Jul–Aug
+    Grid: Lowest demand; outage season
+    Sea and weather: Warmest water; upwelling can drop intake temperature 5–10 K in a day; algae and
+      drift weed
+    Plant effects: Worst vacuum, down to the 500 MWe rating; screen fouling (S-25)
+* Autumn, Sep–Nov
+    Grid: Demand climbing; variable wind
+    Sea and weather: Storms; sea level swings
+    Plant effects: Line trips; frazil ice risk from November

@@ -1,0 +1,122 @@
+PROJECT BRIEF AND GAME RULES
+Kallskär Nuclear Power Plant, SFR-1000. Rev A2.
+
+====================================================================================================
+1. WHAT THE DEVELOPER WANTS
+====================================================================================================
+- Realism the developer can be proud of, while staying fun. Inspiration: the Roblox game RBWR, loved
+  partly because it is arcadey. The developer loves Roblox reactor games in general.
+- Explicitly NOT like the Roblox game Oakridge. That game is laggy, and its reactor can be run solo
+  from the main control room without ever leaving it.
+- Dynamic play, as the developer defines it: constantly moving between controls, and constantly
+  contacting the other control rooms.
+- Not AFK-able on manual. The only acceptable exceptions are systems that are naturally stable while
+  the reactor is stable, such as the deaerator and the condenser hotwell.
+- Multiple control rooms. RBWR already has an MCR, TCR, FWP CR, CCR and EDG CR, and that is a lot to
+  manage; this game goes further on purpose.
+- A difficult grid dispatcher as the main difficulty lever.
+- The developer chose the sodium fast reactor because it is harder to control and the stakes are higher.
+
+====================================================================================================
+2. DESIGN PRINCIPLES
+====================================================================================================
+Hard but fair, never hard and confusing.
+- Readability tools: sequence-of-events log with timestamps and player names; first-out annunciators;
+  post-event debrief screen with trends of power, flow, core outlet temperature and reactivity
+  balance; training mode with the dispatcher switched off.
+
+Workload comes from real behaviour. Real reactors are designed to be stable, so never fake instability.
+Four realistic sources:
+  1. Integrating processes: levels and inventories drift whenever inflow and outflow differ.
+  2. Slow drifts: burnup, fouling, impurity build-up, demand, seawater temperature.
+  3. Coupling: correcting one desk's variable disturbs another desk's.
+  4. Genuine instabilities where physics has them, such as density-wave oscillation in once-through
+     evaporators at low flow.
+
+Automatic controllers are deliberately worse than a good crew (spec file 14, section 9.4): slower,
+less efficient, blind to faults. Small servers survive on auto; full crews do better.
+
+Anti-solo through realism: some actions only exist in the field (breakers, dampers, diesel starts,
+freeze valves, screen washing), and rooms are far enough apart that walking takes time (file 14,
+sections 10.1 and 10.3).
+
+Fatigue and damage are partly hidden. Players see transient counts and temperature rates, not exact
+damage numbers. On persistent servers a reckless crew leaves a worse plant for the next session.
+
+The dispatcher's tension is grid pressure against plant damage. A crew can follow safe ramp rates and
+take grid penalties, ramp too fast and build hidden fatigue, or use turbine bypass and throw energy
+away. Refusing an instruction for a valid plant reason is rewarded, not punished. Difficulty is mostly
+the dispatcher's personality.
+
+====================================================================================================
+3. MULTIPLAYER RULES (developer decisions)
+====================================================================================================
+Access
+- Any player can press any control, whether seated or not.
+- The server checks that the player is within reach of the panel (about 10 studs, tuning). Proximity
+  is what keeps the anti-solo design working.
+
+Critical controls
+- Manual reactor trip, secondary shutdown system trip, turbine trips, opening 400 kV and 11 kV
+  breakers, loop drain, steam generator section dump and plant mode changes require a minimum total
+  playtime on the game. Suggested 3 hours; not final.
+
+Trips and vote-kick
+- If a player trips the plant, other players are free to vote-kick them, which bans them from that
+  server.
+- Proposed safeguard, not yet confirmed by the developer: the vote only opens when the server finds
+  no genuine trip condition, P1 alarm or approaching setpoint at the moment of the trip, so a justified
+  trip never gets someone kicked. Majority of the other players, minimum 3 voters.
+
+Accountability
+- Every control action is logged with player name and time and shown in the sequence-of-events log.
+
+Sessions
+- No shifts and no handovers. Players stay wherever they like, for as long as they like.
+- Wherever the spec says "shift", read "session". The session report appears at the end of each grid
+  day and whenever a player asks for it.
+
+Learning
+- Guide boards dotted around the plant: desk cards, alarm response cards, field guides and room maps
+  (file 14, section 10.8). Guides read numbers from the shared config so they never go stale.
+
+Persistence
+- Plant condition persists per private server. The private server owner can reset it: typed
+  confirmation, then a 60-second countdown announced to the whole server. Public servers start fresh.
+
+Seasons
+- The season follows the real-world calendar by default; a private server owner can pin a season.
+
+====================================================================================================
+4. INTERFACE
+====================================================================================================
+- Hybrid control rooms in the style of Temelín: the original 1988 analog panels plus plant computer
+  screens added in the 2009 modernisation.
+- Rule: anything that changes plant state is a physical control on a panel. Screens show, sort and
+  trend; they never replace a control.
+- Each room has a large mimic board. Colour convention for mimic lines and system identity:
+  core and primary sodium red; secondary sodium and steam generators orange; steam and water blue;
+  electrical and grid violet; control and crew teal; damage and scenarios amber; implementation slate.
+- Natural screen content: the 331-position core thermocouple map, trends, alarm list, event log.
+- Stays physical: the 30 rod controls, pump switches, breakers, trip buttons, synchroscope.
+- Control room language is English. Site signage and PA are Swedish first, English second.
+
+====================================================================================================
+5. PERFORMANCE APPROACH
+====================================================================================================
+- Reactor physics must be ultra realistic: real-time 3D multigroup space-time kinetics coupled per
+  assembly to thermal-hydraulics (file 11, section 3.7). The rest of the plant is lumped-parameter.
+- Heavy solves are time-sliced across frames so the server never stalls.
+- Replicate state values only; clients interpolate gauges between updates.
+- A high MWe rating costs nothing because it is just a number. Building size and part count are what
+  cost performance: full-scale Superphénix-sized buildings are how Oakridge-style lag happens. Build
+  modular buildings and use streaming.
+- Alarm logic runs on the server; clients receive state changes only.
+
+====================================================================================================
+6. DEFERRED BY THE DEVELOPER
+====================================================================================================
+- Build order.
+- Failure end states (keep modular hooks).
+- Playable refuelling (timed wait for now).
+- Panel-level instrument and tag lists.

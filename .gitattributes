@@ -1,0 +1,12 @@
+# Keep line endings stable across Windows (Studio) and WSL (Python tooling)
+* text=auto eol=lf
+*.luau text eol=lf
+*.lua text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.html text eol=lf
+*.zip binary
+*.pdf binary

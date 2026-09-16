@@ -1,0 +1,610 @@
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+Part 5 of 7: control, protection, limits, control rooms, desks, crew, anti-AFK, hybrid rooms, access, guides
+Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
+
+
+====================================================================================================
+9. CONTROL, PROTECTION AND OPERATING LIMITS
+====================================================================================================
+
+9.1 Operating modes
+-------------------
+* 1
+    Name: Power
+    Conditions: Above 5 %FP
+* 2
+    Name: Startup
+    Conditions: k_eff ≥ 0.99, up to 5 %FP
+* 3
+    Name: Hot standby
+    Conditions: ≥ 1,000 pcm subcritical; core inlet 350–380 °C
+* 4
+    Name: Shutdown
+    Conditions: ≥ 1,000 pcm subcritical; 200–350 °C
+* 5
+    Name: Refuelling
+    Conditions: 230 ± 20 °C; ≥ 3,000 pcm subcritical; rotating plugs unlocked
+
+No sodium that is meant to stay liquid goes below 180 °C in any mode.
+
+
+9.2 Part-load program
+---------------------
+Core inlet is held at 375 °C throughout. With r = P/Q: core outlet 375 + 175r; secondary cold 375 −
+55r; secondary hot 375 + 145r; main steam min(505, secondary hot − 15r).
+
+* 100%
+    Primary and secondary flow: 100%
+    Core outlet: 550 °C
+    Secondary cold / hot: 320 / 520 °C
+    Main steam: 505 °C
+    SG pressure: 14.0 MPa
+    Feed: 240 °C
+    Gross MWe: 1,000
+* 80%
+    Primary and secondary flow: 80%
+    Core outlet: 550
+    Secondary cold / hot: 320 / 520
+    Main steam: 505
+    SG pressure: 14.0
+    Feed: 231
+    Gross MWe: 783
+* 60%
+    Primary and secondary flow: 60%
+    Core outlet: 550
+    Secondary cold / hot: 320 / 520
+    Main steam: 505
+    SG pressure: 14.0
+    Feed: 222
+    Gross MWe: 573
+* 40%
+    Primary and secondary flow: 40%
+    Core outlet: 550
+    Secondary cold / hot: 320 / 520
+    Main steam: 505
+    SG pressure: 14.0
+    Feed: 210
+    Gross MWe: 371
+* 30%
+    Primary and secondary flow: 40% (minimum)
+    Core outlet: 506
+    Secondary cold / hot: 334 / 484
+    Main steam: 472
+    SG pressure: 14.0
+    Feed: 204
+    Gross MWe: 273
+* 20%
+    Primary and secondary flow: 40%
+    Core outlet: 462
+    Secondary cold / hot: 348 / 448
+    Main steam: 440
+    SG pressure: 11.5
+    Feed: 197
+    Gross MWe: 178
+* 10%
+    Primary and secondary flow: 40%
+    Core outlet: 419
+    Secondary cold / hot: 361 / 411
+    Main steam: 408
+    SG pressure: 9.0
+    Feed: 188
+    Gross MWe: 86
+* 5%
+    Primary and secondary flow: 25%
+    Core outlet: 410
+    Secondary cold / hot: 364 / 404
+    Main steam: 401
+    SG pressure: 7.75
+    Feed: 182
+    Gross MWe: 42
+
+Below 40% the core outlet falls with power, so load changes down there cost fatigue even when
+coordination is perfect.
+
+
+9.3 Who controls what
+---------------------
+* Neutron power, core outlet temperature
+    Owner: Reactor desk (MCR)
+    Main actuator: RR, shim banks
+    Upset by: Inlet temperature, flow, burnup, anomalies
+* Core flow, P/Q = 1.00
+    Owner: Primary desk (MCR)
+    Main actuator: PP speeds
+    Upset by: Power changes, pump trips
+* Core inlet temperature
+    Owner: Secondary sodium desk (SGCR)
+    Main actuator: SP speeds
+    Upset by: Feed flow and temperature, loop loss
+* SG sodium outlet, main steam temperature
+    Owner: Steam generator desk (SGCR) with feedwater desk
+    Main actuator: Feed flow per SG, sprays
+    Upset by: Turbine load, feed temperature
+* Loop 2 split, reheat balance
+    Owner: Steam generator desk
+    Main actuator: CV-2A/2B, sprays, reheater isolation
+    Upset by: Turbine loads, section isolations
+* Header pressure, MWe
+    Owner: Turbine A and B desks (TCR)
+    Main actuator: Control valves, bypass
+    Upset by: Reactor power, grid frequency
+* Feed supply, deaerator, hotwell
+    Owner: Feedwater desk (FWCR)
+    Main actuator: Feed pump speeds, crosstie
+    Upset by: Load, pump trips
+* Boards, EDGs, MVAr
+    Owner: Electrical desk (ECR)
+    Main actuator: Breakers, AVR setpoints
+    Upset by: Grid events, trips
+* Trace heating, cold traps, argon
+    Owner: Sodium services desk (NSCR)
+    Main actuator: Zone heaters, trap flows
+    Upset by: Faults, drift
+* Water and sodium chemistry, activity
+    Owner: Chemistry desk (NSCR)
+    Main actuator: Sampling, polishing, dosing
+    Upset by: Leaks, fuel failures
+
+In reactor leads mode (default), the shift supervisor sets reactor power and the turbines hold
+header pressure. In turbine leads mode (OD-5), the supervisor sets MWe: header pressure falls, the
+SG and feedwater desks follow, the core inlet cools, and reactor power rises through inlet feedback
+about 1–2 minutes later while the reactor desk trims. It's slower and needs four desks to cooperate.
+
+
+9.4 Automatic controllers, deliberately worse than a crew
+---------------------------------------------------------
+* Rod auto
+    Holds: Core outlet 550 ±2 K using RR only
+    Weakness built in: Never moves shims; stops and alarms when RR leave the 400–700 mm band; reacts
+      after thermocouples move
+* Primary flow auto
+    Holds: P/Q at 1.00
+    Weakness built in: 10 s filter on power, so P/Q swings ±5% on fast changes; ignores a pump trip
+* Secondary flow auto
+    Holds: Core inlet 375 ±3 K
+    Weakness built in: Drives all three loops equally even with isolated sections; 60 s integral
+      time
+* Feed auto
+    Holds: Main steam 505 ±3 K
+    Weakness built in: Overshoots ±8 K on 10% steps; no turbine feedforward; off in separator mode
+* Attemperation auto
+    Holds: Hot reheat ≤ 505 °C
+    Weakness built in: Can only cool
+* Splitter auto
+    Holds: Valve position
+    Weakness built in: Holds it and nothing more
+* Turbine auto, pressure mode
+    Holds: Header 13.5 ±0.2 MPa, plus FCR response when contracted
+    Weakness built in: Ignores the reheat load limit; A and B don't coordinate
+* Bypass auto
+    Holds: Opens at header + 0.4 MPa
+    Weakness built in: Slow; pressure swings ±0.3 MPa
+* Cover gas auto
+    Holds: 0.115–0.125 MPa
+    Weakness built in: Cycles on heatup; vents without checking activity
+* Trace heating auto
+    Holds: Zone setpoints
+    Weakness built in: Can't see failed heaters or stuck contactors
+* Deaerator and hotwell auto
+    Holds: Levels
+    Weakness built in: Robust: naturally stable by design
+* EDGs and sequencer
+    Holds: Essential boards
+    Weakness built in: Robust, but restores essential loads only
+* Load-follow master
+    Holds: Dispatcher MW at exactly 1 %/min
+    Weakness built in: Follows dispatch straight into violations
+
+
+9.5 Reactor protection
+----------------------
+Primary shutdown system (PSS) logic is 2-out-of-3 on independent channels.
+
+* PR high flux
+    Normal: 100%
+    Alarm or first action: 105%
+    Trip: 115%
+* PR high flux, low setpoint (below 10% permissive)
+    Normal: –
+    Alarm or first action: –
+    Trip: 25%
+* Period, SR and WR below 10%
+    Normal: Infinite
+    Alarm or first action: 30 s rod block
+    Trip: 10 s
+* Flux rate
+    Normal: 0
+    Alarm or first action: –
+    Trip: +10 %FP/s, or −5 %FP/s (Phénix-style)
+* P/Q, above 5 %FP
+    Normal: 1.00
+    Alarm or first action: 1.05
+    Trip: 1.12
+* Core outlet, mixed
+    Normal: 550 °C
+    Alarm or first action: 565
+    Trip: 580
+* Assembly outlet vs expected
+    Normal: 0 K
+    Alarm or first action: +20 K alarm; +30 K rod block
+    Trip: +45 K on 2 adjacent thermocouples
+* Core inlet
+    Normal: 375 °C
+    Alarm or first action: 390 high, 360 low
+    Trip: 405 high, 345 low
+* Hot pool level vs program
+    Normal: 0 m
+    Alarm or first action: ±0.25 m
+    Trip: −0.50 m
+* Cover gas
+    Normal: 0.120 MPa
+    Alarm or first action: 0.140
+    Trip: 0.160
+* DND
+    Normal: Background
+    Alarm or first action: ×3
+    Trip: ×20
+* Primary pumps
+    Normal: 3 running
+    Alarm or first action: 1 lost: RB-2
+    Trip: 2 lost
+* Secondary loops
+    Normal: 3 running
+    Alarm or first action: 1 lost: RB-1
+    Trip: 2 lost
+* Both turbines lost
+    Normal: –
+    Alarm or first action: RB-3 to bypass capacity
+    Trip: If bypass unavailable
+* Large sodium-water reaction
+    Normal: –
+    Alarm or first action: Loop isolation plus RB-1
+    Trip: –
+* All 11 kV boards lost
+    Normal: –
+    Alarm or first action: –
+    Trip: Immediate
+* Seismic
+    Normal: –
+    Alarm or first action: 0.04 g
+    Trip: 0.08 g
+* Manual
+    Normal: –
+    Alarm or first action: –
+    Trip: 2 buttons in MCR, 1 in the backup control room
+
+Secondary shutdown system, diverse sensors: flux 118%, P/Q 1.15 using pump-speed-derived flow, core
+outlet 590 °C, manual. Each SSR also has a Curie-point latch that releases at 640 °C local sodium,
+with ≈ 20 s thermal lag.
+
+* RB-1
+    Trigger: One secondary loop lost
+    Target: 64 %FP
+    Rate: 30 %/min: shim drive-in at 10 mm/s plus flow program
+* RB-2
+    Trigger: One primary pump lost
+    Target: 60 %FP
+    Rate: 60 %/min
+* RB-3
+    Trigger: One or both turbines lost
+    Target: Bypass-limited power
+    Rate: 20 %/min
+
+Rod withdrawal blocks: period below 30 s; P/Q above 1.05; any assembly rod block; reactivity balance
+beyond ±50 pcm; RR out of band during a bank move; more than one bank selected.
+
+
+9.6 Operating limits
+--------------------
+* LCO-1
+    Limit: SSS: at least 8 of 9 rods operable
+    If exceeded: Hot shutdown
+    Completion (grid time): 6 h
+* LCO-2
+    Limit: DRACS: at least 3 of 4 loops
+    If exceeded: Restore or shut down
+    Completion (grid time): 72 h
+* LCO-3
+    Limit: EDGs: at least 3 of 4
+    If exceeded: Restore or shut down
+    Completion (grid time): 72 h
+* LCO-4
+    Limit: DND: at least 4 of 6 channels
+    If exceeded: ≤ 30 %FP
+    Completion (grid time): 12 h
+* LCO-5
+    Limit: Reactivity balance within ±50 pcm
+    If exceeded: No power increase; explain the deviation
+    Completion (grid time): 1 h
+* LCO-6
+    Limit: Primary plugging temperature ≤ 180 °C
+    If exceeded: ≤ 60 %FP and restore
+    Completion (grid time): 24 h
+* LCO-7
+    Limit: IHX secondary minus primary pressure ≥ 0.2 MPa
+    If exceeded: Isolate the loop
+    Completion (grid time): 1 h
+* LCO-8
+    Limit: Every running SG section has a working hydrogen meter
+    If exceeded: Isolate the section
+    Completion (grid time): 4 h
+* LCO-9
+    Limit: Feed O₂ ≤ 10 ppb and cation conductivity ≤ 0.5 µS/cm
+    If exceeded: ≤ 50 %FP
+    Completion (grid time): 24 h
+* LCO-10
+    Limit: Ramp ≤ 1 %/min above 40% (≤ 3 %/min with supervisor approval, logged)
+    If exceeded: Report
+    Completion (grid time): –
+* LCO-11
+    Limit: Hot pool rate of change ≤ 1.5 K/min, trips excepted
+    If exceeded: Report and fatigue review
+    Completion (grid time): –
+* LCO-12
+    Limit: Cover gas Xe-133 below limit †
+    If exceeded: ≤ 30 %FP and locate failed fuel
+    Completion (grid time): 8 h
+
+
+====================================================================================================
+10. CONTROL ROOMS, DESKS AND CREW
+====================================================================================================
+
+10.1 Rooms and walking times
+----------------------------
+* Main control room (MCR)
+    Desks: Reactor, primary, shift supervisor
+    Walk from MCR †: –
+* Electrical control room (ECR)
+    Desks: Electrical
+    Walk from MCR †: 40 s; EDG rooms a further 90–120 s
+* Steam generator control room (SGCR)
+    Desks: Secondary sodium, steam generator
+    Walk from MCR †: 60 s
+* Sodium services control room (NSCR)
+    Desks: Sodium services, chemistry
+    Walk from MCR †: 60 s
+* Turbine control room (TCR)
+    Desks: Turbine A, turbine B
+    Walk from MCR †: 75 s
+* Feedwater control room (FWCR)
+    Desks: Feedwater
+    Walk from MCR †: 90 s
+* Backup control room (BCR)
+    Desks: Emergency shutdown panel
+    Walk from MCR †: 150 s, separate building
+* DRACS stacks
+    Desks: Local dampers only
+    Walk from MCR †: 150 s
+
+Place rooms so that no two desks that have to talk during a fault can see each other.
+
+
+10.2 Desk contents
+------------------
+* Reactor (RO)
+    Controls: RR 1–3; shim rod or bank select A/B/C, in/out; rod mode; SSR latch and withdraw (key);
+      ECP calculator with 1/M plot; trip buttons
+    Indications: SR, WR log power, PR, period; 30 rod positions; 331-position core map with
+      temperature and deviation views; mixed outlet and inlet; P/Q ×3; reactivity balance; DND ×6;
+      quadrant tilt; first-out annunciator
+* Primary (PO)
+    Controls: PP1–3 start, stop, speed, mode; pony motors; IHX shutters ×6; cover gas admit and
+      vent; DRACS dampers ×8 and mode
+    Indications: Pump speed, flow, current, bearing and winding temperatures, vibration, check valve
+      state; hot and cold pool levels and temperatures; level difference; cover gas pressure and
+      temperature; IHX inlet and outlet ×6; DRACS temperatures and airflow; guard vessel leak
+      detector
+* Shift supervisor (SS)
+    Controls: Mode key; control mode; plant load master; reserve contracts FCR-N, FCR-D and aFRR;
+      dispatcher line; room phones; authorisations for bypasses, isolations and fast ramps;
+      emergency declaration
+    Indications: Plant mimic; gross and net MWe; frequency; dispatcher instructions; LCO status;
+      event log; end-of-shift report
+* Secondary sodium (SSO)
+    Controls: SP1–3; IHX secondary isolation valves; buffer tank argon; loop drain; SWR protection
+      reset
+    Indications: Loop flows, temperatures and pressures; pump data; buffer and dump tank levels;
+      rupture disc status; cell leak detectors; IHX pressure difference
+* Steam generator (SGO)
+    Controls: Section isolation ×24 (grouped, individual override); water dump and N₂ purge; MSIV-1
+      and MSIV-3; SG relief valves; CV-2A/2B; reheater isolation groups; sprays A/B; separator mode
+      and level ×3
+    Indications: Hydrogen meters ×27; acoustic detectors ×24; section EV, SH and RH outlet
+      temperatures; section feed flows; SG outlet pressure and temperature; header A/B pressure;
+      splitter branch flows and check valve state; hot reheat A/B; separator levels; oscillation
+      monitor
+* Turbine A, Turbine B (TO-A, TO-B)
+    Controls: Latch and trip; speed target and run-up; synchroscope and breaker close; load setpoint
+      and rate; speed, load, pressure or limit mode; FCR response enable; HP and LP bypass; vacuum
+      pumps; CW pumps; hood sprays; turning gear; oil pumps; AVR
+    Indications: Speed, MWe, MVAr, frequency; valve positions; stop-valve steam conditions; bypass
+      flows; condenser pressure; CW temperatures; hood temperature; vibration on 8 bearings;
+      eccentricity; differential expansion; thrust; oil pressure and temperature; rotor stress
+      margin; reheat load limit; splitter repeaters
+* Feedwater (FWO)
+    Controls: Condensate pumps ×6; polishing in or bypassed; LP and HP heater bypasses; main feed
+      pumps ×4; startup feed pumps ×2; feed control valves ×3 plus low-flow valves; crosstie
+      XV-2A/2B; makeup
+    Indications: Feed flow per SG and section; heater outlet temperatures; pump suction and
+      discharge; deaerator level and pressure; hotwell levels; condensate conductivity and O₂; pump
+      speeds and currents; recirculation valves
+* Electrical (EO)
+    Controls: Switchyard breakers and isolators; generator, station and unit transformer breakers;
+      11 kV incomers and bus sections; essential board incomers; EDG start, stop, sync, load;
+      sequencer reset; UPS and charger lineups; trace heating feeders
+    Indications: Voltage, current and frequency on every board; transformer temperatures and taps;
+      EDG speed, voltage, kW, fuel, coolant, starting air; battery voltage, current and time
+      remaining; relay flags
+* Sodium services (NSO)
+    Controls: Trace heating zones (≈ 180); cold traps; fill, drain and dump tanks; argon and
+      nitrogen systems; cell ventilation and fire dampers; nitrogen flooding; leak detector resets
+    Indications: Zone temperatures and heater currents; plugging temperatures; oxygen and hydrogen
+      meters; cell O₂ and temperature; aerosol detectors; tank levels; gas inventories
+* Chemistry (CHO)
+    Controls: Sample selectors; failed fuel location scan; cover gas routing to decay tanks; dosing;
+      polishing regeneration
+    Indications: Cover gas gamma spectrum; DND; sodium impurities and tritium; feedwater chemistry;
+      stack and area radiation
+* Backup control room
+    Controls: PSS and SSS trip; pony motors; DRACS dampers; SG relief valves; essential boards
+    Indications: Trends for core outlet, pools, DRACS and flux
+
+
+10.3 Local-only actions
+-----------------------
+* EDG local start or reset after a trip
+    Where: EDG room
+    Time on the spot †: 60 s
+* DRACS damper by handwheel
+    Where: Air cooler stack
+    Time on the spot †: 90 s per damper, 8 dampers
+* 11 kV breaker rack out or in
+    Where: Switchgear room
+    Time on the spot †: 120 s
+* Trace heating breaker reset; heater replacement
+    Where: Local boards
+    Time on the spot †: 45 s; 10 min
+* Thaw a freeze valve
+    Where: Loop cells
+    Time on the spot †: 10–20 min, heating from the free end
+* Cold trap valve lineup and regeneration
+    Where: Purification cell
+    Time on the spot †: 5 min
+* SG section water isolation by hand (backup)
+    Where: SG building
+    Time on the spot †: 120 s
+* Hydrogen meter restart or recalibration
+    Where: SG building
+    Time on the spot †: 5 min
+* Isolate half a condenser waterbox
+    Where: Condenser pit
+    Time on the spot †: 4 min
+* Lube oil filter changeover; engage turning gear
+    Where: Turbine hall
+    Time on the spot †: 60 s
+* Fire dampers, sodium fire powder, manual nitrogen release
+    Where: Affected cell
+    Time on the spot †: 30–90 s
+* Argon bottle bank changeover
+    Where: Gas yard
+    Time on the spot †: 3 min
+* Collect a failed fuel sample
+    Where: Chemistry lab
+    Time on the spot †: 5 min
+
+
+10.4 Crew sizes
+---------------
+* Minimum
+    Positions: 3: SS, RO, field operator; everything else on auto
+    What it can handle: Steady operation only; the first real fault will get away from them
+* Standard
+    Positions: 8: SS, RO, PO, SGO, TO-A, TO-B, EO, field
+    What it can handle: Most scenarios
+* Full
+    Positions: 13: standard plus SSO, FWO, NSO, CHO, second field operator
+    What it can handle: Everything; dispatcher can be a 14th player
+
+
+10.5 Attention intervals on manual
+----------------------------------
+This is the check against AFK play. Each row is how long a variable stays in band with nobody
+touching it.
+
+* Main steam temperature
+    Drifts out of band in about: 1–2 min
+    Why: Frequency response, feed temperature noise, once-through sensitivity
+* Header pressure and MWe
+    Drifts out of band in about: Continuously while FCR-N is active
+    Why: Grid frequency random walk
+* P/Q
+    Drifts out of band in about: Minutes, during any power change
+    Why: Coupling
+* Reheat balance
+    Drifts out of band in about: 5 min after any split change
+    Why: Coupling
+* Cover gas pressure
+    Drifts out of band in about: 5–10 min
+    Why: Temperature and level changes
+* Regulating rod band
+    Drifts out of band in about: ≈ 20 min
+    Why: Burnup drift at ×360
+* Hydrogen background
+    Drifts out of band in about: 30 min or more
+    Why: Drift and meter noise
+* Trace heating
+    Drifts out of band in about: Random
+    Why: Zone failures
+* Deaerator, hotwell
+    Drifts out of band in about: Stable
+    Why: Buffered by design, as intended
+
+Disturbance sources: feed temperature random walk ±0.5 K with 120 s time constant; CW intake drift
+±1 K over grid-hours, plus summer upwelling steps of 5–10 K; grid frequency (§11.2); hydrogen meter
+noise ±0.003 ppm; thermocouple noise ±1 K.
+
+
+10.6 Hybrid control rooms
+-------------------------
+The 1988 analog panels stayed when the 2009 modernisation added screens, giving every room a hybrid
+layout in the style of Temelín.
+
+* Controls
+    Analog, 1988: Rod, pump, breaker and valve switches; trip buttons; synchroscope
+    Digital, 2009: None: screens never change plant state
+* Indication
+    Analog, 1988: Edgewise meters, chart recorders, mimic lines in system colours, lamp-box
+      annunciators with first-out
+    Digital, 2009: Plant computer: trends, core map, alarm list, sequence-of-events log
+* Protection
+    Analog, 1988: Trip status lamps
+    Digital, 2009: Digital protection system displays and test panels
+* Each room
+    Analog, 1988: A large mimic board as the at-a-glance wall
+    Digital, 2009: One or two operator screens per desk
+
+Build rule: anything that changes plant state is a physical control on a panel. Screens show, sort
+and trend.
+
+
+10.7 Access, trust and griefing
+-------------------------------
+(Rule / Detail)
+Access              : Any player can use any control, seated or standing, within reach of the panel
+                      (≈ 10 studs) †. Proximity still matters, because the anti-solo design relies
+                      on walking between rooms
+Critical controls   : Manual reactor trip, SSS trip, turbine trips, opening 400 kV and 11 kV
+                      breakers, loop drain, SG section dump and plant mode changes need a minimum
+                      total playtime (suggested 3 h †)
+Accountability      : Every control action is logged with player name and time in the
+                      sequence-of-events log
+Trips and vote-kick : After a player trips the plant, other players can vote-kick them, which bans
+                      them from that server
+Proposed safeguard  : The vote opens only if the server finds no trip condition, P1 alarm or
+                      approaching setpoint at the moment of the trip, so a justified trip is never
+                      punished. Majority of other players, minimum 3 voters †
+Shifts              : None. Players stay on any desk for as long as they like. Where this spec says
+                      shift, read session; the session report appears at the end of each grid day
+                      and on request
+
+
+10.8 Guides
+-----------
+Guide boards are dotted around the plant †.
+
+* Desk card
+    Where: At every desk
+    Content: What the desk owns, its main controls, normal values, and which desks it has to talk to
+* Alarm response card
+    Where: Next to each annunciator panel
+    Content: For each P1 and P2 alarm on that panel: what it means, first actions, who to call
+* Field guide
+    Where: At each local-only action point
+    Content: What the action does, how long it takes, what to report back
+* Room map
+    Where: At each room entrance
+    Content: Where the other rooms are and how long the walk is
+
+Guides read their numbers from the same config module as the simulation, so they never go out of
+date.
