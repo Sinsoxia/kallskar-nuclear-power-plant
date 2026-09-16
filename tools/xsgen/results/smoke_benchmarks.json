@@ -1,0 +1,38 @@
+{
+  "openmc_version": "0.16.0",
+  "cross_sections": "/mnt/d/Roblox Projects/Kallinskar Nuclear Power Plant/nucdata/endfb-viii.1-hdf5/cross_sections.xml",
+  "threads": 16,
+  "results": {
+    "godiva": {
+      "benchmark": "HEU-MET-FAST-001 case 2 (simplified)",
+      "k_calc": 0.9996211488980056,
+      "sigma_stat": 0.00021130851916198419,
+      "k_bench": 1.0,
+      "sigma_bench": 0.001,
+      "deviation_pcm": -37.88511019944263,
+      "combined_sigma_pcm": 102.20818412780997,
+      "status": "PASS",
+      "batches": 520,
+      "inactive": 20,
+      "particles": 20000,
+      "wall_s": 19.9,
+      "statepoint": "/mnt/d/Roblox Projects/Kallinskar Nuclear Power Plant/xs-runs/smoke/godiva/statepoint.520.h5"
+    },
+    "jezebel": {
+      "benchmark": "PU-MET-FAST-001",
+      "k_calc": 0.9994400897932639,
+      "sigma_stat": 0.00020916687461189286,
+      "k_bench": 1.0,
+      "sigma_bench": 0.002,
+      "deviation_pcm": -55.991020673606954,
+      "combined_sigma_pcm": 201.09079495180546,
+      "status": "PASS",
+      "batches": 520,
+      "inactive": 20,
+      "particles": 20000,
+      "wall_s": 10.0,
+      "statepoint": "/mnt/d/Roblox Projects/Kallinskar Nuclear Power Plant/xs-runs/smoke/jezebel/statepoint.520.h5"
+    }
+  },
+  "overall": "PASS"
+}

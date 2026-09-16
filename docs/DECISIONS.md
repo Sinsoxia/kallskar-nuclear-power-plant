@@ -76,6 +76,26 @@ ring-3 corners (0° + 60°k) and bank B onto ring-6 mid-edges (30° + 60°k). Th
 bank C (ring 8) angles open; the script applies the spec's own anti-shadowing rule, maximising the angular separation
 from rod sets in the adjacent rings: SSR ring 4 at 30° + 120°k, SSR ring 7 at 0° + 60°k, bank C at 30° + 60°k.
 
+## D-012 MOX plutonium isotopic vector from the OECD/NEA MOX-3600 benchmark — Proposed (pending sourcing review)
+**Spec:** §2.3 gives Pu/(U+Pu) ≈ 18% inner, ≈ 23% outer, but no Pu isotopics or uranium composition. §3.7 names the
+OECD/NEA SFR benchmark's large oxide core as "a realistic starting point".
+**Decision:** take the Pu isotopic vector from NSC/R(2015)9 Tables 2.11–2.12 (MOX-3600 BOC). At the inner-core
+midplane: Pu-238 2.5%, Pu-239 53.8%, Pu-240 28.8%, Pu-241 5.8%, Pu-242 9.1%. The K1 Pu fractions stay as the spec
+gives them; if the 3D model's excess reactivity then misses §3.3 (2,250 ± 150 pcm), the Pu fraction is adjusted within
+the spec's "≈" by a documented search script, and the result is reported to Aqua.
+**Open:** whether K1 fuel should carry the benchmark's minor actinides and lumped fission products (it's an
+equilibrium-cycle composition) or be modelled as fresh MOX plus depletion. `docs/K1_MATERIALS.md` will compare sources.
+
+## D-013 Assembly flow factors vs the hottest-outlet figure (finding F11) — Open question for Aqua
+**Spec:** §2.5 orifice zones f = 1.12 / 1.00 / 0.92 and `T_out = T_in + 183.7 × (p/f) × (P/Q)`; §2.4 hottest assembly
+outlet 580–585 °C.
+**Problem:** spec file 20 computed the 580–585 °C figure with f = 1.08 (inner hot assembly) and f = 0.925 (outer), not
+the §2.5 table values. With the §2.5 factors, a radial-peak assembly (p = 1.20) in zone II would read ≈ 595 °C; in zone
+I ≈ 572 °C. The real hottest outlet will come from the 3D power map.
+**Proposal:** keep §2.5 as written for M1. Once OpenMC power shapes exist, check the hottest outlet; if it falls outside
+580–585 °C, re-derive the orifice factors from the computed power map (how real orifice zoning is designed) and ask
+Aqua before changing them.
+
 ## D-011 Kinetics uses β = Σβᵢ, not the rounded 360 pcm — Proposed (consistency fix)
 **Spec:** §3.1 β_eff = 360 pcm; the six group βᵢ sum to 360.3 pcm.
 **Decision:** the amplitude equation's `BETA` is computed as Σβᵢ from the group table. Using the rounded 360 while the
