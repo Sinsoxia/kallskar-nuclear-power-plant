@@ -1,0 +1,106 @@
+{
+ "meta": {
+  "model": "tools/xsgen/mox1000_model.py (homogeneous assemblies)",
+  "library": "ENDF/B-VIII.1 (OpenMC HDF5)",
+  "openmc": "0.16.0",
+  "runs": {
+   "nominal": {
+    "particles": 400000,
+    "batches": 260,
+    "inactive": 60
+   },
+   "void": {
+    "particles": 400000,
+    "batches": 260,
+    "inactive": 60
+   },
+   "doppler": {
+    "particles": 400000,
+    "batches": 260,
+    "inactive": 60
+   },
+   "rods": {
+    "particles": 400000,
+    "batches": 260,
+    "inactive": 60
+   }
+  },
+  "acceptance": "|z| <= 2 with z = (ours \u2212 average) / sqrt(SD\u00b2 + \u03c3\u00b2); SD is the code-to-code spread of Table 4.4",
+  "notes": [
+   "Homogeneous models give 10\u201317 % higher rod worth than heterogeneous ones (\u00a75.6); compare controlRods with ANL-4/ANL-5/CEA-5.",
+   "Doppler state at 2500 K; K_D = \u0394\u03c1/ln(2500/1300.15)."
+  ]
+ },
+ "sourceConvergence": {
+  "nominal": {
+   "activeMean": 7.63207947791748,
+   "activeStd": 0.001760278892751677,
+   "firstActive": 7.6332943723366,
+   "converged": true
+  },
+  "void": {
+   "activeMean": 7.639974761442431,
+   "activeStd": 0.0017904443000587437,
+   "firstActive": 7.639520270041567,
+   "converged": true
+  },
+  "doppler": {
+   "activeMean": 7.632441771156234,
+   "activeStd": 0.0019157360022827926,
+   "firstActive": 7.634695972408345,
+   "converged": true
+  },
+  "rods": {
+   "activeMean": 7.712560890524801,
+   "activeStd": 0.0016264048367031375,
+   "firstActive": 7.7135633576108855,
+   "converged": true
+  }
+ },
+ "results": {
+  "keff": {
+   "value": 1.019845340689127,
+   "sigma": 7.308252624465284e-05,
+   "benchmarkAverage": 1.0287,
+   "benchmarkSD": 0.0062,
+   "z": -1.4280716481480233,
+   "withinTwoSD": true
+  },
+  "betaEff_pcm": {
+   "value": 322.5038462745416,
+   "sigma": 2.534793232843354,
+   "benchmarkAverage": 333,
+   "benchmarkSD": 15,
+   "z": -0.6899615365191598,
+   "withinTwoSD": true
+  },
+  "generationTime_s": {
+   "value": 4.4445708711778704e-07,
+   "sigma": 5.065145713938099e-10
+  },
+  "sodiumVoid_pcm": {
+   "value": 2220.9370842484864,
+   "sigma": 9.468862617940589,
+   "benchmarkAverage": 1831,
+   "benchmarkSD": 228,
+   "z": 1.7087773981900658,
+   "withinTwoSD": true
+  },
+  "doppler_pcm": {
+   "value": -811.510188780156,
+   "sigma": 14.737086373899796,
+   "benchmarkAverage": -731,
+   "benchmarkSD": 70,
+   "z": -1.1254738928356356,
+   "withinTwoSD": true
+  },
+  "controlRods_pcm": {
+   "value": 22909.703491266107,
+   "sigma": 11.21260691886859,
+   "benchmarkAverage": 21605,
+   "benchmarkSD": 2021,
+   "z": 0.6455632913361281,
+   "withinTwoSD": true
+  }
+ }
+}
