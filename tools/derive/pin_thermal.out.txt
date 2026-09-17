@@ -1,0 +1,28 @@
+Carbajo self-check: conductivity within 0.005 W/m/K of Table 6.3; heat capacity within 1.24% of Table 4.3
+burnup 2.720 at.% (25.5 GWd/tHM), porosity 0.05, O/M 2.00
+axial shape: chopped cosine u = 1.07045 (peak/avg 1.22)
+
+R_cna (clad midwall → sodium)      = 1.8342 K per kW/m   [fixed by the 620 °C hot spot]
+R_gap (pellet surface → midwall)   = 5.8657 K per kW/m   [fixed by the 1,380 K core average]
+  equivalent conductance at the pellet surface: 7454 W/m²K (gap plus inner half wall)
+core-average fuel temperature: 4-point 1380.00 K, 16-point 1380.00 K
+
+Checks against spec figures that were NOT used to fix anything:
+  hot-pin centreline at 42 kW/m: 2141 °C   (spec §2.4 ≈ 1,950 °C; difference +191 K)
+  hot-pin centreline at 60 kW/m peak (142 %FP): 2781 °C   (spec: melting ≈ 2,700 °C above ≈ 60 kW/m; difference +81 K)
+  peak linear heat rate at which the centreline reaches 2,700 °C: 57.4 kW/m
+  fuel time constant at the average midplane (T_f 1375 K, C_f 133.9 J/m/K): incremental 3.57 s, secant 3.07 s   (spec §3.2 Doppler lag 4 s)
+
+Sensitivity (what each uncertain input does to the result):
+  hottest outlet 580 °C            R_cna 1.938  R_gap 5.762  hot centreline 2139 °C
+  hottest outlet 585 °C            R_cna 1.724  R_gap 5.976  hot centreline 2143 °C
+  burnup 0 (fresh core)            R_cna 1.834  R_gap 7.607  hot centreline 2114 °C
+  burnup 5.44 at.% (discharge)     R_cna 1.834  R_gap 4.276  hot centreline 2165 °C
+  conductivity −7 % (Carbajo 1σ)   R_cna 1.834  R_gap 4.787  hot centreline 2183 °C
+  conductivity +7 %                R_cna 1.834  R_gap 6.808  hot centreline 2103 °C
+
+Radial non-linearity: mean of ±20 % channels 1383.0 K vs average channel 1380.0 K (flow follows power in each channel)
+
+wrote src/shared/Config/FuelPin.luau (Pu average 0.2059)
+10-layer average channel: core-average fuel 1379.818 K; hot channel: clad max 619.28 °C, centre max 2137.3 °C; layer time constants 3.001–3.799 s
+wrote tests/PinThermalExpected.luau

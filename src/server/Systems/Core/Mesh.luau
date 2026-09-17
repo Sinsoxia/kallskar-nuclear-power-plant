@@ -292,6 +292,21 @@ function Mesh.build(config: any): Mesh
 	return m :: Mesh
 end
 
+--[[
+	The plant mesh for a given (frozen) Config, built once and shared by every system that needs the geometry
+	(Core, FuelThermal, the debug map). Callers must treat it as read-only.
+]]
+local cache: { [any]: Mesh } = setmetatable({}, { __mode = "k" }) :: any
+
+function Mesh.get(config: any): Mesh
+	local m = cache[config]
+	if not m then
+		m = Mesh.build(config)
+		cache[config] = m
+	end
+	return m
+end
+
 -- Node helpers (plain functions; inner loops should inline the arithmetic instead)
 function Mesh.node(m: Mesh, r: number, k: number): number
 	return (k - 1) * m.NR + r

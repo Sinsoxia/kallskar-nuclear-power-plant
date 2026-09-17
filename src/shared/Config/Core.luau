@@ -114,6 +114,14 @@ return {
 	}, "§2.4"),
 	cladBurstLikelyAbove_C = tuning(850, "§2.4: above 850 °C burst likely within minutes"),
 
+	-- Where the thermal power is deposited (spec file 20 calc.py): 95 % in the fuel pins (LHR avg = 0.95·Pth/(301·271)),
+	-- 97 % in fuel-assembly coolant (fuel assembly ΔT = 0.97·Pth/(ṁ_f·cp)); the 2 % difference heats the fuel-assembly
+	-- coolant and structure directly
+	powerSplit = spec({
+		fuelPins = 0.95,
+		fuelAssemblyCoolant = 0.97,
+	}, "file 20 calc.py (LHR avg and fuel assembly ΔT lines)"),
+
 	-- §2.5 flow zoning
 	flow = spec({
 		fractionFuel = 0.925,

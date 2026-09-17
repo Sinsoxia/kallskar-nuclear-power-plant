@@ -148,3 +148,34 @@ which is the physics above and costs O(6). `tests/IQSSpec` runs the §14.2 check
 agree with constant-Λ point kinetics to the solver tolerance, and a fission-side one, which must agree with point
 kinetics including the (1 − ρ) change. The point-kinetics fallback keeps constant Λ: rods and most feedback act
 mainly on the loss side, and the error is O(ρ), below 1% for any sub-prompt-critical state.
+
+## D-018 Fuel-pin thermal model fixed by the core-average fuel temperature (finding F14) — Proposed
+**Spec:** §3.2 fuel average ≈ 1,107 °C (file 20: 1,380 K) at 100 %; §2.4 cladding midwall hot spot ≈ 620 °C,
+hot-pin centreline ≈ 1,950 °C at 42 kW/m, centreline melting above ≈ 60 kW/m; §3.2 Doppler lag 4 s.
+**Problem:** the pin model needs a gap conductance and a cladding-to-sodium resistance, and no local cited source gives
+them for this pin. With Carbajo et al.'s MOX conductivity (ORNL/TM-2000/351) and a power-independent gap, the four
+spec figures cannot all be met: fixing the core average at 1,380 K gives a hot-pin centreline of 2,141 °C (+191 K;
+still +150 K with Carbajo's +7 % conductivity), melting at 57.4 kW/m (spec ≈ 60) and a fuel time constant of 3.0–3.8 s
+(spec 4 s). A real gap closes as the pellet heats, which a single constant cannot represent.
+**Decision:** `tools/derive/pin_thermal.py` fixes the cladding-to-sodium resistance from the 620 °C hot spot (which also
+keeps the spec's 30 K margin to the 650 °C alarm) and the gap resistance from the 1,380 K core average (which the
+§3.2 power defect, Doppler −680 pcm, is computed from). The centreline, melting and lag figures are reported as checks,
+not fitted. Consequence in play: the hot-pin centreline reads about 2,140 °C at 100 % instead of about 1,950 °C (no
+alarm is attached to it), and centreline melting is reached at 57 kW/m peak (≈ 137 %FP) instead of ≈ 60 kW/m.
+Aqua to decide whether §2.4's centreline figure should change, or whether a power-dependent gap model should be added
+once a cited gap-conductance source is available.
+
+## D-019 Cladding temperature is quasi-static — Proposed (engineering simplification)
+**Spec:** §14.3 suggests fuel and cladding temperature states per layer (301 × 10 × 2).
+**Problem:** the cladding's own time constant is its heat capacity times the parallel resistance to fuel and sodium.
+With the derived resistances (gap 5.87, cladding-to-sodium 1.83 K per kW/m) and the heat capacity of any steel wall of
+this size (≈ 55–60 J/(m·K), from a volumetric heat capacity near 4 MJ/(m³·K)), it is about 0.1 s — one fast tick. The
+repository has no cited 15-15Ti property set yet, and the cladding's stored heat is under 3 % of the fuel's.
+**Decision:** FuelThermal keeps one dynamic state per layer (fuel average) and computes the cladding midwall
+algebraically from the current heat flow. The cladding temperature is still published per layer. A dynamic cladding
+node can be added once a cited 15-15Ti heat capacity is in Config; nothing else changes.
+
+## F15 Appendix A table entry (spec wording note)
+The Appendix A table gives c_p = 1.286 kJ/(kg·K) at 950 °C; the Appendix A correlation gives 1.28547, which rounds to
+1.285. Every other table entry matches the correlation to half its last digit. The correlation is used;
+`tests/FuelThermalSpec` holds that one entry to a whole last digit.

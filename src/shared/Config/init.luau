@@ -25,6 +25,7 @@ local Config = {
 	Units = load("Units", require(script.Units)),
 	Clocks = load("Clocks", require(script.Clocks)),
 	Core = load("Core", require(script.Core)),
+	FuelPin = load("FuelPin", require(script.FuelPin)),
 	Kinetics = load("Kinetics", require(script.Kinetics)),
 	Feedback = load("Feedback", require(script.Feedback)),
 	Reactivity = load("Reactivity", require(script.Reactivity)),
