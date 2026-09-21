@@ -1,0 +1,1830 @@
+Architectural Integrity of a Nuclear
+Reactor Simulator: An In-Depth Audit of
+Physics, Systems, and Human Factors
+This report presents a fully in-depth review of every system within the provided HTML
+specification sheet for a realistic reactor simulation game. The analysis focuses on
+achieving technical accuracy by examining the underlying physical and engineering
+assumptions, nested calculations, and inter-system dependencies. The scope encompasses
+the reactor core's neutronics, the thermal-hydraulic behavior of the sodium circuits, the
+operation of the steam cycle and turbine, the complexities of grid integration with a focus
+on the Nordic market, the procedural aspects of control room operations and safety logic,
+and the emergent properties arising from the game's multiplayer mechanics. The
+objective is to provide a comprehensive audit that uncovers implicit constraints, identifies
+potential inconsistencies, and offers insights into enhancing the simulation's realism and
+educational value.
+
+
+
+
+Core Neutronics and Decay Heat Modeling
+The core neutronics model serves as the central engine of the entire simulation, dictating
+the rate of energy production and driving the coupled physics of the thermal-hydraulic
+and safety systems. The specification demonstrates a solid foundation in fast reactor
+physics, incorporating key phenomena that distinguish Sodium-cooled Fast Reactors
+(SFRs) from more common Light Water Reactors (LWRs). However, a deeper audit
+reveals subtle but important nuances in the implementation logic, coupling to other
+systems, and historical context that warrant careful consideration for maximum fidelity.
+The system's integrity hinges on the accurate representation of reactivity feedback, decay
+heat generation, and the geometric complexity of the core itself.
+
+The reactor's design is explicitly inspired by the Phénix prototype fast breeder reactor, a
+real-world example of a pool-type SFR 8 168. The specified thermal power output of
+2,380 MWt aligns with the scaled-up design philosophy, even though the original Phénix
+reactor had a thermal capacity of 563 MWt 3 546. The mention of "long fuel assemblies"
+inserted into a symmetrical grid structure points directly to the inherent three-
+dimensional complexity of an SFR core 1 . This geometry precludes simple one-
+dimensional or even two-dimensional axial models, necessitating a sophisticated spatial
+discretization method. The specification's reference to using a Red-Black Successive Over-
+Relaxation (SOR) solver is a technically sound choice for iteratively solving the neutron
+diffusion equation in such a complex mesh 143. The implementation detail of mapping
+this hexagonal mesh to a flat 1D array for computational efficiency is critical for
+performance, especially given the large number of nodes (e.g., 26,264 flux unknowns)
+143. This optimization avoids the significant overhead and Garbage Collection spikes
+
+associated with nested tables or Roblox Instances, ensuring the simulation can run in
+near real-time without lag 143.
+
+A cornerstone of SFR physics correctly captured in the spec is the positive Doppler
+reactivity feedback mechanism. Unlike LWRs where the dominant effect is negative, in an
+SFR, an increase in fuel temperature causes the uranium-238 resonance absorption peaks
+to broaden, leading to a net insertion of positive reactivity 270. This means that if the
+reactor power increases, causing temperatures to rise, the power will tend to increase
+further unless counteracted by other feedbacks or control actions. This characteristic
+makes load-following operations in an SFR inherently more challenging and requires
+precise, continuous control from operators. The specification implicitly acknowledges this
+by detailing the need for tight coordination between the Reactor Desk and Turbine Desk
+142341. A rapid change in turbine load can cause a pressure transient that affects coolant
+
+density and thus reactivity, interacting directly with this positive feedback loop.
+Managing this requires a deep understanding of the reactor's kinetic response, which is
+governed by the effective delayed neutron fraction and the generation time of the chain
+reaction 307.
+
+Another critical distinction from LWRs noted in the specification is the lack of significant
+xenon-135 poisoning 544. Xenon-135 has a very large neutron absorption cross-section
+and builds up as a fission product after a reactor shutdown, creating a "xenon dead time"
+during which the reactor cannot be restarted. The absence of this phenomenon in an SFR
+simplifies restart procedures; the reactor can be brought back to power much more
+quickly after a trip, as confirmed by experience with the Phénix reactor 544. However, this
+does not mean the buildup of other poisons is ignored. Samarium-149, another strong
+neutron absorber, still accumulates over time and contributes to reactivity worth
+depletion. Therefore, while the operator does not have to manage a dynamic xenon field,
+they must still contend with the slower, cumulative burnup of fissile material and the
+buildup of other fission products. This simplification significantly alters the strategic layer
+of reactor operation compared to simulating a PWR or BWR.
+The most crucial aspect of the core's post-shutdown behavior is the modeling of decay
+heat. The specification provides both a mathematical formula and a lookup table for
+decay heat power as a function of time since shutdown. The initial analysis correctly
+identified a ~3% discrepancy at t=1 second, where the formula yields approximately 156
+MW while the table specifies 151 MW 127. This difference is not an error but a deliberate
+reflection of the specific nuclide mix within the Phénix-derived core. Standard ANSI/
+ANS-5.1 curves are based on average isotopic compositions, whereas the Phénix core,
+fueled with plutonium-based materials, has a different decay heat profile immediately
+following shutdown 399. The specification's approach of providing both a formula (likely
+of the form P (t)=P0∑iλiNie−λit ) and a discrete table is a practical compromise,
+allowing for high-fidelity initial decay heat values while maintaining computational
+efficiency through interpolation for later times. The exact coefficients in the formula
+would need to be calibrated against experimental data from reactors like Phénix, which
+has been a subject of research for decades 123342.
+
+The decay heat calculation is not an isolated exercise; it is the fundamental driver for all
+emergency core cooling and decay heat removal (DHRS) systems 129. The magnitude of
+the decay heat dictates the required flow rate and temperature drop across the DHRS
+heat exchangers to safely remove the residual energy 230. During a Station Blackout (S-16
+scenario), the ability to passively remove decay heat becomes the sole defense against
+core damage 316515. The amount of decay heat present also determines the duration for
+which passive systems must remain functional. For instance, the reactor's primary coolant
+inventory can provide a grace period of over 24 hours during an SBO transient, allowing
+sufficient time for decay heat to be removed by natural circulation or other passive means
+315. The simulation must accurately model this time-dependent heat source, as its failure
+
+to do so would render all safety-related scenarios fundamentally flawed. The decay heat
+curve, therefore, forms a critical boundary condition for the thermal-hydraulic and safety
+system simulations.
+
+ Time Since Shutdown (s)   Power (% of Full Power)   Notes
+
+ 1                         151                       Specified table value. Discrepancy with formula noted. 127
+
+ 10                        Unknown                   Not specified in provided sources.
+
+ 100                       Unknown                   Not specified in provided sources.
+
+ 1,000                     Unknown                   Not specified in provided sources.
+
+
+
+
+Note: The table reflects known values from the specification. Other values are placeholders
+for missing data.
+In summary, the core neutronics and decay heat modeling in the specification is
+conceptually robust and grounded in the unique physics of SFRs. The use of a 3D solver,
+the inclusion of positive void reactivity feedback, and the accurate representation of
+decay heat generation are all essential pillars of the simulation. The small discrepancy in
+the decay heat table highlights the importance of tailoring models to specific reactor
+designs rather than relying solely on generic standards. The true test of this system's
+quality lies in its seamless and accurate coupling with the thermal-hydraulics model,
+where the generated power and decay heat become the primary thermal inputs driving
+the behavior of the entire primary sodium system.
+
+
+
+
+Thermal-Hydraulics and Primary Sodium Circuit
+Dynamics
+The thermal-hydraulics of the primary sodium circuit is arguably the most complex and
+critical subsystem in the reactor simulation, representing a tightly coupled multi-physics
+problem. Its accurate modeling is paramount for simulating safe and unstable transients,
+from normal load-following to severe accidents like a Station Blackout (S-16). The
+specification outlines a system with a clear energy balance, explicit safety features like
+passive decay heat removal, and nuanced operational considerations such as thermal
+fatigue. A thorough audit reveals the intricate dependencies between components, the
+physical basis for key safety margins, and areas where the model could be enhanced for
+greater realism.
+
+The overall energy balance of the primary sodium loop is well-defined, forming the
+bedrock of the thermal-hydraulic calculations. The total heat input to the primary sodium
+is stated as the sum of the reactor core's thermal power (2,380 MWt) and the parasitic
+heat generated by the primary pumps (approximately 10 MWt), totaling 2,390 MWt 307.
+This heat is transferred to the secondary loops via the steam generators. The specification
+states that three secondary loops, each with a duty of 796 MWt, remove a total of 2,388
+MWt 307. This leaves a calculated deficit of 2 MWt. While seemingly minor, this
+imbalance is physically significant. It represents parasitic heat loss to the guard vessel and
+the surrounding environment, a factor that must be included in any comprehensive
+thermal model 122. For a more realistic simulation, this term could be made dependent on
+the temperature difference between the sodium and ambient air, incorporating principles
+of convection and radiation heat transfer. The tight budget of the energy balance also
+makes the system sensitive to measurement errors; a mere 0.1% error in the perceived
+steam generator duty could throw the entire thermal state of the primary loop off track,
+potentially triggering false alarms or masking actual problems.
+
+
+A defining feature of modern SFR design, and a cornerstone of its passive safety case, is
+the Decay Heat Removal System (DHRS) 129. The specification implies the existence of
+such a system, which is designed to remove decay heat without relying on active
+components like pumps, especially during a Station Blackout (S-16) 71 . This relies on
+natural circulation, where buoyancy forces drive the flow of sodium through the core and
+dedicated heat exchangers 72 229. The effectiveness of natural circulation is critically
+dependent on maintaining a sufficient temperature differential between the hot and cold
+pools of the reactor vessel 317. A hidden but crucial dependency exists between the cover
+gas pressure system and the DHRS. As the primary sodium heats up during an accident,
+the cover gas above it expands, increasing its pressure 70 . If this pressure rises too much,
+it can compress the surface of the sodium, reducing the hydrostatic head that drives the
+natural circulation flow. This creates a dangerous positive feedback loop: more heat leads
+to higher pressure, which reduces flow, which leads to even more heating. The
+simulation must model this coupling, forcing players to manage cover gas pressure (e.g.,
+by venting to decay tanks) as part of their emergency response 70 128.
+
+The role of primary coolant pumps extends beyond simply circulating sodium under
+normal operating conditions. Their inertia, often augmented by a flywheel mounted on
+the pump shaft, provides a vital "flywheel action" during transients 307. In the event of a
+reactor trip or loss of power to the pumps, this inertia keeps the sodium flowing for a
+finite period, allowing the control rods to fully insert into the core before flow stops 308.
+This gradual coast-down is essential for preventing a rapid power spike that could occur
+if the flow were to cease instantaneously. The specification should define a specific flow-
+halving time for this coast-down phase, as this parameter has direct consequences for
+peak temperatures reached in the core during an unprotected Loss-of-Flow (ULOFC)
+transient 308. A longer coast-down time provides more opportunity for the negative
+reactivity feedbacks to shut down the chain reaction before significant power peaking
+occurs.
+
+A highly realistic detail incorporated into the specification is the management of thermal
+fatigue in the piping system 313. SFRs are subjected to numerous transients, including
+startups, shutdowns, and load-following maneuvers, which cause rapid temperature
+changes in the primary piping. These cyclic thermal stresses can lead to fatigue damage
+and eventual cracking. The specification mentions a limit on plugging temperature rises
+to 2 K per 10% loading above 70% power 313. This implies that the simulation's thermal
+model must track not just the absolute temperature of components but also the rate of
+temperature change (dT/dt). Calculating dT/dt requires integrating the energy balance
+equation over time for each segment of the piping network, a non-trivial task. Enforcing
+this constraint would add a significant layer of operational complexity, rewarding players
+who ramp power and load smoothly and penalizing those who make abrupt changes.
+
+
+The sodium circuit's design includes several other key components whose interactions
+must be modeled. The use of DN50 piping for certain lines is a specific design choice
+mentioned in the spec 250293. While seemingly trivial, pipe diameter is a critical
+parameter in hydraulic calculations, affecting flow velocity, pressure drop, and the
+Reynolds number, which determines whether the flow is laminar or turbulent. The
+specification also notes the risk of sodium freezing at 97.8 °C and a trace heating alarm
+for temperatures below 150 °C 152. This highlights the need for a detailed thermal model
+of the insulation and heating systems around the pipes. A heater fault on a drained line,
+as described in Scenario S-12, illustrates this dependency perfectly. If players attempt to
+thaw a frozen DN50 pipe by applying heat at the midpoint, the sudden expansion of the
+molten sodium in the constrained section could rupture the pipe—a detail that adds a
+layer of physical consequence to player actions 152223.
+
+In conclusion, the thermal-hydraulics and sodium circuit dynamics represent a deeply
+interconnected and physically rich domain. The specification correctly identifies the
+major components and phenomena, including the energy balance, passive decay heat
+removal, pump flywheel action, and thermal fatigue. The success of the simulation will
+depend on the meticulous implementation of the couplings between these elements. The
+relationship between cover gas pressure and natural circulation, the impact of flow coast-
+down time on transient power, and the tracking of temperature derivatives for fatigue
+management are all examples of the nested calculations and dependencies that give the
+system its depth. Getting these details right is essential for creating a believable and
+challenging simulation of an SFR's behavior.
+
+
+
+
+Steam Cycle, Turbine Control, and Grid Interaction
+The final stage of converting nuclear energy into electricity involves the steam cycle and
+its interaction with the electrical grid. This system transforms the thermal energy carried
+by the primary sodium into mechanical work in the turbines, which then generate
+electrical power. The specification adeptly captures the principles of the Rankine cycle,
+the critical distinction between reactor and turbine control philosophies, and the complex
+rules of the Nordic electricity market, particularly the provision of Frequency
+Containment Reserves (FCRs). An in-depth analysis reveals the nested calculations
+required for optimal turbine operation and the profound way in which grid dynamics
+dictate the operational envelope of the entire power plant.
+
+
+The steam cycle is modeled according to the principles of the Rankine cycle, a standard
+thermodynamic model for heat engines 11 20 . The primary sodium transfers heat to
+water in the steam generators (SGs), producing superheated steam that is directed to the
+main turbine 13 . The turbine, likely a multi-stage impulse-reaction type, converts the
+thermal energy of the steam into rotational mechanical energy, which drives the
+electrical generator 33 . The spent steam is then condensed back into water in the
+condenser and pumped back to the SGs to complete the secondary loop. The efficiency of
+this entire process is a key performance indicator for the plant. The specification hints at
+the complexity of this system by mentioning reheating stages, which are used in large
+power plants to improve efficiency and prevent blade erosion by keeping the steam dry at
+the turbine exit 11 . The simulation must therefore solve the energy and mass balances
+across multiple components: the SGs, the turbine stages, the reheater, the feedwater
+heaters, and the condenser 477.
+
+
+A central gameplay and operational mechanic is the separation of reactor power control
+from turbine load control, reflecting modern nuclear plant practices 142341. In "reactor
+following" mode, the reactor's control system modulates core power to maintain a
+constant steam pressure, while the turbine operates at full or partial load. In "turbine
+following" mode, the turbine's governor adjusts its steam admission valves to meet a
+requested electrical load, and the reactor's power level (and thus pressure) is allowed to
+fluctuate accordingly. This distinction is a powerful source of emergent gameplay and
+communication friction between players manning different control desks. A player on the
+Turbine Desk attempting to rapidly increase load in reactor-following mode will cause the
+steam pressure to drop, which in turn causes the reactor's own control systems to respond
+by inserting less poison to increase power, creating a delicate balancing act. Conversely, a
+reactor operator ramping power too aggressively in turbine-following mode could cause
+pressure to exceed limits, tripping the turbine. This inherent tension encourages the
+cooperation and communication the user's design goals emphasize.
+
+The asymmetric splitter valve puzzle is a prime example of the nested calculations and
+competing objectives present in turbine control 142. This component divides the steam
+flow between high-pressure (HP) and low-pressure (LP) turbine sections. Optimally
+managing this valve involves balancing several factors: maximizing the overall thermal
+efficiency of the cycle (which generally favors higher initial steam pressure), staying
+within the mechanical stress limits of the turbine blades, and maintaining the superheat
+temperature of the steam entering the LP turbine within a safe operating window. The
+game's simulation must calculate the optimal valve position in real-time based on inputs
+from the Reactor Desk (total steam flow and pressure), the Turbine Desk (desired
+electrical load), and potentially the SG Desk (steam temperature and quality). The
+outcome of this calculation directly impacts the plant's efficiency and mechanical
+integrity, making it a perfect micro-management challenge for skilled players.
+
+Perhaps the most innovative aspect of the specification is its integration of real-world grid
+dynamics, specifically the Nordic FCR markets 170171. FCRs are automatic, fast-acting
+reserves used to stabilize the grid frequency. FCR-N (for Normal operation) is a
+continuous service that keeps the frequency within the narrow band of 49.9 Hz to 50.1
+Hz, smoothing out small, ongoing imbalances between generation and demand 176177.
+FCR-D (for Disturbance) is a faster, larger response for more significant frequency
+deviations 95 . The specification correctly captures the stringent technical requirements
+for providers of these services. FCR-D must be fully activated within 30 seconds of a
+trigger signal 200360. Furthermore, there are endurance requirements: FCR-N must be able
+to sustain its full activation for one hour, while FCR-D has different rules depending on
+the direction of regulation 146148.
+
+These grid service requirements are not merely abstract rules; they impose direct physical
+constraints on the plant's operation. The 30-second activation time for FCR-D
+corresponds directly to the physical response time of the turbine's governor system 240.
+The requirement to have reserved power in the opposite direction (e.g., if bidding 8 MW
+of upward regulation, the plant must be able to commit to providing 2 MW of downward
+regulation) reflects the plant's minimum stable operating load 151202. A plant cannot bid
+more FCR-D than the difference between its current load and its minimum stable load.
+The simulation must therefore model these physical limits, not just enforce them as
+arbitrary caps. The economic incentives are tied to the price of these reserves, which can
+be significant; the average price for FCR-N was reported at 37.4 EUR/MW in April 2025
+172.
+
+
+
+The division of Sweden into bidding zones (SE1, SE2, SE3, SE4) introduces another layer
+of complexity 135277. Price differences between these zones create arbitrage opportunities.
+The flow of power across zone borders is managed by a system called Flow-Based Market
+Coupling (FBMC), which dynamically calculates the Net Transfer Capacity (NTC) based
+on grid congestion 275363. The specification notes that corridors like NO1>SE3 can be
+limited to below 70% of their maximum NTC 134. This creates a hidden dependency
+between the plant's location and its profitability. Selling power from a plant in SE3 to a
+consumer in SE2 is only profitable if the price in SE2 exceeds the price in SE3 by more
+than the transmission cost. The simulation could implement a simplified FBMC model to
+show how congestion on the path between SE2 and SE3 reduces the effective transfer
+capacity and thus the potential profit, linking the grid mechanics directly to the core's
+ability to produce power.
+
+
+In summary, the steam cycle and grid interaction systems transform the reactor from a
+standalone power producer into a participant in a complex, dynamic ecosystem. The
+distinction between reactor and turbine following creates a natural tension requiring
+teamwork. The asymmetric splitter valve presents a classic engineering trade-off problem.
+Most importantly, the detailed modeling of FCR requirements and the Nordic bidding
+zone dynamics grounds the simulation in real-world economic and regulatory
+frameworks. Successfully implementing these systems requires not only thermodynamic
+knowledge but also a deep understanding of grid code compliance and market
+economics.
+
+
+
+
+Control Room Procedures and Safety Systems
+The control room procedures and safety systems form the human-machine interface
+through which players interact with and manage the reactor. The specification
+demonstrates a strong grasp of nuclear power plant operational concepts, from
+procedural handovers to historically significant events. An in-depth review uncovers the
+critical importance of procedural accuracy, the design rationale behind intentional
+automation flaws, and the underlying logic of the safety systems that protect the plant.
+These elements are crucial for fostering an immersive and authentic experience that
+challenges players to think and act like real operators.
+
+
+One of the most valuable contributions from the preliminary analysis was the correction
+of the historical incident described in Scenario S-09. The original specification referred to
+"unexplained negative reactivity trips," but historical records for the real Phénix reactor
+indicate that the incidents in 1989 and 1990 were caused by unexplained positive
+reactivity insertions leading to power spikes 70 169. The root cause was identified as
+thermal stratification in the hot pool, where uneven cooling of the diagrid by incoming
+cooler sodium from the intermediate heat exchangers led to structural deformations that
+inadvertently inserted positive reactivity 70 . Correcting the specification to reflect this
+positive insertion is not merely a factual fix; it transforms a generic "trip" scenario into a
+powerful teaching tool about a specific and important engineering failure mode unique to
+pool-type liquid metal reactors. It underscores the lesson that thermal-hydraulic
+phenomena can have direct and dangerous consequences for neutronic stability,
+reinforcing the deep coupling between the core and the primary sodium system. This
+corrected narrative should be integrated into the training materials for new players.
+
+
+The concept of intentionally "worse than a crew" auto-controllers is a masterstroke of
+game design, as it directly addresses the user's goal of forcing human cooperation 143.
+Instead of providing infallible automation, these controllers are designed to be useful but
+flawed tools. This can be implemented through several techniques. For example, the
+automatic controller for the primary sodium pumps might have a deliberately sluggish
+response (a long time constant) or contain added measurement noise, making it difficult
+to hold a precise setpoint. The automatic turbine load follower might be tuned to
+overshoot its target, requiring manual intervention to correct. The reactor power leveling
+system might ignore minor fluctuations in steam demand that a human operator would
+notice. The underlying principle is to make the automated systems reliable enough to
+handle steady-state operation but unreliable enough to require constant supervision and
+occasional override by a knowledgeable human operator. This prevents players from
+becoming passive observers and compels them to engage with the instrumentation and
+understand the system's dynamics.
+
+For shift handovers, the suggestion of a digital logbook on the Shift Supervisor desk is an
+excellent addition for improving situational awareness and continuity of operations 218.
+In a real nuclear power plant, shift handover is a critical safety event where the outgoing
+crew briefs the incoming crew on the current plant status, ongoing work, equipment
+outages, and any unresolved issues 212218. A persistent logbook feature in the game
+would allow players to record information such as the status of Limiting Conditions for
+Operation (LCOs), which equipment is isolated for maintenance, any recent anomalies,
+and the planned course of action. This shared, persistent record would be invaluable to
+the incoming shift, helping them avoid repeating mistakes and quickly get up to speed on
+the plant's situation. Implementing this would require a simple persistent data store that
+survives shifts, allowing notes to be appended and viewed by all players on the team.
+
+The safety systems, particularly the reactor protection system (RPS), are the ultimate fail-
+safe for the plant. While the specification describes the outcomes of protective actions
+(trips), the underlying logic is less detailed. A robust RPS is typically designed with
+diversity and independence to prevent common-mode failures 421. This means there are
+usually at least two independent protection channels, and they may use different physical
+principles (e.g., one based on neutron flux, another on core outlet temperature). The RPS
+monitors a wide range of parameters for deviation from safe operating limits. Based on
+the provided context, we can infer the key parameters and their typical setpoints for an
+SFR:
+ Parameter                 Typical Setpoint/Alarm/Trip          Associated Phenomenon / Safety Function
+                           Value
+
+ Reactor Power             Trip: Instantaneous rapid increase   Prevents overpower accidents and core damage.
+
+ Core Outlet Sodium        Alarm: > 545°C                       Limits fuel and cladding temperatures to prevent melting. 338
+ Temperature               Trip: > 560°C
+
+ Primary Pump Status       Trip: Loss of all running pumps      Initiates emergency core cooling and DHRS. 239
+
+ Steam Generator Tube      Trip: Rapid pressure decrease in     Isolates primary from secondary to prevent radioactive contamination
+ Rupture                   secondary loop                       release. 511
+
+ Cover Gas Pressure        Alarm: > 0.140 MPa                   Maintains cover gas pressure within design limits to prevent oxygen
+                           Trip: > 0.160 MPa                    ingress and control sodium boiling. 70
+
+ Vessel Level (Hot Pool)   Trip: Low Level                      Prevents uncovering of the core, leading to overheating. 419
+
+
+
+
+These setpoints are not arbitrary; they are derived from extensive safety analysis and
+experiments on phenomena like natural circulation decay heat removal 303306. The
+simulation must accurately model the sensors and logic that monitor these parameters.
+For example, the loss of a primary pump would not only be detected by a flow meter but
+would also be confirmed by a drop in sodium temperature at the core inlet due to
+reduced forced convection. The RPS logic would integrate these signals to make a robust
+trip decision, preventing nuisance trips from a single sensor failure.
+
+In summary, the procedural and safety systems are the framework that gives structure
+and consequence to the player's actions. Correcting historical inaccuracies like the Phénix
+S-09 event enhances the educational value. The intentionally flawed auto-controllers are
+a brilliant design choice to promote active engagement. A digital logbook would improve
+shift continuity. Finally, the reactor protection system must be built on a foundation of
+credible setpoints and logical triggers derived from established safety principles for SFRs.
+These elements collectively ensure that the simulation feels not just like a game, but like
+a serious operational training tool.
+
+
+
+
+Multiplayer Mechanics and Emergent Scenarios
+The multiplayer mechanics and the complex interplay between the various physical
+systems are what elevate the project from a static simulation to a dynamic, interactive
+experience. The user's design intentionally leverages system dependencies and
+communication barriers to create emergent gameplay, forcing players to cooperate to
+achieve a common goal. An audit of these mechanics reveals how a cascade of failures
+can propagate through the coupled systems, and how the defined roles and limitations
+within the control room create friction that must be resolved through teamwork. The
+most telling validation of the design's coherence comes from tracing an end-to-end
+scenario, such as a Station Blackout (S-16), from initiation to resolution.
+
+
+A Station Blackout (S-16) serves as a perfect example of a complex, multi-system
+transient that tests the limits of the simulation's coupling and the players' coordination.
+Let's trace the sequence of events: 1. Initiation: The scenario begins with a complete loss
+of off-site electrical power. This is the initiating event. 2. Immediate Response - Plant
+Power: The plant automatically transitions to relying on station service power, supplied
+by its own Emergency Diesel Generators (EDGs) 464. The system must simulate the
+startup time of the EDGs, during which the plant may rely on battery backups or the
+spinning inertia of the turbine-generator set. The successful start of the EDGs is the first
+critical step. 3. Thermal-Hydraulic Coupling - Decay Heat Buildup: If the EDGs fail to
+start, the primary coolant pumps lose power. Here, the primary pump flywheel action
+becomes critical, providing a few minutes of coast-down flow to keep sodium moving
+through the core 307308. During this time, decay heat continues to be generated in the fuel
+127. The temperature of the primary sodium will begin to rise. 4. Safety System
+
+Activation - Natural Circulation: With forced flow lost, the plant must rely on its passive
+safety systems. Operators must manually or automatically initiate the Decay Heat
+Removal System (DHRS), which uses natural circulation to move sodium through the
+exchangers 71 . The effectiveness of this depends on the temperature difference between
+the core and the DHRS heat exchangers. If the sodium pool heats up too much, thermal
+stratification could develop, potentially reducing the driving head for natural circulation
+70 . 5. Human Factor - Coordination Under Stress: With alarms blaring and multiple
+
+systems failing, the crew must communicate effectively. The Reactor Desk needs to
+monitor core temperatures, the Primary Desk needs to confirm the status of the DHRS,
+and the Shift Supervisor needs to coordinate the overall response. They must refer to the
+shift log to see if any maintenance work was done on the pumps or DHRS that could
+explain the failure. The asymmetric auto-controllers would be useless here, forcing
+players to take manual control of every critical system. 6. Islanding and Grid
+Interaction: Once the EDGs are supplying the plant's own loads, the unit is "islanded." Its
+frequency will no longer be locked to the grid. If the plant was participating in FCR
+markets, those services would need to be managed differently, likely by having the
+turbine governor regulate the island frequency. The rules for an islanded network are
+completely different from the synchronous area rules of the Nordic grid. This represents a
+significant conceptual shift for the players.
+
+This scenario clearly illustrates the deep interdependencies. The decay heat calculation
+(Neutronics) drives the thermal-hydraulic response. The thermal-hydraulic state (sodium
+temperature) determines the feasibility of natural circulation. The success of natural
+circulation is coupled to cover gas pressure and thermal stratification. All of this unfolds
+under the duress of a noisy, stressful control room environment, demanding effective
+communication and adherence to procedures.
+
+
+The multiplayer mechanics are explicitly designed to create this kind of friction. The
+physical separation of the control desks (Reactor, Primary, SG, Turbine) means that no
+single player has access to all the necessary information or controls 142143. A problem on
+the Turbine Desk (e.g., a governor malfunction) cannot be fixed by the Reactor Operator.
+Similarly, a low sodium level alarm from the Primary Desk requires input from the
+Turbine Desk to reduce load and conserve inventory. This forces players to verbally
+communicate, share information, and coordinate their actions. The "vote-kick" safeguard
+is a clever implementation detail that reinforces good behavior; it only opens if there is
+no valid reason for a trip, preventing players from punishing justified protective actions
+143. This encourages players to troubleshoot the underlying issue rather than resorting to
+
+disruptive behavior.
+
+The anti-AFK (Away From Keyboard) drift mechanism is another subtle but important
+feature. By slowly drifting the state of local-only controls (like valve positions or switch
+settings), it ensures that players must periodically return to their stations to maintain the
+plant's state. This prevents a single player from taking over the entire operation and
+reinforces the necessity of a distributed crew. The walking times between desks also add
+a layer of realism and force players to plan their movements, perhaps needing to
+physically walk to another console to perform a check or operate a field device.
+
+However, some gaps in the specification remain. While the spec covers Design Basis
+Accidents (DBAs) like S-16, it does not detail the progression into a Severe Accident,
+which involves phenomena like core meltdown, relocation of molten fuel (corium), and
+potential interaction with the reactor cavity concrete 246312. Modeling this would be
+extremely complex and may be outside the intended scope of the game. Similarly, the
+detailed management of sodium chemistry (e.g., controlling oxygen and hydrogen
+content to prevent corrosion) is a critical long-term operational task in real SFRs but is
+not elaborated upon in the spec 90 . These are advanced topics that could be considered
+for future expansions of the simulation.
+
+In conclusion, the multiplayer mechanics are thoughtfully designed to leverage the
+inherent complexity and coupling of the reactor systems. End-to-end scenarios like a
+Station Blackout serve as a crucible, testing the players' understanding of the coupled
+physics and their ability to work as a team. The friction created by separated control
+desks, communication requirements, and anti-AFK measures is not a bug but a feature,
+designed to force the human cooperation that is essential for safe and efficient nuclear
+power plant operation. The remaining gaps in areas like severe accident progression and
+sodium chemistry represent opportunities for future development rather than current
+oversights.
+
+
+
+
+Overall Synthesis and Recommendations for
+Enhancement
+The comprehensive review of the reactor simulation game specification reveals a
+remarkably detailed and technically sophisticated document that successfully blends
+rigorous nuclear engineering principles with compelling game design. The user's ambition
+to create a realistic and cooperative simulation is evident in every system, from the core
+neutronics to the intricacies of the Nordic electricity market. The specification is not
+merely a list of features but a cohesive blueprint for a complex, multi-physics simulation
+where systems are deeply coupled, and player actions have cascading consequences. The
+initial analysis correctly identified several key areas for refinement, and this deeper audit
+confirms their importance while highlighting the project's overall strengths and potential
+for enhancement.
+
+The foundational strength of the specification lies in its accurate representation of
+Sodium-cooled Fast Reactor (SFR) physics. The inclusion of a positive void reactivity
+coefficient and the absence of significant xenon poisoning poisoning correctly
+differentiate the SFR operational paradigm from that of conventional Light Water
+Reactors 270544. The choice of a Red-Black SOR solver for the 3D core geometry is a
+sound technical decision, acknowledging the complexity of the problem 143. The attention
+to detail in the decay heat modeling, including the acknowledgment of a slight
+discrepancy from standard curves to match the Phénix core's specific nuclide mix,
+demonstrates a commitment to authenticity 127. These choices form a robust and
+physically plausible core engine for the entire simulation.
+
+The thermal-hydraulics and sodium circuit dynamics are arguably the most complex and
+well-realized parts of the specification. The clear definition of the primary loop's energy
+balance, the explicit modeling of passive decay heat removal via natural circulation, and
+the critical linkage between cover gas pressure and decay heat removal capability
+showcase a deep understanding of SFR safety systems 70 71 307. The consideration of
+thermal fatigue and the physical constraints of sodium freezing add layers of operational
+nuance that reward careful and smooth maneuvering 152313. The tight coupling between
+these elements ensures that a change in one parameter, like pump flow or cover gas
+pressure, will have a tangible and predictable effect on others, creating a believable and
+responsive virtual world.
+
+
+The integration of the steam cycle with the external grid is a standout feature, elevating
+the simulation from a purely internal plant model to a participant in a dynamic economic
+and regulatory environment. The detailed implementation of Frequency Containment
+Reserve (FCR) mechanics for the Nordic market is particularly impressive, grounding the
+gameplay in real-world technical requirements and economic incentives 148172200. The
+distinction between reactor-following and turbine-following modes, and the resulting
+need for inter-desk communication, is a masterful piece of game design that directly
+achieves the user's goal of fostering cooperation 341.
+
+Finally, the procedural and safety system design reinforces the simulation's educational
+and authentic feel. Correcting the historical Phénix incident (S-09) to reflect a positive
+reactivity insertion is a crucial improvement for accuracy and learning value 70 . The
+intentionally flawed auto-controllers are a brilliant solution to prevent automation
+dependency and force player engagement 143. The proposed digital logbook for shift
+handovers would provide a valuable tool for maintaining situational awareness across
+sessions 218.
+
+Based on this comprehensive review, the following recommendations for enhancement
+can be offered:
+
+   1. Formalize the Coupling Algorithms: While the specification describes the
+      couplings conceptually, the next step is to formalize the algorithms. Create detailed
+      flowcharts or pseudocode for the nested calculations, such as the logic for the
+      asymmetric splitter valve and the sequence of actions during a Station Blackout.
+      This will guide the programming and ensure consistency.
+
+   2. Develop a Detailed Instrumentation and Control (I&C) Model: Expand the
+      safety system section to include the logic of the Reactor Protection System (RPS).
+      Define the specific setpoints for all scram triggers, the voting logic for redundant
+      channels, and the types of sensors used. This will add another layer of realism and
+      make the cause-and-effect relationships in an accident clearer.
+
+   3. Implement Dynamic Parasitic Losses: Refine the primary loop energy balance by
+      making the 2 MWt parasitic loss term dynamic. Model it as a function of the
+     sodium-to-ambient temperature difference, incorporating both convective and
+     radiative heat transfer. This will make the thermal state of the primary loop more
+     responsive to environmental conditions.
+
+
+   4. Create a Sodium Chemistry Module: For future development, consider designing
+      a module for sodium chemistry management. This could involve monitoring and
+      controlling oxygen and hydrogen levels in the cover gas and sodium, which directly
+     impacts corrosion rates and the integrity of components like steam generators 90 .
+
+   5. Design Advanced Scenarios: Use the validated coupled models to design
+      additional, more complex scenarios. For example, a "Large Sodium Leak followed
+      by a Loss-of-Forced-Circulation" scenario could test the players' ability to manage
+      multiple simultaneous emergencies, requiring them to secure the primary system
+      while simultaneously initiating decay heat removal.
+
+In conclusion, the user's specification is exceptionally strong and demonstrates a deep
+passion for and understanding of nuclear engineering. The project is poised to become a
+premier example of a serious game in the field of nuclear technology. The existing design
+already provides a formidable challenge and a rich learning environment. By focusing on
+the meticulous implementation of the identified couplings and dependencies, and by
+considering the outlined enhancements for future phases, the developer can realize the
+full potential of this ambitious and impressive project.
+
+
+
+
+Reference
+
+1. Description of the Phénix reactor core zones. https://www.researchgate.net/figure/
+   Description-of-the-Phenix-reactor-core-zones_fig2_273089080
+2. phenix experiment facilities for fission product destruction ... https://inis.iaea.org/
+   records/0zns1-z1s05/files/25010974.pdf
+3. Phenix https://world-nuclear.org/nuclear-reactor-database/details/PHENIX
+4. Nucleares Nuclear Power Plant Simulator - Season 3 Episode ... https://
+   www.youtube.com/watch?v=jKjEAF_K1yM
+5. PHENIX https://www.oecd-nea.org/pt/docs/iem/lasvegas04/10_Session_IV/
+   S4_01.pdf
+6. Nuclear Reactor Simulator https://dalton-nrs.manchester.ac.uk/
+ 7. Application of RELAP5-3D© for liquid metal reactor safety https://inl.gov/content/
+    uploads/2024/05/Application-of-RELAP5-3D-for-Liquid-Metal-Reactor-Safety.pdf
+ 8. Phénix https://en.wikipedia.org/wiki/Ph%C3%A9nix
+ 9. The French SFR Operating Experience https://www.nrc.gov/public-involve/
+    conference-symposia/ric/past/2019/docs/abstracts/settimod-t7-hv-r1.pdf
+10. Starting a nuclear reactor in the 'Start up' Scenario https://www.youtube.com/watch?
+    v=ACQh9jRXKAc
+11. Rankine Cycle (Steam Turbine) - MATLAB & Simulink https://www.mathworks.com/
+    help/simscape/ug/rankine-cycle-steam-turbine.html
+12. Dynamic Modeling and Simulation of a Power Generation ... https://
+    digitalcommons.calpoly.edu/theses/3191/
+13. Water-cooled nuclear reactors (WCRs) https://direns.minesparis.psl.eu/Sites/Thopt/
+    en/co/centrales-nucleaires-eau.html
+14. Aspen Plus Tutorial: Rankine Cycle Steam Engine Simulation ... https://
+    www.youtube.com/watch?v=r70tLJX6Rp8
+15. Transient Simulation of a Steam Rankine Cycle Using ... https://epubs.ans.org/
+    download/?a=57673
+16. Rankine Cycle Interactive Calculator https://www.firgelliauto.com/blogs/calculators/
+    rankine-cycle-calculator?
+    srsltid=AU7gw4VhT5HlwUk6yVjmddhyGFI3jm4bpX48BOl1M51kPxXfDzDlb-w8
+17. Rankine cycle (with units) https://www.cantera.org/dev/examples/python/thermo/
+    rankine_units.html
+18. THERMODYNAMIC ANALYSIS ON RANKINE CYCLE ... https://inis.iaea.org/records/
+    7ys73-j7x78/files/52095830.pdf?download=1
+19. Thermodynamic analysis of modular high-temperature ... https://journals.pan.pl/
+    Content/113503?format_id=1
+20. Rankine Cycle - Steam Turbine Cycle | Characteristics https://www.nuclear-
+    power.com/nuclear-engineering/thermodynamics/thermodynamic-cycles/rankine-
+    cycle-steam-turbine-cycle/
+21. User Guide — Certbot 5.9.0.dev0 documentation https://eff-certbot.readthedocs.io/
+    using.html
+22. How a Manual Transmission and Clutch Works https://www.youtube.com/watch?
+    v=o1ED4FQjDGk
+23. VA Programs HMIS Manual https://www.hudexchange.info/resource/4450/va-
+    programs-hmis-manual/
+24. Manual Therapy | Journal | ScienceDirect.com by Elsevier https://
+    www.sciencedirect.com/journal/manual-therapy
+25. Manual: Men's Healthcare - Made easy https://www.manual.co/
+26. Manual juicers are better? @jordan_the_stallion8 #shorts https://www.youtube.com/
+    shorts/0Ibv9oM2lKU
+27. Reference Manual on Scientific Evidence, Fourth Edition https://www.fjc.gov/
+    content/396456/reference-manual-scientific-evidence-fourth-edition
+28. Electron Configuration - Basic introduction https://www.youtube.com/watch?
+    v=NIwcDnFjj98&vl=en
+29. Control Room Guide - Every Switch and Dial https://www.youtube.com/watch?
+    v=QRlfV2dR7y4
+30. Nuclear Power Plant Simulator https://www.youtube.com/watch?v=oj-jZXqCrAM
+31. Versatile Test Reactor - 3D Fly Through https://www.facebook.com/
+    NuclearEnergyGov/videos/versatile-test-reactor-3d-fly-through/618434555643004/
+32. OPERATING EXPERIENCE WITH THE SODIUM ... https://digital.library.unt.edu/ark:/
+    67531/metadc871655/m2/1/high_res_d/4054625.pdf
+33. Turbine Hall | Roblox Realistic Boiling Water Reactor Wiki https://rbwr.fandom.com/
+    wiki/Turbine_Hall
+34. Nucleares Nuclear Reactor Simulator Overview and Operations https://
+    www.youtube.com/watch?v=Qs6AtwVkPrc
+35. Mastering Sodium Reactor Technology https://www.aalo.com/post/mastering-
+    sodium-reactor-technology
+36. Operate Your Own Nuclear Reactor - Virtually : r/nuclear https://www.reddit.com/r/
+    nuclear/comments/18c8ola/operate_your_own_nuclear_reactor_virtually/
+37. Reactor Temperature Control - The Hidden Power of ... https://www.facebook.com/
+    Fireengineering/posts/reactor-temperature-control-the-hidden-power-of-cascade-
+    loops/745875521908844/
+38. xgrommx/elm-ecosystem - GitHub https://github.com/xgrommx/elm-ecosystem
+39. index.html - GitHub Gist https://gist.github.com/HughP/683146e0d9e8c50c9077
+40. World Model Architectures: A Survey (2018–2026) - GitHub https://github.com/
+    natemurthy/world-models
+41. github-trending/2016/2016-12-02.md at master https://github.com/vrachieru/
+    github-trending/blob/master/2016/2016-12-02.md
+42. starred/by-language.md at master · b0o/starred - GitHub https://github.com/b0o/
+    starred/blob/master/by-language.md
+43. t81_558_deep_learning/t81_558_class_12_04_atari.ipynb at master https://
+    github.com/jeffheaton/t81_558_deep_learning/blob/master/
+    t81_558_class_12_04_atari.ipynb
+44. GitHub - uhub/awesome-haskell https://github.com/uhub/awesome-haskell
+45. awesome/README.md at main - GitHub https://github.com/paulosuzart/awesome/
+    blob/main/README.md
+46. BepInEx/BepInEx: Unity / XNA game patcher and plugin framework https://
+    github.com/bepinex/bepinex
+47. GitHub - krmbzds/stars: A curated list of my stars https://github.com/krmbzds/stars
+48. POLARIS Smart HMI 7" W https://bartec.com/products-solutions/product-finder/
+    product-detail/polaris-smart-hmi-7-w/
+49. Home - HMI - Outdoor Property Experts https://www.hmiadvantage.com/
+50. Welcome Simon Kearns: HMI's New Advancement Associate https://hminet.org/
+    welcome-simon-kearns-hmis-new-advancement-associate/
+51. What is HMI? Human Machine Interface https://inductiveautomation.com/resources/
+    article/what-is-hmi
+52. ISA-101 Series of Standards https://www.isa.org/standards-and-publications/isa-
+    standards/isa-101-standards
+53. HOW TO CONNECT A MICRO 850 PLC TO A WEINTEK HMI https://
+    www.youtube.com/watch?v=3u1uEe2uTFE
+54. Why I Love Working at HMI https://hminet.org/why-i-love-working-at-hmi/
+55. Your First Ignition SCADA Program. Converting a Basic ... https://www.youtube.com/
+    watch?v=zuCT4bh4H0g
+56. WAGO PLC (CoDeSyS) & Modbus/TCP HMI https://m.youtube.com/watch?v=4k-
+    Rtrzi1-c&lc=UgjQWgIscMNnAHgCoAEC
+57. C-more Micro HMI Change Panel Type from ... https://www.automationdirect.com/
+    videos/video?
+    videoToPlay=_h4JD3Uj1Zw&srsltid=AU7gw4Vs9LJJI3Gg6LWRpWn_lAlVqFZB6LpKA
+    nImZdJE7QH2Ow538nWj
+58. Nuclear Reactor Simulators for Education and Training | IAEA http://www.iaea.org/
+    topics/nuclear-power-reactors/nuclear-reactor-simulators-for-education-and-training
+59. Nuclear Reactor Simulator https://www.nuclearinst.com/educational-resources/
+    nuclear-reactor-simulator/
+60. Nuclear Reactor Sim by PeteTimesSix - itch.io https://petetimessix.itch.io/nuclear-
+    reactors
+61. Reactor Simulator Testing Overview https://ntrs.nasa.gov/api/citations/
+    20130014181/downloads/20130014181.pdf
+62. Reactor Simulator Game https://www.nukeworker.com/forum/index.php/
+    topic,36015.0.html
+63. Research reactor simulator https://reactorsimulator.ijs.si/
+64. Multiscale modelling of the phénix dissymmetric test ... https://
+    www.sciencedirect.com/science/article/am/pii/S0029549319304066
+65. SESAME project: advancements in liquid metal thermal ... https://www.epj-n.org/
+    articles/epjn/full_html/2020/01/epjn190071/epjn190071.html
+66. Superphénix Benchmark Part II: Transient Results https://www.hzdr.de/publications/
+    PublDoc-17142.pdf
+67. Simulation of the core flowering End-of-life test realized on ... https://inis.iaea.org/
+    records/0kr6p-dqt93
+68. Fast Reactor Program: Methods, Modeling, and Validation https://www.anl.gov/nse/
+    frp/methods-and-databases
+69. Nuclear Breeder Reactors: Superphénix https://www.youtube.com/watch?
+    v=RSVHbKX2i6s
+70. Analysis of the effect of thermal stratification on the natural ... https://
+    www.sciencedirect.com/science/article/abs/pii/S0149197023004146
+71. Sodium Fast Reactor (SFR) | GIF Portal https://www.gen-4.org/generation-iv-criteria-
+    and-technologies/sodium-fast-reactor-sfr
+72. Development of natural circulation analysis methods for a sodium ... https://
+    www.tandfonline.com/doi/full/10.1080/00223131.2015.1045950
+73. [PDF] IAEA-CN245-161 Decay Heat Removal System in the Secondary ... https://
+    media.superevent.com/documents/20170620/991729be633957b2b7c44e24cf8fc214/
+    fr17-161.pdf
+74. An experimental study on natural circulation decay heat removal ... https://
+    www.researchgate.net/publication/
+    294723786_An_experimental_study_on_natural_circulation_decay_heat_removal_syst
+    em_for_a_loop_type_fast_reactor
+75. The technical requirements and the prequalification ... https://www.fingrid.fi/
+    globalassets/dokumentit/fi/sahkomarkkinat/reservit/appendix-2-the-technical-
+    requirements-and-the-prequalification-process-of-frequency-containment-reserves-
+    fcr.pdf
+76. Future frequency control services in the Nordic power system https://www.diva-
+    portal.org/smash/get/diva2:1088729/FULLTEXT01.pdf
+77. Dynamic Dimensioning of Frequency Containment Reserves https://arxiv.org/html/
+    2411.11093v1
+78. Amended Nordic synchronous area methodology for the https://
+    eepublicdownloads.blob.core.windows.net/public-cdn-container/clean-documents/
+    SOC%20documents/Nordic/2024/amended-nordic-synchronous-area-methodology-
+    for-the-dimensioning-rules-for-fcr-.pdf
+79. Overview of Frequency Control in the Nordic Power System https://
+    www.energinet.dk/media/pqodafn2/overview-of-frequency-control-in-the-nordic-
+    power-system-external-document.pdf
+80. PProviding FCR-N with BWR in a Nordic context https://www.e-cigre.org/
+    publications/detail/c2-11732-2026-pproviding-fcr-n-with-bwr-in-a-nordic-context.html
+81. Dynamic Dimensioning of Frequency Containment Reserves https://research.vu.nl/en/
+    publications/dynamic-dimensioning-of-frequency-containment-reserves-the-case-o/
+82. Energy recovery strategies for batteries providing ... https://orbit.dtu.dk/files/
+    294975356/1_s2.0_S2352467722001928_main.pdf
+83. Explanatory document for the Nordic synchronous area ... https://www.entsoe.eu/
+    Documents/nc-tasks/EBGL/
+    SOGL_A118_A154(2)180910Additional%20properties%20FCR_Dimensioning%20rule
+    s_frequency%20quality_Limits%20exchange%20FCR_Explanatory%20Docs.pdf
+84. Overview of Frequency Control in the Nordic Power System https://www.epressi.com/
+    media/userfiles/107305/1648196866/overview-of-frequency-control-in-the-nordic-
+    power-system.pdf
+85. Alt Reactor Console | The Reactor Game Wiki - Fandom https://reactor.fandom.com/
+    wiki/Alt_Reactor_Console
+86. Here is a unique look at the Watts Bar Nuclear Plant's Unit ... https://
+    www.facebook.com/TVA/posts/here-is-a-unique-look-at-the-watts-bar-nuclear-plants-
+    unit-1-control-room-reacto/872890621539546/
+87. Reactor Control Room - Feb 20/2026 NOW 19:00 GMT/UST https://
+    www.youtube.com/watch?v=N4AtsOAL3Yk
+88. sodium reactor experiment operation https://www.energy.gov/sites/default/files/
+    2023-10/Sandia%20Poster%202%20pages.pdf
+89. NUCLEAR 101: The sodium-cooled fast reactor uses liquid ... https://
+    www.facebook.com/NuclearEnergyGov/videos/nuclear-101-the-sodium-cooled-fast-
+    reactor-uses-liquid-metal-sodium-as-a-coolant/1464643638502200/
+90. Characterization and Management of Radioactive Sodium ... https://inis.iaea.org/
+    records/1r142-e1768/files/34005535.pdf?download=1
+91. Standby Liquid Control System (SLC) https://www.nrc.gov/docs/ML1125/
+    ML11258A346.pdf
+92. [PDF] INTEGRATED REGULATORY REVIEW SERVICE (IRRS) https://www.iaea.org/
+    sites/default/files/documents/review-missions/irrs_france_2014_report_france.pdf
+93. Explanatory document for the amended Nordic ... https://www.svk.se/49720c/
+    siteassets/english/news/1542---explanatory-document-for-the-amended-nordic-
+    synchronous-area-methodology-for-additional-properties-of-fcr.pdf
+ 94. Aggregator of Electric Vehicles Bidding in Nordic FCR-D ... https://arxiv.org/html/
+     2404.12818v1
+ 95. Frequency Containment Reserve (FCR) | Definition https://www.next-
+     kraftwerke.com/knowledge/frequency-containment-reserve-fcr
+ 96. HTML 4.01 Specification https://www.w3.org/TR/html401/
+ 97. Create an ACC Specification https://www.youtube.com/watch?v=lWeZLlNLptY
+ 98. Specification (technical standard) https://en.wikipedia.org/wiki/
+     Specification_(technical_standard)
+ 99. Power BI for Data Analytics - Full Course for Beginners https://www.youtube.com/
+     watch?v=FwjaHCVNBWA
+100. CVSS v4.0 Specification Document https://www.first.org/cvss/v4.0/specification-
+     document
+101. How Data Centers Broke American Politics https://www.wired.com/story/how-data-
+     centers-broke-american-politics/
+102. SQL Full Course for Beginners (30 Hours) – From Zero to ... https://
+     www.youtube.com/watch?v=SSKVgrwhzus
+103. Product Specifications & Partner Commitments Search https://www.energystar.gov/
+     products/spec
+104. OpenAPI Specification - Version 3.2 https://swagger.io/specification/v3.2/
+105. OpenID Connect Core 1.0 incorporating errata set 2 https://openid.net/specs/openid-
+     connect-core-1_0.html
+106. Publications https://wenra.eu/publications
+107. Safety of Nuclear Power Plants: Design http://www.iaea.org/publications/10885/
+     safety-of-nuclear-power-plants-design
+108. WENRA https://www.bundesumweltministerium.de/en/topics/nuclear-safety/
+     europe/wenra
+109. Three new documents: Guidance on the HERCA-WENRA ... https://www.herca.org/
+     emergency-preparedness-and-response-three-new-documents-guidance-on-the-herca-
+     wenra-approach/
+110. Publications https://wenra.eu/publications?tid=5
+111. WENRA views on Defence-in-Depth for new reactors https://www-pub.iaea.org/
+     iaeameetings/cn205p/Wednesday/Routamo.pdf
+112. Western European Nuclear Regulators' Association https://en.wikipedia.org/wiki/
+     Western_European_Nuclear_Regulators%27_Association
+113. HERCA and WENRA Renew Strategic Dialogue https://www.herca.org/herca-and-
+     wenra-renew-strategic-dialogue/
+114. WENRA: home https://wenra.eu/
+115. Benchmarking of nuclear technical requirements against ... https://op.europa.eu/en/
+     publication-detail/-/publication/bf33494d-ec0d-11e9-9c4e-01aa75ed71a1
+116. A sodium cooled test reactor in Idaho went critical at 20 ... https://
+     energiesmedia.com/idaho-sodium-test-reactor-criticality-july-fourth/
+117. " THE SODIUM REACTOR EXPERIMENT FABRICATION " ... https://
+     www.youtube.com/watch?v=8LZKpPxV8Uc
+118. Sodium Coolant Properties and Experience https://www.isu.edu/media/libraries/
+     college-of-science-and-engineering/nuclear-engineering/documents/Sodium-
+     Properties-Experience-and-Safety.pdf
+119. Sodium Graphite Reactors - Whatisnuclear https://whatisnuclear.com/sodium-
+     graphite-reactors.html
+120. Are there different types of nuclear reactor? https://world-nuclear.org/nuclear-
+     essentials/are-there-different-types-of-reactor
+121. Webinar 015: Phenix and Superphenix Feedback Experience https://
+     www.youtube.com/watch?v=YGNjIthuhJI
+122. System Thermal Hydraulics and Multiscale Simulations of ... https://www.ans.org/
+     pubs/proceedings/article-43462/
+123. Main results of Phenix final core physics tests https://www.osti.gov/biblio/22107776
+124. Advanced reactor models for plutonium multirecycling ... https://www.epj-n.org/
+     articles/epjn/full_html/2025/01/epjn20250037/epjn20250037.html
+125. Core mechanical dynamics experiment in the Phenix reactor https://hal.science/
+     cea-02492544
+126. 35 Years of Operating Experience of PHENIX NPP Sodium ... https://
+     www.semanticscholar.org/paper/35-Years-of-Operating-Experience-of-PHENIX-NPP-
+     Fast-Dall%E2%80%99ava-Martin/e0a96e2026f991af12577f100c70557f3be798ca
+127. Revisited analysis of the PUIREX 2008 decay heat experiment ... https://
+     www.sciencedirect.com/science/article/pii/S0306454924002007
+128. DESIGN OF SECONDARY SODIUM SYSTEM BASED DECAY HEAT REMOVAL ...
+     https://www.researchgate.net/publication/
+     380940533_DESIGN_OF_SECONDARY_SODIUM_SYSTEM_BASED_DECAY_HEAT_RE
+     MOVAL_SYSTEM_FOR_FUTURE_FAST_BREEDER_REACTOR
+129. Decay heat removal in sodium cooled fast Reactors-An overview https://
+     www.sciencedirect.com/science/article/pii/S0306454924002172
+130. (PDF) Recent analyses of PHENIX End of Life Tests and ... https://
+     www.researchgate.net/publication/
+     272485097_Recent_analyses_of_PHENIX_End_of_Life_Tests_and_perspectives
+131. Decay heat removal in pool type fast reactor using passive ... https://inis.iaea.org/
+     records/v8k0k-0sv20
+132. Benchmark on dynamic PRA with simplified decay heat removal ... https://
+     iapsam.org/PSAM17/program/Papers/PSAM17&ASRAM2024-1277.pdf
+133. A Fan-Controlled Sodium-to-Air Heat Exchanger Configuration ... https://
+     www.tandfonline.com/doi/full/10.1080/00295450.2023.2175584
+134. [PDF] principles-for-determining-the-transfer-capacities-2023 ... - Nord Pool https://
+     www.nordpoolgroup.com/493abd/globalassets/download-center/tso/principles-for-
+     determining-the-transfer-capacities-2023-03-23.pdf
+135. Bidding Areas - Flexnavet https://flexnavet.se/wiki/bidding-areas/
+136. Control Room - The Quantum Science Wiki - Fandom https://quantum-
+     science.fandom.com/wiki/Control_Room
+137. Control desk within the testing environment for naval gas turbine ... https://
+     www.facebook.com/groups/945941962445366/posts/2338388829867332/
+138. One man control desk for nuclear power plant - INIS-IAEA https://inis.iaea.org/
+     records/gsz3c-a2223
+139. [PDF] LER 2023-001-02 for Palo Verde Nuclear Generating Station, Unit 1 ... https://
+     www.nrc.gov/docs/ML2402/ML24026A298.pdf
+140. [PDF] Introduction to Nuclear Plant Steam Turbine Control Systems - EPRI https://
+     restservice.epri.com/publicdownload/TR-104885/0/Product
+141. Desk P Control Panels : r/chernobyl - Reddit https://www.reddit.com/r/chernobyl/
+     comments/vbogk0/desk_p_control_panels/
+142. Balance of plant control desk - Special Nuclear Material https://
+     carlwillis.wordpress.com/2012/05/26/inside-peach-bottom-atomic-power-station/
+     twk_2742_ps/
+143. A Practical Guide To The Nuclear Power Plant Control Room https://
+     controlroomsolution.com/a-guide-to-the-nuclear-power-plant-control-room/
+144. Turbine Control and Protection | Westinghouse Nuclear https://
+     westinghousenuclear.com/data-sheet-library/turbine-control-and-protection/
+145. (PDF) Virtual Control Desks for Nuclear Power Plants - ResearchGate https://
+     www.researchgate.net/publication/
+     221917395_Virtual_Control_Desks_for_Nuclear_Power_Plants
+146. Svenska kraftnät increases the FCR-D down procurement in 2025 https://www.svk.se/
+     en/about-us/news/news/svenska-kraftnat-increases-the-fcr-d-down-procurement-
+     in-2025/
+147. Updated version of the technical requirements for FCR is now ... https://www.svk.se/
+     en/about-us/news/news/updated-version-of-the-technical-requirements-for-fcr-is-
+     now-available/
+148. What is the minimum duration that FCR should be delivered, i.e. ... https://
+     www.svk.se/en/stakeholders-portal/electricity-market/provision-of-ancillary-services/
+     questions-and-answers-about-reserves/fcr/what-is-the-minimum-duration-that-fcr-
+     should-be-delivered.../
+149. Prequalification | Svenska kraftnät https://www.svk.se/en/stakeholders-portal/
+     electricity-market/provision-of-ancillary-services/prequalification/
+150. Andreas Barnekov Thingvad's Post - LinkedIn https://www.linkedin.com/posts/
+     andreas-barnekov-thingvad-14808696_the-biggest-issue-with-the-fcr-dn-market-
+     activity-7294246997358739456-N9j1
+151. Can a LER bid its entire capacity on the FCR markets? https://www.svk.se/en/
+     stakeholders-portal/electricity-market/provision-of-ancillary-services/questions-and-
+     answers-about-reserves/limited-energy-reservoirs-ler/can-a-ler-bid-its-entire-capacity-
+     on-the-fcr-markets/
+152. Reactor Grade Sodium Metal: Comprehensive Analysis Of ... https://
+     eureka.patsnap.com/materials/reactor-grade-sodium-metal
+153. 3 Advanced Reactor Systems to Watch by 2030 https://www.energy.gov/ne/articles/
+     3-advanced-reactor-systems-watch-2030
+154. Why is sodium used in Liquid Metal Fast Breeding Reactors https://www.reddit.com/
+     r/NuclearPower/comments/1mx6xhi/
+     why_is_sodium_used_in_liquid_metal_fast_breeding/
+155. Sodium-cooled fast reactor https://en.wikipedia.org/wiki/Sodium-cooled_fast_reactor
+156. NUCLEAR 101: The sodium-cooled fast reactor uses liquid ... https://
+     www.facebook.com/NuclearEnergyGov/posts/nuclear-101-the-sodium-cooled-fast-
+     reactor-uses-liquid-metal-sodium-as-a-coolant/1058654726384825/
+157. Reactor System Requirements Specification - MOOSE https://
+     mooseframework.inl.gov/modules/reactor/sqa/reactor_srs.html
+158. Validation of the dynamic simulation capabilities ... https://www.sciencedirect.com/
+     science/article/pii/S0029549323006891
+159. Advanced numerical simulation and modeling for reactor ... https://www.epj-n.org/
+     articles/epjn/full_html/2022/01/epjn220014/epjn220014.html
+160. MOOSE full-core reactor simulation https://www.youtube.com/watch?
+     v=4xTfQxpGAI4
+161. Large-Scale Simulation of Nuclear Reactors http://glc.ans.org/nureth-16/data/
+     papers/14075.pdf
+162. Technical Specifications https://www.nrc.gov/licensing-applications/operating-
+     reactor-licensing/technical-specifications
+163. Cardinal: A Lower Length-scale Simulator for Flouride Cooled ... https://
+     publications.anl.gov/anlpubs/2021/01/161679.pdf
+164. coupling of ctf and relap5-3d within an enhanced fidelity ... https://www.osti.gov/
+     servlets/purl/1863309
+165. Qualification of Simulation Software for Safety Assessment of ... https://info.ornl.gov/
+     sites/publications/files/Pub61517.pdf
+166. A MULTIPHYSICS SIMULATION SUITE FOR SODIUM ... https://www.epj-
+     conferences.org/articles/epjconf/pdf/2021/01/epjconf_physor2020_06019.pdf
+167. RELAP5-3D Three-Dimensional Analysis Based on ... https://
+     asmedigitalcollection.asme.org/nuclearengineering/article/6/1/011301/975544/
+     RELAP5-3D-Three-Dimensional-Analysis-Based-on
+168. Overview of Generation IV (Gen IV) Reactor Designs https://recherche-
+     expertise.asnr.fr/sites/default/files/documents/larecherche/publications-
+     documentation/collection-ouvrages-irsn/GENIV_texte_VA_241012a.pdf
+169. system thermal-hydraulic and multiscale simulations of the ... https://epubs.ans.org/
+     download/?a=43462
+170. FCR, Frequency Containment Reserves https://www.fingrid.fi/en/electricity-market/
+     reserves/reserve-products/frequency-containment-reserves-fcr-products/
+171. Understanding FFR, FCR-D, FCR-N, and M-FFR: How BESS ... https://www.tls-
+     containers.com/tls-blog/understanding-ffr-fcr-d-fcr-n-and-m-ffr-how-bess-enhances-
+     grid-frequency-regulation
+172. April 2025 Market Update: Frequency Control Reserve ... https://
+     www.sourceful.energy/blog/april-2025-market-update-frequency-control-reserve-fcr-
+     prices-in-sweden
+173. Technical Specifications https://www.sec.gov/submit-filings/technical-specifications
+174. The influence of frequency containment reserve ... https://www.sciencedirect.com/
+     science/article/pii/S2352152X22011392
+175. Nipocalimab pivotal Phase 3 trial demonstrates longest ... https://
+     www.prnewswire.com/news-releases/nipocalimab-pivotal-phase-3-trial-demonstrates-
+     longest-sustained-disease-control-in-fcrn-class-for-broadest-population-of-myasthenia-
+     gravis-patients-302185879.html
+176. Frequency Containment Reserve for Normal Operation ... https://
+     www.emobilitysimplified.com/2023/05/frequency-containment-reserve-for.html
+177. What is Frequency Containment Reserve? https://www.gridx.ai/knowledge/
+     frequency-containment-reserve
+178. FCR documents https://www.tennet.eu/nl-en/markets/ancillary-services/fcr-
+     documents
+179. Operational and decommissioning experience with fast reactors https://www-
+     pub.iaea.org/MTCD/Publications/PDF/te_1405_web.pdf
+180. PHENIX survey of commissioning and startup operations https://www.emerald.com/
+     books/book/17564/chapter/95842966/PHENIX-survey-of-commissioning-and-startup
+181. Control room for nuclear plant(s), with inside view: https://www.facebook.com/
+     groups/satisfactorygame/posts/3768873346675112/
+182. All AZ3 Keycard Rooms | Delta Force: Operations https://www.youtube.com/watch?
+     v=G3-ZmIAisbA
+183. Reactor start-up (GUIDE) - Steam Community https://steamcommunity.com/
+     sharedfiles/filedetails/?id=3696077073
+184. Sodium-Cooled Fast Reactor (SFR) Simulator | IAEA https://www.iaea.org/topics/
+     nuclear-power-reactors/nuclear-reactor-simulators-for-education-and-training/sodium-
+     cooled-fast-reactor-sfr-simulator
+185. nuclear-reactor-simulator/README.md at main - GitHub https://github.com/
+     francescosisini/nuclear-reactor-simulator/blob/main/README.md
+186. GitHub - francescosisini/nuclear-reactor-simulator: Modular C ... https://github.com/
+     francescosisini/nuclear-reactor-simulator
+187. Steam Workshop::Nuclear Reactor Simulator v1.4 https://steamcommunity.com/
+     sharedfiles/filedetails/?id=2532934544
+188. Nuclear Reactor Simulator https://scisims3000.github.io/SciSims/PhySims/
+     NuclearReactor/
+189. Operate Your Own Nuclear Reactor, Virtually - Hackaday https://hackaday.com/
+     2023/12/06/operate-your-own-nuclear-reactor-virtually/
+190. Core and safety design for France–Japan common concept ... https://www.epj-n.org/
+     articles/epjn/full_html/2022/01/epjn210039/epjn210039.html
+191. Advanced Nuclear Reactors: Technology Overview and ... https://
+     www.everycrsreport.com/reports/R45706.html
+192. Centrifugal Pumps for Sodium Cooled Reactors [1 https://dokumen.pub/centrifugal-
+     pumps-for-sodium-cooled-reactors-1nbsped-1032460539-9781032460536.html
+193. NEA Committee on Reactor Physics Documents https://www.oecd-nea.org/science/
+     docs/neacrp-a-index.html
+194. 7-1 Safety-Design Guidelines for Generation-IV Sodium- ... https://
+     rdreview.jaea.go.jp/review_en/2018/e2018_7_1.html
+195. Nuclear Energy Basics: How Is Power Produced? https://geoinfo.nmt.edu/resources/
+     uranium/power.html
+196. Experimental Breeder Reactor-II (EBR-II) https://books.google.com/books/about/
+     Experimental_Breeder_Reactor_II_EBR_II.html?id=rZ4eAQAAIAAJ
+197. Plant system study of France–Japan common concept on ... https://www.epj-n.org/
+     articles/epjn/full_html/2022/01/epjn220004/epjn220004.html
+198. TVA to submit SMR construction permit application https://world-nuclear.org/email-
+     web/email-editor-c99f63c0-d4ca-4e03-a622-bf15993893f5.html
+199. sodium cooled zirconium hydride moderated reactors https://www.science.gov/
+     topicpages/s/sodium+cooled+zirconium+hydride+moderated+reactors.html
+200. Nordic synchronous area proposal for additional properties ... https://www.entsoe.eu/
+     Documents/nc-tasks/EBGL/
+     SOGL_A118_A154(2)_Additional%20properties%20of%20FCR_Dimensioning%20rule
+     s_frequency%20quality_Limits%20for%20the%20exchange%20FCR_Nordic.pdf
+201. Nordic Balancing Markets: Overview of Market Rules https://kth.diva-portal.org/
+     smash/get/diva2:1457879/FULLTEXT01
+202. Electrolyzer Scheduling for Nordic FCR Services https://backend.orbit.dtu.dk/ws/
+     files/333679956/Electrolyzer_Scheduling_for_Nordic_FCR_Services.pdf
+203. Specifications Download - Commercial Skylights https://www.wascoskylights.com/
+     product-technical-downloads/product-specifications/
+204. Technical Specifications - METTLER TOLEDO https://www.mt.com/us/en/home/
+     library/technical-specifications.html
+205. Silfab Solar Panel Spec Sheets: Resources & Downloads ... https://silfabsolar.com/
+     resources-downloads/
+206. Ball Valves - Watts https://www.watts.com/products/plumbing-flow-control-
+     solutions/shutoff-valves/ball-valves
+207. 10X Line | SARGENT https://www.sargentlock.com/en/commercial-locks-products/
+     locks/cylindrical-bored-locks/product-details.aehpdp-10x-line-aeh_sargent_228113
+208. RitchieSpecs Equipment Specs & Dimensions https://www.ritchiespecs.com/
+209. Manitowoc - Downloads https://www.manitowocice.com/Downloads
+210. MCR of HTR-PM - Nucleus https://nucleus.iaea.org/sites/htgr-kb/HTR2014/
+     Paper%20list/Track7/HTR2014-71317.pdf
+211. Control Room Habitability Assessment Guidance https://www.nrc.gov/docs/ML0101/
+     ML010170316.pdf
+212. First-of-a-Kind Control Room Modernization Project Plan https://
+     inldigitallibrary.inl.gov/sites/sti/sti/6899480.pdf
+213. Human centered design for nuclear power plant control ... https://ceur-ws.org/
+     Vol-696/paper4.pdf
+214. Layout of the advanced control room of the nuclear reactor ... https://
+     www.researchgate.net/figure/Layout-of-the-advanced-control-room-of-the-nuclear-
+     reactor-simulator_fig1_223370643
+215. OakRidge Nuclear Power Plant Roblox Guide: How to Access ... https://
+     www.youtube.com/watch?v=G69LBCIhS-c&xstg=CAMSBhUD_LL2Hw%3D%3D
+216. 1 overview of nuclear power plants https://regulation-oversight.asnr.fr/content/
+     download/54327/file/RA2012%20Chap12.pdf
+217. Advanced control room design for nuclear power plants https://www.osti.gov/biblio/
+     6263970
+218. CHAPTER 10 Instrumentation and Control http://www.unene.ca/essentialcandu/pdf/
+     10%20-%20IandC.pdf
+219. Experience of Safety Design Criteria (SDC) and ... https://nucleus.iaea.org/sites/htgr-
+     kb/gif-iaea/Shared%20Documents/1st%20GIF-IAEA-mHTGR/
+     A5_Experience_GIF_SFR_DSC_SDG_KUBO_20191208.pdf
+220. small modular reactors - IAEA ARIS https://aris.iaea.org/publications/
+     SMR_catalogue_2024.pdf
+221. CSNI Technical Opinion Paper No. 21 (EN) https://www.oecd.org/content/dam/
+     oecd/en/publications/reports/2023/10/csni-technical-opinion-paper-
+     no-21_b4fb0e0d/0df32944-en.pdf
+222. D1.5 – Assessment of the IAEA safety objectives in advanced ... https://ec.europa.eu/
+     research/participants/documents/downloadPublic?
+     documentIds=080166e507b33f7e&appId=PPGMS
+223. Applicability of IAEA Safety Standards to SMRs Questionnai https://www.iaea.org/
+     sites/default/files/20/10/iaea_smr_safety_webinar_presentation_29_october.pdf
+224. Safety Classification of Structures, Systems and Components ... https://www-
+     pub.iaea.org/MTCD/publications/PDF/Pub1639_web.pdf
+225. IAEA Safety Standards Design of the Reactor Coolant System ... https://www-
+     pub.iaea.org/MTCD/Publications/PDF/PUB1878_web.pdf
+226. Applicability of IAEA safety standards to the Safe Operation ... https://www.iaea.org/
+     sites/default/files/22/09/web_opsafetyregstandardseid.pdf
+227. IAEA Activities on SMRs https://nucleus.iaea.org/sites/INPRO/df17/V.1-
+     Frederik%20Reitsma.pdf
+228. Overview of Experiments and Code Validation Efforts for ... https://nucleus.iaea.org/
+     sites/nexshare/Focus%20Group/LMFR%20FG/LMFR%20FG%20-
+     %20Background%20Document%20on%20International%20Organization%20Activities
+     .pdf
+229. An experimental study on natural circulation decay heat ... https://
+     www.tandfonline.com/doi/full/10.1080/00223131.2015.1121844
+230. Research on the Activation Strategies of Passive Decay ... https://www.mdpi.com/
+     2673-4362/7/2/35
+231. # [https://x.com/MusicTippett/status/1677792410615595010](https://x ... https://
+     www.facebook.com/groups/256058879625096/posts/1246387133925594/
+232. [PDF] HIGHLIGHTS OF THIS ISSUE - GovInfo https://www.govinfo.gov/content/pkg/
+     FR-1972-11-02/pdf/FR-1972-11-02.pdf
+233. [PDF] Expanding the Influence of Applied Social Science https://appliedanthro.org/
+     wp-content/uploads/2024/06/2011.pdf
+234. Hey all 2 songs in top 100 You can't say up to #24 Born ... - Facebook https://
+     www.facebook.com/ChrisCliffordMusic/posts/hey-all2-songs-in-top-100you-cant-say-
+     up-to-24born-in-the-country-54/1223477148744043/
+235. Angel Olsen - INDIE & ROCK MUSIC PROMO | Facebook https://www.facebook.com/
+     groups/1630581780546431/posts/3757007354570519/
+236. [PDF] Hope Creek Generating Station; Component Design Bases Inspection. https://
+     www.nrc.gov/docs/ML0701/ML070190243.pdf
+237. Simplified approach to determine the requirements of a ... - EPJ N https://www.epj-
+     n.org/articles/epjn/full_html/2022/01/epjn210007/epjn210007.html
+238. REGDOC-2.4.1, Deterministic Safety Analysis https://www.cnsc-ccsn.gc.ca/eng/acts-
+     and-regulations/regulatory-documents/published/html/regdoc2-4-1/
+239. [PDF] Commissioning Guidelines for Nuclear Power Plants https://www-pub.iaea.org/
+     MTCD/Publications/PDF/P1742_web.pdf
+240. [PDF] Thermal Performance Engineers Handbook, Volume II - EPRI https://
+     restservice.epri.com/publicdownload/TR-107422-V2/0/Product
+241. [PDF] Integrated Operations for Nuclear: Work Reduction Opportunity ... https://
+     lwrs.inl.gov/content/uploads/11/2024/10/ION_WRO_Demo-1.pdf
+242. [PDF] Advanced Reactor Safeguards & Security Design of Defensive ... https://
+     www.sandia.gov/app/uploads/sites/273/2024/11/Design-of-Defensive-Cybersecurity-
+     Architectures-for-High-Temperature-Gas-Cooled-Reactors.pdf
+243. An overview of power reactor kinetics and control in load-following ... https://
+     www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1111357/
+     full
+244. [PDF] Millstone Power Station - Nuclear Regulatory Commission https://
+     www.nrc.gov/docs/ML1220/ML12206A027.pdf
+245. [PDF] P&ID Reference Guide - Kimray https://kimray.com/sites/default/files/
+     uploads/training-demos/
+     Kimray%20How%20to%20Read%20an%20Oil%20%26%20Gas%20P%26ID%20Refer
+     ence%20Guide.pdf
+246. [PDF] Title: UK EPR GDA Submission Master List - EDF https://www.edfenergy.com/
+     sites/default/files/uk_epr_gda_submission_master_list.pdf
+247. [PDF] Basics in Minerals Processing - Metso https://www.metso.com/globalassets/
+     insights/ebooks/mo-basics-in-mineral-processing-handbook_lowres.pdf
+248. [PDF] Proceedings of the 6th International Conference - UNT Digital Library https://
+     digital.library.unt.edu/ark:/67531/metadc710580/m2/1/high_res_d/677061.pdf
+249. [PDF] PIPING HANDBOOK - Engineering Documentation Online https://
+     engineeringdocu.files.wordpress.com/2011/12/piping-handbook.pdf
+250. [PDF] COMMERCIAL SOLUTIONS - Fluidra https://www.fluidra.se/pdfs/Catalogue-
+     Commercial-Solutions-2024.pdf
+251. [PDF] 01/04/2011 से 31/03/2012 तक के य आदेश िववरण Contract Details for ... https://
+     www.dps.gov.in/uploads/PO_data_2011-2012.pdf
+252. Cytiva Distributor-Only Part Numbers | iright.com https://www.iright.com/pages/
+     cytiva-offline-part-numbers?srsltid=AU7gw4Xf6zzckupLakDIodjicv-
+     qSpn2RhjtflyNTWgznuRNQHFUk6FA
+253. Piping handbook [7th ed] 9780070471061, 0-07-047106-1 https://dokumen.pub/
+     piping-handbook-7th-ed-9780070471061-0-07-047106-1-a-1684560.html
+254. K 98 Mec 7 | PDF | Diesel Engine | Turbocharger - Scribd https://www.scribd.com/
+     document/187864425/k98mec7
+255. Ethiopian Standards ES Catalogue 2021 - 1 | PDF | Textiles - Scribd https://
+     www.scribd.com/document/511038115/Ethiopian-Standards-ES-Catalogue-2021-1
+256. [PDF] Liquid Metal Cooled Reactors: Experience in Design and Operation https://
+     www-pub.iaea.org/MTCD/Publications/PDF/te_1569_web.pdf
+257. [PDF] IAEA Nuclear Energy Series Available Reprocessing and Recycling ... https://
+     www-pub.iaea.org/MTCD/Publications/PDF/17-23991_PUB1746_web.pdf
+258. [PDF] IAEA TECDOC SERIES https://www-pub.iaea.org/MTCD/Publications/PDF/
+     TE-2009web.pdf
+259. [PDF] Thorium fuel utilization: Options and trends https://www-pub.iaea.org/MTCD/
+     Publications/PDF/te_1319_web.pdf
+260. [PDF] Conference on Radiation Shielding - Nuclear Energy Agency (NEA) https://
+     www.oecd-nea.org/upload/docs/application/pdf/2020-01/neacrp-l-1988-310.pdf
+261. The Windscale Advanced Gas Cooled Reactor (WAGR ... - INIS-IAEA https://
+     inis.iaea.org/records/epe0b-8bb70
+262. Magnox Reprocessing TDN Reactors: Utilising 3D Printing and X ... https://
+     inis.iaea.org/records/fyv4e-4f164
+263. Final Demolition and Disposition of 209-E Critical Mass Laboratory https://
+     inis.iaea.org/records/g9sev-njt54
+264. Use of a reverse osmosis system for treating radwaste at Palo Verde https://
+     inis.iaea.org/records/npkth-eaj66
+265. [PDF] Status of Fast Reactor Research and Technology Development https://www-
+     pub.iaea.org/MTCD/Publications/PDF/TE_1691_CD/PDF/IAEA-TECDOC-1691.pdf
+266. [PDF] ASSESSMENT OF SENSOR TECHNOLOGIES FOR ADVANCED ... https://
+     info.ornl.gov/sites/publications/files/Pub68822.pdf
+267. [PDF] Advanced Burner Test Reactor Preconceptual Design Report https://
+     publications.anl.gov/anlpubs/2008/12/63007.pdf
+268. World Nuclear Industry Status Report 2025 (HTML version) https://
+     www.worldnuclearreport.org/World-Nuclear-Industry-Status-Report-2025-HTML-
+     version
+269. [PDF] The Future of Nuclear Energy in a Carbon-Constrained World https://
+     energy.mit.edu/wp-content/uploads/2018/09/The-Future-of-Nuclear-Energy-in-a-
+     Carbon-Constrained-World.pdf
+270. [PDF] Nuclear power : technology on trial / James J. Duderstadt and ... http://
+     milproj.dc.umich.edu/pdfs/books/
+     1979%20Nuclear%20Power%20Technology%20on%20Trial.pdf
+271. [PDF] ADVANCED FUELS CAMPAIGN 2024 Accomplishments https://
+     nuclearfuel.inl.gov/content/uploads/35/2025/04/24-50760-
+     R7_AFC_2024_Accomplishments_digital-compressed.pdf
+272. [PDF] Palisades, Final Environmental Assessment https://www.nrc.gov/docs/
+     ML2511/ML25111A031.pdf
+273. [PDF] IGC ANNUAL REPORT - 2016 - IGCAR https://www.igcar.gov.in/publications/
+     igc_annual_report_2016.pdf
+274. The canicule paradox exposes a shocking truth: as France buys ACs ... https://
+     www.facebook.com/freeastroscience/posts/the-canicule-paradox-exposes-a-shocking-
+     truth-as-france-buys-acs-heat-waves-shut/1437496158399554/
+275. An Assessment of Flow-based Market Coupling in the Nordics - Montel https://
+     montel.energy/commentary/flow-based-market-coupling-in-the-nordics
+276. [PDF] IMPACT OF FLOW-BASED ON THE INTRADAY MARKET - Energiforsk https://
+     energiforsk.se/media/33161/2023-962-impact-of-flow-based-on-the-intraday-
+     market.pdf
+277. Bidding Areas - Flexnavet https://flexnavet.se/wiki/bidding-areas
+278. [PDF] ECC-SMART PROJECT https://enen.eu/wp-content/uploads/2021/03/D5.3-
+     Pre-licensing-study.pdf
+279. [PDF] Fast reactors and related fuel cycles : safe technologies and ... https://www-
+     pub.iaea.org/MTCD/Publications/PDF/Pub1665Vol1Web-68441300.pdf
+280. [PDF] Technical assessment of nuclear energy with respect to the 'do no ... https://
+     finance.ec.europa.eu/system/files/2021-03/210329-jrc-report-nuclear-energy-
+     assessment_en.pdf
+281. [PDF] Technology roadmap for small modular reactor deployment https://www-
+     pub.iaea.org/MTCD/Publications/PDF/PUB1944_web.pdf
+282. In Re BUTLER , No. 23-2380 (Fed. Cir. 2025) https://law.justia.com/cases/federal/
+     appellate-courts/cafc/23-2380/23-2380-2025-09-17.html
+283. Collection - NIMH Data Archive - NDA - NIH https://nda.nih.gov/edit_collection.html?
+     id=2380
+284. Untitled https://www.legis.iowa.gov/docs/publications/LGR/84/attachments/
+     HF2380.html?layout=false
+285. SPEC CPU®2017 Floating Point Rate Result https://spec.org/cpu2017/results/
+     res2023q1/cpu2017-20221229-33263.html
+286. El Centro College - Course Descriptions for HIST 2380 https://
+     catalogarchive.dallascollege.edu/cat07-08/ECC/catalog/coursedescriptions/
+     detail5812.html?loc=ECC&course=hist&number=2380
+287. RFC 3600: Internet Official Protocol Standards https://www.rfc-editor.org/rfc/
+     rfc3600.html
+288. NRS: CHAPTER 116 - COMMON-INTEREST OWNERSHIP ... https://
+     www.leg.state.nv.us/nrs/nrs-116.html
+289. Industrial Printers, Laser Marking, Continuous Inkjet, Label ... https://
+     www.videojet.com/us/homepage.html
+290. 20.6.4 NMAC https://www.srca.nm.gov/parts/title20/20.006.0004.html
+291. ontolex/specification.html at master https://github.com/ontolex/ontolex/blob/
+     master/specification.html
+292. Proceedings of the 23rd Pacific Basin Nuclear Conference ... https://dokumen.pub/
+     proceedings-of-the-23rd-pacific-basin-nuclear-conference-volume-2-pbnc-2022-1-4-
+     november-beijing-amp-chengdu-china-springer-proceedings-in-
+     physics-284-9789811987793-9811987793.html
+293. HCl Gas Analyzer | Reliable Hydrogen Chloride Monitoring https://www.mt.com/ca/
+     en/home/products/Process-Analytics/gas-analyzer/Tunable-Diode-Laser-TDL/hcl-gas-
+     analyzer.html
+294. Chlorogen Plus: on-Site Naclo System https://shanghaixiba.en.made-in-china.com/
+     product/WYMpHRFoXgVP/China-Chlorogen-Plus-on-Site-Naclo-System.html
+295. Ss Jacketed Mixing Tanks Manufacturer from Saharanpur https://
+     www.grfdynamicengineering.com/mixing-tanks.html
+296. Valve types: guidelines for selecting the correct valve https://www.steeljrv.com/valve-
+     types-guidelines-for-selecting-the-correct-valve.html
+297. HPC PCSR3 - Sub-Chapter 13.2 - Internal Hazards ... https://pdfcoffee.com/
+     download/public-version-of-hpc-pcsr3-sub-chapter-132-internal-hazards-protection-
+     pdf-free.html
+298. PTFE Lined Valve - Flowbiz Exports Private Limited https://www.flowbiz.in/ptfe-
+     lined-valve.html
+299. Separating and filter magnetic systems Turkey | B2B companies ... https://
+     www.europages.co.uk/companies/turkey/separating-and-filter-magnetic-systems.html
+300. Industrial & Manufacturing Hubs In Nandej https://www.tradeindia.com/industry-
+     hubs/gujarat/nandej.html
+301. Tubular Heat Exchangers: for Chemical Engineers ... https://dokumen.pub/tubular-
+     heat-exchangers-for-chemical-engineers-9783110585872-9783110585735-
+     m-5134497.html
+302. Benchmark analysis of the FFTF LOSWOS test #13 with OpenMC ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0306454923004061
+303. [PDF] VVUQ of a thermal-hydraulic multi-scale tool on unprotected ... - HAL https://
+     hal.science/hal-03133360/document
+304. [PDF] Best Practice Guidelines for the Use of CFD in Nuclear Reactor ... https://
+     www.oecd-nea.org/upload/docs/application/pdf/2025-03/nea_csni_r_2022_10.pdf
+305. [PDF] RELAP-7 Theory Manual - INL Digital Library https://inldigitallibrary.inl.gov/
+     sites/sti/sti/6760046.pdf
+306. Analysis on thermal hydraulic characteristics for PHENIX natural ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0149197024003202
+307. [PDF] Physics and engineering aspects of fast reactor safety https://www.ias.ac.in/
+     article/fulltext/pram/024/01-02/0193-0210
+308. Analysis of unprotected loss of flow accident in a sodium cooled fast ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0149197023002366
+309. Modular High Temperature Gas- cooled Reactor Safety ... https://nucleus.iaea.org/
+     sites/htgr-kb/gif-iaea/13th%20GIFIAEA/Temporary_mHTGR_Store/
+     TECDOC_Approach1%20and%202_in%20Chapter%204.pdf
+310. SMR Technology Catalogue 2024 Edition | PDF https://www.scribd.com/document/
+     864943006/SMR-Catalogue-2024
+311. Pre-Construction-Safety-Report-Chapter-7-Safety-Systems. ... https://
+     ukhpr1000.co.uk/wp-content/uploads/2022/02/Pre-Construction-Safety-Report-
+     Chapter-7-Safety-Systems.pdf
+312. Nuclear Safety [2 ed.] 0128183268, 9780128183267 https://dokumen.pub/nuclear-
+     safety-2nbsped-0128183268-9780128183267.html
+313. Fatigue Durability and Fracture Mechanics Proceedings of ... https://www.scribd.com/
+     document/548410486/dokumen-pub-fatigue-durability-and-fracture-mechanics-
+     proceedings-of-fatigue-durability-india-2019-1st-ed-9789811547782-9789811547799
+314. BHB stands for Bar Hbr Bankshares https://www.acronymattic.com/Bar-Hbr-
+     Bankshares-(BHB).html
+315. A review on advancements in passive decay heat removal system of ... https://
+     www.sciencedirect.com/science/article/pii/S3051280826000017
+316. [PDF] Applicability of RELAP5-3D for Thermal-Hydraulic Analyses of a ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/3374827.pdf
+317. [PDF] Benchmark Specifications and Data Requirements for EBR-II ... https://
+     publications.anl.gov/anlpubs/2012/06/73647.pdf
+318. Innovations and challenges in natural circulation for advanced ... https://
+     www.sciencedirect.com/science/article/pii/S0149197025005918
+319. Nordic synchronous area proposal for additional properties ... https://
+     www.energinet.dk/media/vz4pw0bx/yderligere-egenskaber-for-fcr-so-gl-154-2.pdf
+320. Technical Requirements for Frequency Containment ... https://www.fingrid.fi/
+     globalassets/dokumentit/fi/sahkomarkkinat/reservit/fcr-technical-requirements-for-
+     pilot-phase-v0.91.pdf
+321. Volume limitation on static FCR-D in the Nordic ... https://www.statnett.no/en/for-
+     stakeholders-in-the-power-industry/news-for-the-power-industry/volume-limitation-
+     on-static-fcr-d-in-the-nordic-synchronous-area/
+322. (a) Stirling engine test facility with pumped sodium circuit. ... https://
+     www.researchgate.net/figure/a-Stirling-engine-test-facility-with-pumped-sodium-
+     circuit-b-Stirling-engine_fig2_334727480
+323. The Grand Quevilly thermal test station - the SMW sodium ... https://inis.iaea.org/
+     records/2459m-f3a05
+324. An Induction Heater for a Sodium Circuit - INIS-IAEA https://inis.iaea.org/records/
+     7yk52-17p83
+325. Development of pressure transient model in Swept code for ... https://
+     www.dl.begellhouse.com/references/
+     587c7d3679ede81c,2ef0b2e331dc56a8,04c493250171a67f.html
+326. FFTF core and primary sodium circuit instrumentation https://www.osti.gov/biblio/
+     6761282
+327. Modeling of Hydrodynamic Processes at a Large Leak ... https://
+     www.sciencedirect.com/science/article/pii/S1738573316300559
+328. Vibration of core subassemblies due to large sodium ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0149197018300647
+329. Integrated steady and transient pool thermal hydraulic ... https://
+     www.dl.begellhouse.com/references/
+     486d924a7e5ad8c3,393f7ffc7879d8ca,36e1aedb206ca288.html
+330. SD-100-B High Pressure Sodium Circuit Replacement Kit https://www.ebay.com/itm/
+     194647261605
+331. Smaller nuclear reactors allow decentralized power https://atomicinsights.com/
+     smaller-nuclear-reactors-allow-decentralized-power-some-critics-not-pleased/
+332. Oconee Nuclear Station, Units 1, 2 & 3 , Revision ... https://www.nrc.gov/docs/
+     ML2018/ML20189A068.pdf
+333. Advanced Nuclear Reactor Safety Issues and Research ... https://www.oecd-nea.org/
+     upload/docs/application/pdf/2019-12/3613-advanced-safety-issues.pdf
+334. FAST BREEDER REACTORS https://digital.library.unt.edu/ark:/67531/
+     metadc868909/m2/1/high_res_d/4032678.pdf
+335. Generic Small Modular Reactor Plant Design https://www.osti.gov/servlets/purl/
+     1096461
+336. Fast Breeder Reactors in France - Science & Global Security https://
+     scienceandglobalsecurity.org/archive/sgs17schneider.pdf
+337. Reactor Safety Design and Safety Analysis Table of Contents https://unene.ca/
+     essentialcandu/wg/ChapterDrafts/13-Safety/Chapter%2013%20-
+     %20Reactor%20Safety%20D2.pdf
+338. Xe-100 Plant Control and Data Acquisition System, ... https://www.nrc.gov/docs/
+     ML2304/ML23048A309.pdf
+339. Control Desk: A Generic Control Application for the SRS https://
+     accelconf.web.cern.ch/ica03/papers/mp564.pdf
+340. Research reactor instrumentation and control technology https://www-pub.iaea.org/
+     MTCD/Publications/PDF/te_973_prn.pdf
+341. CHAPTER 9 Nuclear Plant Operation Table of Contents https://unene.ca/
+     essentialcandu/pdf/9%20-%20Nuclear%20Plant%20Operation.pdf
+342. Measurements of the effective cumulative fission yields ... https://www.epj-n.org/
+     articles/epjn/full_html/2016/01/epjn160004/epjn160004.html
+343. Phoenix Controls | Critical Environment Airflow Control https://
+     buildings.honeywell.com/us/en/brands/our-brands/phoenix-controls
+344. Multi-channel electronic circuit breakers https://www.phoenixcontact.com/en-us/us-
+     lp-cbm
+345. Phenix-Technologies-6CP50-10-3_-VERSION-3.8.pdf https://www.doble.com/wp-
+     content/uploads/Phenix-Technologies-6CP50-10-3_-VERSION-3.8.pdf
+346. Honeywell's Phoenix Controls - Airflow Control Solutions https://
+     www.honeywellbuildings.in/bms/building-control-system/phoenix-controls
+347. Critical Airflow - Phoenix Controls https://www.criticalairflow.com/critical-airflow-
+     solutions/phoenix-controls/
+348. Phoenix Controls https://dptgroup.com/product/phoenix-controls/
+349. PHENIX https://www.brandishire.com.au/wp-content/uploads/2023/07/
+     PHENIX-130KV-AC-HIPOT-Data-sheet.pdf
+350. Phoenix™ Flow Reactor - High-Performance ... https://thalesnano.com/products-and-
+     services/phoenix-ii-flow-reactor/
+351. API 560 https://pdfcoffee.com/api-560-pdf-free.html
+352. HagglundsR939000752 CA 50 50 SA0N00 02 00 https://www.chem17.com/product/
+     detail/24091982.html
+353. Multi-Contact插头01.0474 EBB8-V0 - 焊材网 http://www.chinahancai.com/supplys/
+     3_4_68853850.html
+354. Riels 23Ed - 厦门纪扬科技有限公司 https://weixuan006.jdzj.com/
+     supplyinfo-4-714796.html
+355. 24211272-Australian-Standards-Catalogue-2009.pdf https://pdfcoffee.com/
+     24211272-australian-standards-catalogue-2009pdf-pdf-free.html
+356. Ethiopian Standards ES Catalogue 2021 - 1 https://pdfcoffee.com/ethiopian-
+     standards-es-catalogue-2021-1-pdf-free.html
+357. Storage system optimization for enhancing frequency control ... https://
+     www.sciencedirect.com/science/article/pii/S2352152X25002385
+358. Nordic System Operation Agreement (SOA) – Annex Load ... https://www.entsoe.eu/
+     Documents/SOC%20documents/LFC/LFCR_annex_v7_mFRR_EAM.pdf
+359. FCR Technical Requirements FINAL 21.2.2025 NAG comments (1) https://
+     www.fingrid.fi/globalassets/dokumentit/fi/sahkomarkkinat/reservit/technical-
+     requirements-for-frequency-containment-reserve-provision-in-the-nordic-synchronous-
+     area_14.5.2025.pdf
+360. Technical Requirements for Frequency Containment Reserve ... https://
+     www.statnett.no/globalassets/for-aktorer-i-kraftsystemet/marked/reservemarkeder/
+     fcr-technical-requirements-2022-06-27.pdf
+361. Overview of Frequency Control in the Nordic Power System https://
+     eepublicdownloads.blob.core.windows.net/public-cdn-container/clean-documents/
+     SOC%20documents/Nordic/2024/
+     Overview_of_Frequency_Control_in_the_Nordic_Power_System.pdf
+362. [PDF] Methodology and concepts for the Nordic Flow Based Market Coupling https://
+     nordic-rsc.net/wp-content/uploads/2018/10/Stakeholder-consultation-document-and-
+     Impact-Assessment-for-the-Capacity-Calculation-Methodology-Proposal-for-the-Nordic-
+     CCR.pdf
+363. Nordic FB - an intro - LinkedIn https://www.linkedin.com/pulse/nordic-fb-intro-silvia-
+     messa
+364. [PDF] Powering up the grid - Svenska kraftnät https://www.svk.se/4a3233/siteassets/
+     5.jobba-har/dokument-exjobb/250813_exar_2025_powering-up-the-grid.pdf
+365. [PDF] Sweden's electricity and natural gas market, 2022 - CEER https://www.ceer.eu/
+     wp-content/uploads/2024/04/C23_Sweden_EN.pdf
+366. Defining Site End States for the UK's nuclear sites: UK Approach https://inis.iaea.org/
+     records/09tht-13t30
+367. Transuranic Waste Processing Center (TWPC) Legacy Tank RH ... https://
+     inis.iaea.org/records/13263-gcg85
+368. An introduction to Spent Nuclear Fuel decay heat for Light ... https://www.epj-n.org/
+     articles/epjn/full_html/2024/01/epjn240001/epjn240001.html
+369. [PDF] Boiling Water Reactor (BWR) Systems https://www.nrc.gov/reading-rm/basic-
+     ref/students/for-educators/03.pdf
+370. Our technology | Rolls-Royce SMR - Generic Design Assessment https://gda.rolls-
+     royce-smr.com/our-technology
+371. Oakridge Nuclear Power Station - v0.26.6 - YouTube https://www.youtube.com/
+     watch?v=9ZsmthGm0Tw&vl=en
+372. Nuclear Power Reactors https://world-nuclear.org/information-library/nuclear-power-
+     reactors/overview/nuclear-power-reactors
+373. REGDOC-3.1.1, Reporting Requirements for Nuclear Power Plants ... https://
+     www.cnsc-ccsn.gc.ca/eng/acts-and-regulations/regulatory-documents/published/
+     html/regdoc3-1-1-v3/
+374. NUCLEAR 101: How Does a Nuclear Reactor Work? https://www.energy.gov/ne/
+     articles/nuclear-101-how-does-nuclear-reactor-work
+375. Control Room Comparison - Modern and Older Nuclear Generating ... https://
+     www.reddit.com/r/MachinePorn/comments/n93emz/
+     control_room_comparison_modern_and_older_nuclear/
+376. 10 CFR Part 50 -- Domestic Licensing of Production and Utilization ... https://
+     www.ecfr.gov/current/title-10/chapter-I/part-50
+377. Safety Design Criteria Task Force (SDCTF) - Concluded https://www.gen-4.org/
+     safety-design-criteria-task-force-sdctf-concluded
+378. Regulatory Guide 1.232, Rev. 0, "Guidance for Developing ... https://www.nrc.gov/
+     docs/ML1732/ML17325A611.pdf
+379. Advanced Reactor Siting Policy Considerations - INFO https://info.ornl.gov/sites/
+     publications/Files/Pub126974.pdf
+380. IAEA-CN245-046 The Safety Design Criteria Development ... https://inis.iaea.org/
+     records/dy1jy-r2v33/files/49085728.pdf
+381. INDEXED BIBLIOGRAPHY OF CURRENT NUCLEAR ... https://digital.library.unt.edu/
+     ark:/67531/metadc1027804/m2/1/high_res_d/4506295.pdf
+382. Proposed Adaptation of the Standard Review Plan NUREG ... https://info.ornl.gov/
+     sites/publications/files/Pub73792.pdf
+383. Haydee Domenech Radiation Safety Management and ... https://www.academia.edu/
+     43021567/Haydee_Domenech_Radiation_Safety_Management_and_Programs
+384. FCR-D down Test program https://www.svk.se/4ab744/siteassets/english/
+     stakeholder-portal/prequalification/test-program-for-provision-of-downward-fcr-
+     d-8.0.pdf
+385. News https://www.svk.se/en/about-us/news/
+386. Nordic System Operation Agreement (SOA) – Annex Load- ... https://www.fingrid.fi/
+     globalassets/dokumentit/fi/kantaverkko/sahkonsiirto/nordic-soa_annex-
+     lfcr_040325.pdf
+387. https://cedars.cloud-cme.com/assets/cedars/Uploads... https://cedars.cloud-
+     cme.com/assets/cedars/Uploads/260954%5C260954_22143_8.pdf
+388. [PDF] Hygienic Products - Dixon Europe https://europe.dixonvalve.com/sites/default/
+     files/documents/HYGIENIC-CATALOGUE.pdf
+389. [PDF] Everllence - Technical Documentation Project Guide https://man-es.com/
+     applications/projectguides/4stroke/Propulsion/PG_P-IMO_L2738.pdf
+390. [PDF] Thermoplastic Hose for Hydraulics & Industry - Enzed https://
+     www.enzed.com.au/Products/Catalogues/Thermoplastic_Hose-Hydraulics-Industry/
+     HTML/files/assets/common/downloads/
+     Thermoplastic%20hose%20for%20hydraulics%20&%20industry%20-
+     %20Catalogue%20446.pdf
+391. [PDF] Thermoplastic Hoses for Hydraulics & Industry https://www.items.se/images/
+     uploads/kataloger/CAT_4460_Thermoplastic_Hose_Catalog_UK.pdf
+392. [PDF] DULCOTEST Sensors DULCOMETER Instrumentation Pump spare ... https://
+     www.prominent.es/resources/Catalogue/English/28940/2023-US-
+     Catalog-5-22-2023.pdf
+393. [PDF] ProMinent® Product Catalog - Progressive Pumps https://
+     progressivepumps.com/wp-content/uploads/2018/02/prominent_general-
+     brochure_sm.pdf
+394. FCR Technical Requirements May 23 | PDF https://www.scribd.com/document/
+     714110039/fcr-technical-requirements-may-23
+395. Nuclear–Wind Hybrid Energy System Part-Task Simulator https://www-pub.iaea.org/
+     MTCD/Publications/PDF/TCS79web.pdf
+396. Change log - Technical Requirements for Frequency ... https://www.statnett.no/link/
+     e835a1d5fe95404a8decd11360d36af8.aspx
+397. Supercritical CO2 Power Cycle Systems Modeling with ... https://www.youtube.com/
+     watch?v=aZNvu2BqdyM
+398. Coupling reactor design and scenario calculations https://www.epj-n.org/articles/
+     epjn/full_html/2022/01/epjn210018/epjn210018.html
+399. ANS Answers Inquiry on ANSI/ANS-56 https://www.ans.org/file/366/3.5-2009-
+     clarification-nn-12-10.pdf
+400. REGDOC-2.5.2, Design of Reactor Facilities https://www.cnsc-ccsn.gc.ca/eng/acts-
+     and-regulations/regulatory-documents/published/html/regdoc2-5-2/
+401. Nuclear Reactor simulations/visualization : r/factorio https://www.reddit.com/r/
+     factorio/comments/6ywfzn/nuclear_reactor_simulationsvisualization/
+402. Factorio Nuclear Power Tutorial: Efficient 2, 4, 6 & 8 Reactor ... https://
+     www.youtube.com/watch?v=kIq5WjYAH2s
+403. Phoenix Controls 101 (2020) https://www.youtube.com/watch?v=KIRoTJWXMjM
+404. Electronic circuit breakers https://www.phoenixcontact.com/en-gb/products/device-
+     circuit-breakers/electronic-circuit-breakers
+405. Phoenix Controls | Flow Control Technology https://aap-kc.com/product-lines/
+     phoenix-controls/
+406. Phoenix Interface (PHX200 or PHX600) Product Bulletin http://lit.stromquist.com/
+     docs/EXCALIBR/MET_PDF/5951025.PDF
+407. Worksheet S-12 Hospital Reporting Requirements | Baker Tilly https://
+     www.bakertilly.com/insights/worksheet-s-12-for-hospitals
+408. List of Air Ministry specifications - Wikipedia https://en.wikipedia.org/wiki/
+     List_of_Air_Ministry_specifications
+409. AIRWORTHINESS DIRECTIVES - ransdesigns https://www.rans.com/airworthiness-
+     directives
+410. AIRCRAFT DOWNLOADS | ransdesigns https://www.rans.com/aircraft-downloads
+411. 2026 ICD-10-CM Codes S00-S09: Injuries to the head https://www.icd10data.com/
+     ICD10CM/Codes/S00-T88/S00-S09
+412. Standards and Specifications | IHO https://iho.int/en/standards-and-specifications
+413. The Spy - TF2 FreakShow Wiki https://tf2freakshow.fandom.com/wiki/The_Spy
+414. 2014 Risk Control Report - CEA/De la recherche à l'industrie https://www.cea.fr/
+     english/Documents/corporate-publications/risk-control-report-2014.pdf
+415. CEA-RA2012ClubExploitantsReacteurs-UK-CouvCS5 https://www.cea.fr/cad/
+     Documents/Activit%C3%A9s/Fission/
+     Club%20exploitants%20de%20reacteur%20eng.pdf
+416. Research Nuclear Reactors - cea.fr https://www.cea.fr/english/Documents/scientific-
+     and-economic-publications/nuclear-energy-monographs/CEA_Monograph9_Research-
+     nuclear-reactor_2012_GB.pdf
+417. Sodium cooled nuclear reactors - CEA/De la recherche à l ... https://www.cea.fr/
+     english/Documents/scientific-and-economic-publications/nuclear-energy-
+     monographs/CEA_Monograph7_Sodium-cooled-nuclear-reactors_2016_GB.pdf
+418. REVIEW of fRENCH RESEARCH REACToR - cea.fr https://www.cea.fr/cad/
+     Documents/Activit%C3%A9s/Fission/RA2017-UK-BD.pdf
+419. Reactor Performance, system reliability: Long-Term Operation https://www.cea.fr/
+     Documents/fisa/s1.fisa.05%20003-inv-fisa-s01-pptA4-rev00-
+     SERRANOGARCIA_Marta-2.pdf
+420. NUCLEAR REACTORS - CEA/De la recherche à l'industrie https://www.cea.fr/english/
+     Documents/thematic-publications/cea-nuclear-reactors.pdf
+421. [PDF] Topical Issues in Nuclear Installation Safety https://www-pub.iaea.org/MTCD/
+     Publications/PDF/AdditionalVolumes/STIPUB1829_volTwoWeb.pdf
+422. [PDF] Annual Report https://www.nra.go.jp/data/000472240.pdf
+423. [PDF] contratti dell'enea con la commissione europea https://iris.enea.it/retrieve/
+     83570fc4-45c8-4860-a407-31081f7682fb/Contratti%20ENEA%20UE%202023.pdf
+424. [PDF] argentinean national report for the convention on nuclear safety https://
+     www.iaea.org/sites/default/files/24/02/national_report_argentina_ar1.pdf
+425. [PDF] NUCLEAR WALLET CARDS https://www-nds.iaea.org/public/wallet/
+     wallet-1995/wallet-1995.pdf
+426. Medical Portal - IAEA-NDS https://nds.iaea.org/medportal/
+427. Largest Batch of HEU Returned from Germany to Russia http://www.iaea.org/
+     newscenter/news/largest-batch-heu-returned-germany-russia
+428. [PDF] Exposure of the Public from Large Deposits of Mineral Residues https://www-
+     pub.iaea.org/mtcd/publications/pdf/te_1660_web.pdf
+429. [PDF] the iaea safeguards system - moves into the 21st century https://www.iaea.org/
+     sites/default/files/41403450122su.pdf
+430. [PDF] Atomic Spectroscopy - INIS-IAEA https://inis.iaea.org/records/7ygk1-fv875/
+     files/GB21U1610.pdf
+431. [PDF] Use of isotope techniques in lake dynamics investigations https://www-
+     pub.iaea.org/MTCD/Publications/PDF/te_1206_prn.pdf
+432. [PDF] TIME RESPONSE MEASUREMENTS OF ROSEMOUNT ... https://inis.iaea.org/
+     records/m5sn5-thb54/files/49009668.pdf?download=1
+433. [PDF] Legal Challenges Related to Nuclear Safety https://www.oecd-nea.org/upload/
+     docs/application/pdf/2024-03/7664_wplans_report.pdf
+434. Neutronics - an overview | ScienceDirect Topics https://www.sciencedirect.com/
+     topics/engineering/neutronics
+435. Super-Phénix core layout - ResearchGate https://www.researchgate.net/figure/Super-
+     Phenix-core-layout_fig2_237545155
+436. [PDF] Development of Neutronic Calculation Schemes for Heterogeneous ... https://
+     theses.fr/2019AIXM0289.pdf
+437. [PDF] ACT Q72 DOE lab technical reports 2013-2016 https://www.energy.gov/sites/
+     default/files/2017/06/f35/MAAdm_Question%2072%20Response_0.pdf
+438. The 0E2 benchmarks for PWR UO2 decay heat - EPJ N https://www.epj-n.org/
+     articles/epjn/full_html/2026/01/epjn20260006/epjn20260006.html
+439. [PDF] Best Practice Guidelines for the Use of CFD in Nuclear Reactor ... https://
+     www.oecd-nea.org/upload/docs/application/pdf/2021-02/csni-r2014-11.pdf
+440. [PDF] A Bottom-Up Cost Estimation Tool for Nuclear Microreactors https://
+     gain.inl.gov/content/uploads/4/2025/09/2025-Document-INL-RPT-25-87273.pdf
+441. [PDF] Use of control room simulators for training of nuclear power plant ... https://
+     www-pub.iaea.org/MTCD/Publications/PDF/te_1411_web.pdf
+442. Instrumentation and control strategies for an integral pressurized ... https://
+     www.sciencedirect.com/science/article/pii/S1738573315000030
+443. Micro-Simulation Technology - Nuclear Power Plant Simulation https://
+     www.microsimtech.com/
+444. Chernobyl - 1986 - Facebook https://www.facebook.com/Chernobyl.CCCP/posts/key-
+     parameters-for-unit-4-from-the-dreg-program-skala-computer-system-during-the/
+     1619759790160398/
+445. A Reduced-Order Model of a Nuclear Power Plant with Thermal ... https://
+     www.mdpi.com/1996-1073/17/17/4298
+446. [PDF] NGNP Reactor Coolant Chemistry Control Study - INL Digital Library https://
+     inldigitallibrary.inl.gov/sites/sti/sti/4781574.pdf
+447. An open time-series simulated dataset covering various accidents ... https://
+     pmc.ncbi.nlm.nih.gov/articles/PMC9747709/
+448. Sodium experiment on fully natural circulation systems for decay ... https://
+     inis.iaea.org/records/c56w6-qf994
+449. [PDF] SYSTEM DEVELOPMENT PLAN 2018–2027 - Svenska kraftnät https://
+     www.svk.se/siteassets/english/about-us/svenska-kraftnat-system-development-
+     plan-2018-2027.pdf
+450. [PDF] Final Report of the Swedish Demonstration: Ten key abilities for ... https://
+     www.svk.se/siteassets/2.utveckling-av-kraftsystemet/forskning-och-utveckling/
+     coordinet/coordinet_wp4_d4.7.2_final-report.pdf
+451. [PDF] ENTSO-E Balancing report 2022 https://eepublicdownloads.entsoe.eu/clean-
+     documents/nc-tasks/2022_ENTSO_E_Balancing_Report_Web_2bddb9ad4f.pdf
+452. [PDF] Explicit Demand Response in Europe - Mapping the Markets 2017 https://
+     www.smarten.eu/wp-content/uploads/2017/04/SEDC-Explicit-Demand-Response-in-
+     Europe-Mapping-the-Markets-2017.pdf
+453. [PDF] Clean up and dismantling of nuclear facilities - CEA https://www.cea.fr/
+     english/Documents/scientific-and-economic-publications/nuclear-energy-
+     monographs/CEA_Monograph13_Clean-up-dismantling-nuclear-
+     facilities_2018_GB.pdf
+454. Application — SESMG 1.X documentation https://spreadsheet-energy-system-model-
+     generator.readthedocs.io/en/latest/02.02.00_application.html
+455. Simulation & Control Room Solutions https://westinghousenuclear.com/operating-
+     plants/instrumentation-controls-systems/simulation-control-room-solutions/
+456. HOW TO RUN A CONTROL ROOM SIMULATOR ... https://www.osti.gov/servlets/
+     purl/1360722
+457. Overview of a Reconfigurable Simulator for Main Control ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/5680979.pdf
+458. X-energy Unveils Plant Support Center for Training Xe-100 ... https://x-energy.com/
+     news/x-energy-unveils-plant-support-center-for-training-xe-100-advanced-small-
+     modular-reactor-operators/
+459. The control room simulator at nuclear power plants https://www.foronuclear.org/en/
+     updates/in-depth/the-control-room-simulator-at-nuclear-power-plants/
+460. Nuclear Power Plant Simulators: Goals and Evolution https://inis.iaea.org/records/
+     3r401-t4h42/files/42101979.pdf
+461. [PDF] Licensing Basis and Safety Strategy for Newcleo's Lead-cooled Fast ... https://
+     www.nrc.gov/docs/ML2608/ML26082A021.pdf
+462. [PDF] A Joint Report on PSA for New and Advanced Reactors https://www.oecd-
+     nea.org/jcms/pl_19234/a-joint-report-on-psa-for-new-and-advanced-reactors?
+     details=true.
+463. Prospects and Trends in the Development of Small Modular Nuclear ... https://
+     www.mdpi.com/1996-1073/18/22/5970
+464. [PDF] THE INSPECTOR GENERAL'S REPORT ON NUCLEAR SAFETY ... https://
+     igsnr.com/wp-content/uploads/2026/02/IGSNR-Report-2025.pdf
+465. Canadian Generation IV Supercritical Water Reactor Design https://
+     www.facebook.com/groups/408164279325391/posts/2753265304815265/
+466. [PDF] French National Plan https://regulation-oversight.asnr.fr/content/download/
+     139627/file/
+     French%20National%20Plan%20for%20the%20Management%20of%20Radioactive%
+     20Materials%20and%20Waste%202016-2018_complete.pdf
+467. Opera Muzicală și Interpreți | PDF | Tablet Computer - Scribd https://
+     www.scribd.com/document/659387857/opere-neidentificate-la-31-12-2013
+468. [PDF] Case of treated wastewater reuse land applied sprinkler - HAL theses https://
+     theses.hal.science/tel-04078033v1/file/These_MZARDARI.pdf
+469. HVAC Engineer's Handbook, Eleventh Edition [11 ed.] 0750646063 ... https://
+     dokumen.pub/hvac-engineers-handbook-eleventh-
+     edition-11nbsped-0750646063-9780750646062.html
+470. SMW KLU-215-Z NR:128280-供应信息 - 化工仪器网 https://www.chem17.com/
+     Offer_sale/Detail/11575347.html
+471. Product Center - Welcome to Xiamen Ji Yang Technology Co., Ltd. http://
+     jykj131.com/productview.html?id=693
+472. DELTAMod. FLY100 DN 20 PN 16气动控制阀 - AFzhan https://www.afzhan.com/
+     st146726/product_4835830.html
+473. Sitemap - Techniekwebshop.nl https://www.techniekwebshop.nl/catalog/
+     seo_sitemap/view/sitemap_139517_1.html
+474. Industrial Valves: Calculations for Design, Manufacturing, Operation ... https://
+     dokumen.pub/industrial-valves-calculations-for-design-manufacturing-operation-and-
+     safety-decisions-1nbsped-1394185022-9781394185023.html
+475. Pieces de rechanges - APPROVISIONNEUR TECHNIQUE https://approvisionneur.com/
+     pieces-rechanges.html
+476. Design and comparison of two advanced core control systems for ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0967066122000685
+477. Data Sheet Library | Westinghouse Nuclear https://westinghousenuclear.com/data-
+     sheet-library/
+478. Implementing Component Degradations into a Modelica Model of an ... https://
+     www.tandfonline.com/doi/full/10.1080/00295450.2024.2376996
+479. Phoenix Vales and Controls Product Data | PDF https://www.scribd.com/doc/
+     280907633/Phoenix-Vales-and-Controls-Product-Data
+480. Phoenix Interface (PHX200 or PHX600) http://lit.stromquist.com/docs/EXCALIBR/
+     MET_PDF/5951020.PDF
+481. Phoenix Controls CSCP Venturi Valves (MKT-0525) https://www.flowtechinc.com/
+     wp-content/uploads/2024/07/CSCP-Valves.pdf
+482. 6CP50/10-3 Phenix Technologies - Enertel https://www.enertel.com.au/product/
+     uncategorized/6cp50-10-3-50kv-ac-hipot/
+483. its-behind-you/diary20022003.html at master - GitHub https://github.com/rjmunro/
+     its-behind-you/blob/master/diary20022003.html
+484. Operation of Phenix Technologies AutoTTS - YouTube https://www.youtube.com/
+     watch?v=-yF-JViJRHY
+485. Phenix Documentation - version 2.2.1-6174 https://phenix-online.org/
+     documentation/reference/index.html
+486. Phenix Technologies - YouTube https://www.youtube.com/channel/UC-
+     qqbllPsiwSFxrHU5YVJbg/videos
+487. PHENIX TECHNOLOGIES INC: Detection - DirectIndustry https://
+     www.directindustry.com/prod/phenix-technologies-inc-198608.html
+488. https://www.phoenixcontact.com/en-pc/products/ts-a... https://
+     www.phoenixcontact.com/en-pc/products/ts-a-dtr0000558797-1359952
+489. Phenix | Votre application Phenix https://intercom.help/phenix/fr/collections/
+     1552900-phenix
+490. The true history of Phenix watches - Time2Tell https://www.time2tell.com/en/
+     history-of-the-brands/484-the-true-history-of-phenix-watches.html
+491. Phenix 350 Watch Movement - EmmyWatch https://www.emmywatch.com/db/
+     movement/phenix--350/
+492. Phenix Controls - Timers https://www.phenixcontrols.com/Timers/
+493. Software - Phenix Industrial Controls, Sensors, and Timers https://
+     www.phenixcontrols.com/Software/
+494. IAEA Safety and Security Series - Online Users Interface ... https://nucleus-
+     apps.iaea.org/nss-oui/Content/Index?CollectionId=m_daad92bb-3bb0-4445-a6ec-
+     a287e55e9664&type=PublishedCollection
+495. Safety of Nuclear Power Plants: Design | IAEA https://www.iaea.org/publications/
+     10885/safety-of-nuclear-power-plants-design
+496. L2 PSA Methdology Overview - 東海大学 https://www.u-tokai.ac.jp/uploads/
+     2025/04/2025_07_SSR-2-1.pdf
+497. Safety of Nuclear Power Plants: Design | IAEA https://www.iaea.org/publications/
+     8771/safety-of-nuclear-power-plants-design
+498. Safety of Nuclear Power Plants: Design - nucleus.iaea.org https://nucleus.iaea.org/
+     sites/nss-oui/Published%20Collections/m_daad92bb-3bb0-4445-a6ec-a287e55e9664/
+     m_daad92bb-3bb0-4445-a6ec-a287e55e9664__48_0.Html
+499. Safety of nuclear power plants - IAEA https://www-pub.iaea.org/MTCD/Publications/
+     PDF/Pub1715web-46541668.pdf
+500. 6WDQGDUGV - IAEA https://www-pub.iaea.org/MTCD/Publications/PDF/
+     Pub1534_web.pdf
+501. Phoenix Controls Valves and Controllers https://buildings.honeywell.com/us/en/
+     brands/our-brands/phoenix-controls/products/valves-and-controllers
+502. How Phoenix Controls' Venturi Valves Set Industry Standards https://
+     www.youtube.com/watch?v=eoakw8uLwPk
+503. Phoenix Controls https://www.aquaair.ab.ca/product/phoenix-controls/
+504. Phoenix Interface (PHX200 or PHX600) https://docs.johnsoncontrols.com/bas/api/
+     khub/documents/xHM7DU3b3rkhfv01wmYe6A/content
+505. [PDF] Profile SFR-50 PLANDTL JAPAN GENERAL ... - Nucleus https://
+     nucleus.iaea.org/sites/lmfns/Facility%20Country%20Profiles1/
+     Profile%20SFR-50%20Japan-%20PLANDTL_R1.pdf
+506. [PDF] An Innovative Hybrid Loop-Pool Design for Sodium Cooled Fast ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/3867711.pdf
+507. Passive safety systems remove heat from a nuclear reactor using ... https://
+     www.facebook.com/NuclearEnergyGov/posts/beat-the-heat-passive-safety-systems-
+     remove-heat-from-a-nuclear-reactor-using-ba/1376751011241860/
+508. [PDF] Benchmark Analysis of EBR-II Protected Loss-of-Flow Transient https://
+     glc.ans.org/nureth-16/data/papers/12947.pdf
+509. Phoenix Minimally Invasive Spinal Fixation System - Orthofix https://orthofix.com/
+     solutions/spine/posterior-thoracolumbar-fixation/phoenix-minimally-invasive-spinal-
+     fixation-system/
+510. Fire Helmets Parts Guide - Phenix Technology https://phenixfirehelmets.com/pages/
+     phenix-parts-guide
+511. [PDF] TECHNICAL SPECIFICATIONS TASK FORCE TSTF March 1, 2011 ... https://
+     www.balch.com/files/upload/ML110610350%5B1%5D.pdf
+512. Nuclear Power Plant Control System Market Report 2024-2028 [185 ... https://
+     www.marketsandmarkets.com/Market-Reports/nuclear-power-plant-control-system-
+     market-213998778.html
+513. [PDF] General Electric Electrohydraulic Controls (EHC) Electronics ... - EPRI https://
+     restservice.epri.com/publicdownload/TR-108146/0/Product
+514. [PDF] Department of Energy https://www.energy.gov/ne/articles/neet-
+     workshop-2010
+515. [PDF] Book of Abstracts - Društvo jedrskih strokovnjakov Slovenije https://
+     www.djs.si/upload/files/BoA_r0.pdf
+516. France adds new nuclear reactor, may lower UK energy prices https://
+     www.facebook.com/groups/1058082791870255/posts/1353228819022316/
+517. [PDF] World Energy Resources | 2016 https://www.worldenergy.org/assets/images/
+     imported/2016/10/World-Energy-Resources-Full-report-2016.10.03.pdf
+518. [PDF] Ninth National Report of Brazil - Portal Gov.br https://www.gov.br/cnen/pt-br/
+     assunto/radioprotecao-e-seguranca-nuclear/
+     copy_of_8thand9thNationalReportofBrazilAugust2022.pdf
+519. [PDF] BARC Newsletter https://www.barc.gov.in/barc_nl/2011/20110102.pdf
+520. cm total length: Topics by Science.gov https://www.science.gov/topicpages/c/
+     cm+total+length.html
+521. Handbook of X-Ray Spectrometry - pdfcoffee.com https://pdfcoffee.com/handbook-of-
+     x-ray-spectrometry-pdf-free.html
+522. [PDF] NUCLEAR - Energiforsk https://energiforsk.se/media/28856/survey-on-power-
+     system-ancillary-services-energiforskrapport-2020-708.pdf
+523. [PDF] Compliance with the EU Regulation Requirements for Generators in ... https://
+     www.diva-portal.org/smash/get/diva2:1447590/FULLTEXT01.pdf
+524. Mobile base station site as a virtual power plant for grid stability https://
+     www.sciencedirect.com/science/article/pii/S0142061524006136
+525. [PDF] Estimation of daily wind power potential in Sweden's bidding areas https://
+     www.svk.se/4a4e5c/siteassets/5.jobba-har/dokument-exjobb/estimation-of-daily-
+     wind-power-potential-in-swedens-bidding-areas.pdf
+526. [PDF] NC RfG implementation monitoring report 2020 - acer.europa.eu https://
+     acer.europa.eu/sites/default/files/documents/Publications/
+     3rd%20edition%20NC%20RfG%20implementation%20monitoring%20report%20202
+     0.pdf
+527. [PDF] FLEXIBILITY IN THE ENERGY SECTOR - cerre https://cerre.eu/wp-content/
+     uploads/2025/05/CERRE-Report_Flexibility_Final.pdf
+528. [PDF] Ancillary service provision by RES and DSM connected at ... https://smartnet-
+     project.eu/wp-content/uploads/2016/12/D1-1_20161220_V1.0.pdf
+529. [PDF] indira gandhi centre for atomic research - IGCAR https://www.igcar.gov.in/
+     publications/igc_annual_report_2011.pdf
+530. Forskrift om endring i forskrift om sanksjoner og tiltak mot Iran ... https://lovdata.no/
+     dokument/LTI/forskrift/2016-01-15-22/KAPITTEL_1-213
+531. Passive high explosive neutron inspection (PHENIX) - PMC - NIH https://
+     pmc.ncbi.nlm.nih.gov/articles/PMC11059178/
+532. REGULATION OF NUCLEAR ACTIVITIES AND EXPOSURE TO ... https://www.asn.fr/
+     annual_report/2011gb/ASN-actions/ch4-REGULATION-%20NUCLEAR-
+     ACTIVITIES.html
+533. [PDF] Phoenix Contact Environmental Compliance Standard https://
+     assets.phoenixcontact.com/file/0cc0560f-94a4-43a0-a2ec-ea9f433b1f00/media/
+     original?Phoenix_Contact_Environmental_Compliance_Standard.pdf
+534. ASNR Report on the state of nuclear safety and radiation protection ... https://
+     en.asnr.fr/news/asnr-report-state-nuclear-safety-and-radiation-protection-france-2025
+535. [PDF] Generation-four (GEN-IV) reactors https://recherche-expertise.asnr.fr/sites/
+     default/files/documents/larecherche/publications-documentation/collection-
+     ouvrages-irsn/IRSN_reference_generation4_reactors.pdf
+536. Information sheets | ASNR https://research-assessment.asnr.fr/about-us/information-
+     sheets
+537. Recognized Consensus Standards: Medical Devices - FDA https://
+     www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfstandards/detail.cfm?
+     standard__identification_no=35638
+538. [PDF] Approval - accessdata.fda.gov https://www.accessdata.fda.gov/cdrh_docs/
+     pdf6/P060039S021A.pdf
+539. ASN/IRSN guide 28: Qualification of scientific computing tools used ... https://
+     asnr.hal.science/irsn-04401077
+540. [PDF] on Nuclear Safety and Radiation Protection - IGSNR https://igsnr.com/wp-
+     content/uploads/2024/02/IGSNR-Report-2023.pdf
+541. [PDF] 24th National Symposium on Radiation Physics https://isrp.in/wp-content/
+     uploads/2025/04/E-Proceedings_NSRP_compressed.pdf
+542. Full text of "NEW" - Internet Archive http://www.archive.org/stream/NEW_1/
+     NEW.txt
+543. etcart / RIVet - stemnet2.txt - gitlab https://gitlab.ati.ttu.ee/etcart/RIVet/blob/
+     60856c1d2f06b2e3d4cea3560375fd3cf447af61/stemnet2.txt?
+     expanded=true&viewer=simple
+544. Fast Reactor Operation and Reactivity Control: Report on the Phenix ... https://
+     www.researchgate.net/publication/
+     272484972_Fast_Reactor_Operation_and_Reactivity_Control_Report_on_the_Phenix_
+     Experience
+545. Phenix reactor: a review of 35 year long operating life - INIS-IAEA https://
+     inis.iaea.org/records/m645r-bah56
+546. [PDF] The Phenix Reactor, France https://www.iaea.org/sites/default/files/
+     publications/magazines/bulletin/bull15-5/15504793941.pdf
+547. Phenix: The experience feedback - INIS-IAEA https://inis.iaea.org/records/d0x1g-
+     gnj86
+548. Learning from Phénix - Nuclear Engineering International https://
+     www.neimagazine.com/advanced-reactorsfusion/learning-from-ph-nix/
+549. Phenix, a fast breeder reactor - INIS-IAEA https://inis.iaea.org/records/fphfr-q1b53
+

@@ -1,0 +1,179 @@
+============================================================================================================
+KALLSKAR SPEC REVIEW — INDEPENDENT RECOMPUTATION
+============================================================================================================
+
+1. REACTOR PERIOD FOR +300 pcm  (spec §3.4 'period near 2.5 s'; E1 says 0.47 s, E4 says 0.46 s)
+  inhour equation with §3.1 data: rho = sum(beta_i / (1 + lambda_i T))
+  [MISMATCH] period at +300 pcm: computed 0.467 s vs spec 2.5 s (tolerance 0.05)
+           spec §3.4 is wrong; the reviewers are right (F12/D-016 already records this)
+  [OK  ] reactivity giving a 2.5 s period: computed 211 pcm
+  [OK  ] reactivity giving the 10 s period trip (§9.5): computed 124.7 pcm
+  [OK  ] reactivity giving the 30 s rod block (§9.5): computed 69.43 pcm
+
+2. ROD WITHDRAWAL RATES vs THE 4 pcm/s INTERLOCK  (§3.4)
+  shim bank A (6 x 400)    at 1 mm/s: peak 4.80 pcm/s — EXCEEDS the 4 pcm/s interlock
+  shim bank B (6 x 300)    at 1 mm/s: peak 3.60 pcm/s — within the interlock
+  shim bank C (6 x 200)    at 1 mm/s: peak 2.40 pcm/s — within the interlock
+  single shim rod (400)    at 2 mm/s: peak 1.60 pcm/s — within the interlock
+  RR bank (3 x 100)        at 5 mm/s: peak 3.00 pcm/s — within the interlock
+
+3. S-19 RAMP TIME TO THE PERIOD TRIP  (§3.4 interlock: one rod or one bank at a time; RR 5 mm/s)
+  from mid-band (d = 0.45), withdrawing all three RRs releases 120.2 pcm (the spec's +300 pcm assumes they start fully inserted)
+  one rod at a time at 5 mm/s: 270 s to run all three out; the 10 s-period trip needs 125 pcm
+  => the period trip is reached after about 270 s of continuous withdrawal (E1's '40 s' assumes the three rods move together at ~3 pcm/s, which the §3.4 interlock forbids)
+
+4. IHX PRIMARY DUTY  (§4.3: 1,782 kg/s, 545 -> 375 C, rated 400 MWt each)
+  [OK  ] duty with 545 C inlet: computed 385.2 MWt
+  [OK  ] duty with 550 C inlet: computed 396.4 MWt
+  six units: 2311 MWt at 545 C vs 2378 MWt at 550 C; core + pump heat = 2390 MWt
+  => 545 C leaves a 79 MWt shortfall; 550 C closes to +12 MWt. The reviewers are right.
+  [OK  ] LMTD at 545 C (spec 'LMTD ~ 40 K'): computed 38.05 K vs spec 40 K (tolerance 2)
+  [OK  ] LMTD at 550 C: computed 41.24 K vs spec 40 K (tolerance 2)
+  UA implied: 10.12 MW/K at 545 C, 9.61 MW/K at 550 C (spec 'UA ~ 10 MW/K')
+
+5. PRIMARY AND SECONDARY HEAT BALANCE  (§1.1, §5.1)
+  [OK  ] primary duty at 10,694 kg/s, 375 -> 550 C: computed 2,379 MWt vs spec 2,390 MWt (tolerance 25)
+           the primary loop carries core power plus pump heat
+  [OK  ] secondary duty at 3 x 3,112 kg/s, 320 -> 520 C: computed 2,389 MWt vs spec 2,388 MWt (tolerance 15)
+  SG section arithmetic: 24 x 99.5 = 2388 MWt vs the stated reactor rating 2380 MWt (+ pump heat 10) = 2390 MWt
+  => the 2,380 / 2,388 gap the reviewers flag is 8 MWt; against core+pump heat it is -2 MWt, i.e. rounding of the section duty (99.5 vs 99.583).
+
+6. AVERAGE LINEAR HEAT RATE  (§2.4: 27.7 kW/m; E3 claims it should be 29.2)
+  active fuel length: 301 x 271 x 1.0 m = 81,571 m
+  [OK  ] LHR if ALL 2,380 MWt were in the pins: computed 29.18 kW/m
+  [OK  ] LHR with the 95 % pin fraction the spec's own file-20 calc uses: computed 27.72 kW/m vs spec 27.7 kW/m (tolerance 0.05)
+           5 % of fission energy is deposited outside the pins (gammas in structure and coolant); E3 ignored it
+  [OK  ] peak LHR = 27.7 x 1.20 x 1.04 x 1.22: computed 42.17 kW/m vs spec 42 kW/m (tolerance 0.3)
+
+7. BUNDLE VELOCITY AND CORE TRANSIT  (§2.5: 32.9 kg/s per assembly, 5.4 m/s, 0.19 s)
+  inner across-flats 164 mm -> duct area 232.93 cm2; pins 153.78; wire 3.06; free area 76.08 cm2
+    velocity at core inlet 375 C: 5.01 m/s; 1.0 m fuel transit 0.200 s
+    velocity at core average 467 C: 5.13 m/s; 1.0 m fuel transit 0.195 s
+    velocity at core outlet 559 C: 5.27 m/s; 1.0 m fuel transit 0.190 s
+  [OK  ] bundle velocity at core-average density: computed 5.134 m/s vs spec 5.4 m/s (tolerance 0.4)
+           E3 used the 173 mm OUTER across-flats and got 3.6-3.7 m/s; the 4.5 mm wrapper wall makes the inner flats 164 mm
+  [OK  ] core transit time: computed 0.1948 s vs spec 0.19 s (tolerance 0.02)
+
+8. COVER GAS ON COOLDOWN  (§4.4: 320 m3, 0.120 MPa, ~90 m3 swing, '~0.074 MPa')
+  gas-space temperatures from the spec's own calc: 300 C at power, 180 C cold
+  [OK  ] volume change only: computed 0.09366 MPa
+  [OK  ] gas cooling only: computed 0.09488 MPa
+  [OK  ] both (the spec's number): computed 0.07405 MPa vs spec 0.074 MPa (tolerance 0.001)
+           E1 (volume alone 0.094) and E4 (0.057 using sodium temperatures 230/550 C for the gas) both mis-stated it
+
+9. COPING TIME, NO HEAT SINK  (§4.5: 'pool rises 200 K in about 5 h'; E1 says 6.5 h)
+  spec calc.py (first term only)  : 200 K rise after 4.81 h
+  full §3.6 formula               : 200 K rise after 6.60 h
+  pool heat capacity used: 2,412 MJ/K (1,250 t Na x 1.27 + 1,500 t steel x 0.55)
+  => the spec's ~5 h comes from dropping the -(t+T_op)^-0.2 term when integrating; with the §3.6 formula
+     as written the answer is ~6.7 h. E1 is right (they said ~6.5 h).
+
+10. DECAY HEAT AT 1 s  (§3.6 table: 6.35 %, 151 MW; E7 claims the formula gives 156 MW)
+  [OK  ] P/P0 at t = 1 s from the full formula: computed 0.06354 vs spec 0.0635 (tolerance 0.0002)
+  [OK  ] MW at 1 s: computed 151.2 MW vs spec 151 MW (tolerance 1)
+           E7 evaluated only 0.066 x t^-0.2 = 6.6 %; the second term is worth -0.25 %FP. No change needed.
+
+11. SOURCE-RANGE COUNT RATE, ALL RODS IN  (§3.5: '15/(1-k), about 250 cps')
+  PSS only, most reactive rod stuck (the §3.3 shutdown margin): rho =   -3050 pcm, k = 0.9704, SR =   507 cps
+  PSS only, no rod stuck                                    : rho =   -3450 pcm, k = 0.9667, SR =   450 cps
+  all rods in (PSS + SSS)                                   : rho =   -6420 pcm, k = 0.9397, SR =   249 cps
+  => 'all rods in' means PSS + SSS, which gives 249 cps. The spec's 250 cps is right;
+     E4's 492 cps used the stuck-rod shutdown margin instead.
+
+12. REGULATING BAND WORTH AND DRIFT  (§3.4 band 400-700 mm; §3.3 reserves 250 pcm; §10.5 says ~20 min)
+  [OK  ] worth of the 400-700 mm band: computed 163.5 pcm
+           §3.3 reserves 250 pcm for the RR band
+  [OK  ] worth of a 250-750 mm band: computed 245.5 pcm vs spec 250 pcm (tolerance 6)
+           E1's suggested band matches the 250 pcm reservation
+  [OK  ] burnup drift at x360: computed 0.75 pcm per real minute
+  mid-band to edge = 82 pcm -> 109 real minutes (spec §10.5 says about 20 min)
+  with the intended 250 pcm band: 164 real minutes
+
+13. SECONDARY DUMP TANK  (§5.1: 400 t inventory, 450 m3 tank)
+  400 t at 200.0 C occupies  443.0 m3  ( 98.4 % of the 450 m3 tank)
+  400 t at 320.0 C occupies  456.6 m3  (101.5 % of the 450 m3 tank)
+  400 t at 420.0 C occupies  468.9 m3  (104.2 % of the 450 m3 tank)
+  400 t at 520.0 C occupies  482.0 m3  (107.1 % of the 450 m3 tank)
+  => cold (200 C idle setpoint) it just fits at 98 %; drained hot it does not. E1 is right.
+
+14. PART-LOAD PROGRAM vs TURBINE MINIMUM STABLE LOAD  (§9.2 table, §7.1: 30 % = 150 MWe, trip below 420 C hot reheat)
+  100 %FP: 1000 MWe gross -> 500.0 MWe each on two, 1000.0 on one   
+   80 %FP:  783 MWe gross -> 391.5 MWe each on two, 783.0 on one   
+   60 %FP:  573 MWe gross -> 286.5 MWe each on two, 573.0 on one   
+   40 %FP:  371 MWe gross -> 185.5 MWe each on two, 371.0 on one   
+   30 %FP:  273 MWe gross -> 136.5 MWe each on two, 273.0 on one   below minimum if both turbines are online
+   20 %FP:  178 MWe gross ->  89.0 MWe each on two, 178.0 on one   below minimum if both turbines are online
+   10 %FP:   86 MWe gross ->  43.0 MWe each on two,  86.0 on one   below minimum even on ONE turbine
+    5 %FP:   42 MWe gross ->  21.0 MWe each on two,  42.0 on one   below minimum even on ONE turbine
+  main steam at the 10 % and 5 % rows is 408 and 401 C; §7.1 trips the turbine below 420 C hot reheat,
+  and hot reheat is below main steam. So those rows cannot be run with a turbine online. E1 is right.
+
+15. HOTTEST ASSEMBLY OUTLET  (§2.4 says 580-585 C; §2.5 T_out = 375 + 183.7 (p/f) (P/Q))
+  zone I (rings 0-5)    f = 1.12, p = 1.20: T_out = 571.8 C
+  zone I (rings 0-5)    f = 1.12, p = 1.05: T_out = 547.2 C
+  zone II (rings 6-8)   f = 1.00, p = 1.20: T_out = 595.4 C
+  zone II (rings 6-8)   f = 1.00, p = 1.05: T_out = 567.9 C
+  zone III (rings 9-10) f = 0.92, p = 1.20: T_out = 614.6 C
+  zone III (rings 9-10) f = 0.92, p = 1.05: T_out = 584.7 C
+  the spec's own file-20 calc used f = 1.08 (inner) and 0.925 (outer), giving 579 and 583 C,
+  which is where 580-585 came from; those flow factors are not the §2.5 zone factors (finding F11/D-013).
+
+16. NATURAL-CIRCULATION FORMULA  (§4.2: Q_nc = 3.5 % x (P / 1 %FP)^(1/3))
+  at P = 100 %FP, as written:  16.25 % rated flow; with (P/100 %FP):  3.50 %
+  at P =  10 %FP, as written:   7.54 % rated flow; with (P/100 %FP):  1.62 %
+  at P =   1 %FP, as written:   3.50 % rated flow; with (P/100 %FP):  0.75 %
+  => as written the formula gives 16 % flow at full power, which is not 'natural circulation with no pumps'.
+     E3 is right that the intended form is (P / 100 %FP)^(1/3), i.e. 3.5 % at full power. E5 called it
+     'a reasonable order-of-magnitude fit', which only holds for the corrected form.
+
+17. HOUSE LOAD vs LISTED MOTOR RATINGS  (§1.1: ~65 MWe house load)
+  nameplate motor ratings:
+    4 main feed pumps    4 x  9.8 MW =  39.2 MW
+    3 primary pumps      3 x  4.0 MW =  12.0 MW
+    3 secondary pumps    3 x  2.5 MW =   7.5 MW
+    4 CW pumps           4 x  3.7 MW =  14.8 MW
+    total 73.5 MW of nameplate rating alone
+  using SHAFT powers where the spec gives them (primary 3.3, secondary 2.0): 69.9 MW
+  => even on shaft power the four biggest auxiliary groups are 70 MW of the 65 MWe house load,
+     leaving ~5 MW for condensate pumps, heaters, sodium services, HVAC and losses. Too tight: E3 is right
+     that the electrical balance needs to be stated explicitly.
+
+18. AMPLITUDE UPDATE ACCURACY  (§14.2 snippet uses the previous step's n in the precursor update)
+  rho = 0.5 beta (180 pcm), exact inhour period 4.0572 s:
+    spec §14.2 snippet               period 4.1991 s  (  -3.4 % growth-rate error)
+    fully implicit (E6)              period 3.9174 s  (  +3.6 % growth-rate error)
+    linear-n (D-015, implemented)    period 4.0566 s  (  +0.0 % growth-rate error)
+  rho = 0.8 beta (288 pcm), exact inhour period 0.6167 s:
+    spec §14.2 snippet               period 0.6963 s  ( -11.4 % growth-rate error)
+    fully implicit (E6)              period 0.5349 s  ( +15.3 % growth-rate error)
+    linear-n (D-015, implemented)    period 0.6145 s  (  +0.4 % growth-rate error)
+  rho = 0.9 beta (324 pcm), exact inhour period 0.2266 s:
+    spec §14.2 snippet               period 0.2894 s  ( -21.7 % growth-rate error)
+    fully implicit (E6)              period 0.1558 s  ( +45.5 % growth-rate error)
+    linear-n (D-015, implemented)    period 0.2217 s  (  +2.2 % growth-rate error)
+
+19. P/Q DURING A PRIMARY PUMP TRIP WITH RB-2  (§4.2 coastdown, §9.5 trip at 1.12, RB-2 = 60 %/min)
+   flow = (2 + 1/(1 + t/10)) / 3 while the flap valve is open; power falls at 1 %FP/s once RB-2 acts
+    t =  0 s: flow 100.0 %, power 100.0 %, P/Q = 1.000   (if the check valve had already seated: 1.500)
+    t =  2 s: flow  94.4 %, power  98.0 %, P/Q = 1.038   (if the check valve had already seated: 1.470)
+    t =  4 s: flow  90.5 %, power  96.0 %, P/Q = 1.061   (if the check valve had already seated: 1.440)
+    t =  6 s: flow  87.5 %, power  94.0 %, P/Q = 1.074   (if the check valve had already seated: 1.410)
+    t =  8 s: flow  85.2 %, power  92.0 %, P/Q = 1.080   (if the check valve had already seated: 1.380)
+    t = 10 s: flow  83.3 %, power  90.0 %, P/Q = 1.080   (if the check valve had already seated: 1.350)
+    t = 20 s: flow  77.8 %, power  80.0 %, P/Q = 1.029   (if the check valve had already seated: 1.200)
+    t = 30 s: flow  75.0 %, power  70.0 %, P/Q = 0.933   (if the check valve had already seated: 1.050)
+    t = 40 s: flow  73.3 %, power  60.0 %, P/Q = 0.818   (if the check valve had already seated: 0.900)
+  peak P/Q with the valve open: 1.080 vs alarm 1.05 and trip 1.12 -> alarms but does not trip
+  => E6's '>98 % power at 8 s' assumes the shims start nearly withdrawn. At BOC the shims hold about
+     2168 pcm, i.e. mid-stroke, where bank A gives 48 pcm/s at the 10 mm/s
+     runback speed — far more than the ~6 pcm/s needed for 60 %/min. The real risk is the check-valve step,
+     which takes flow to 2/3 and P/Q above the trip unless the surviving pumps ramp up. Spec should say when it seats.
+
+20. SPLITTER TABLE TOTAL  (§6.5 'Loop 2 all to B' row: 333 + 311 vs 645 MWe)
+  the spec's own file-20 calc prints A 333 MWe, B 311 MWe, total 645 — the parts are rounded down from
+  333.x and 311.x, so the rounded total is 645 while the rounded parts sum to 644. Presentation, not an error.
+
+21. STEAM MASS BALANCE  (§5.1/§6: 291.7 kg/s per SG, §7.1: 437.5 kg/s per turbine)
+  [OK  ] 3 SGs vs 2 turbines: computed 875.1 kg/s vs spec 875 kg/s (tolerance 0.5)
+
+============================================================================================================

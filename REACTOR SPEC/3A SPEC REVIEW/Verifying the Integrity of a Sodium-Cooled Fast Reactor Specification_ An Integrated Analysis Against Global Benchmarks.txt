@@ -1,0 +1,1225 @@
+Verifying the Integrity of a Sodium-
+Cooled Fast Reactor Specification: An
+Integrated Analysis Against Global
+Benchmarks
+Core Physics and Neutronic Design Validation
+The foundation of any nuclear reactor design lies in its core physics and neutronics
+parameters, which dictate its operational stability, safety, and fuel cycle performance. A
+comprehensive review of a specification sheet requires a rigorous examination of these
+fundamental aspects to ensure they are not only internally consistent but also align with
+decades of research and development in sodium-cooled fast reactor (SFR) technology.
+The primary areas for validation are the reactivity control system, the fuel management
+strategy, and the inherent safety characteristics defined by key neutronic feedback
+coefficients. These elements must work in concert to ensure the reactor can be started,
+operated safely within its design basis, and shut down reliably under all anticipated
+conditions.
+
+The first critical parameter is the reactivity control system, primarily embodied by control
+rods. The specification must detail the total negative reactivity that can be inserted into
+the core to achieve a safe shutdown state. This is quantified through the concept of
+Shutdown Margin (SDM), which is the difference between the total available shutdown
+reactivity and the excess reactivity present in the core 7 . Industry standards typically
+require an SDM in the range of one to five percent reactivity (Δk/K) to provide a robust
+buffer against uncertainties or unexpected positive reactivity insertions 10 . For instance,
+some specific designs have targeted minimum margins of 3000 pcm at beginning-of-cycle
+(BOC) 293, while analyses for other advanced designs consider margins required to
+withstand credible accident scenarios where the minimal margin might fall below 200 °C,
+indicating a need for careful thermal-hydraulic-neutronic coupling 138. The specification
+must therefore state the total insertion worth of all shutdown systems, including both
+control rods and any other absorber mechanisms like movable reflectors 50 . This total
+worth must exceed the sum of the core's excess reactivity and the maximum expected
+positive reactivity from phenomena such as Doppler feedback, xenon poisoning, or
+sodium void effects 255. Furthermore, the specification should account for ancillary
+factors that contribute to shutdown safety, such as the neptunium effect after shutdown
+(which can add up to 120 pcm) and margins for potential fuel handling errors (as high as
+3200 pcm) 5 . Control rod worth itself is not a single value; it varies with the rod's
+position and the local neutron flux distribution 12 . Therefore, a complete specification
+should provide a differential control rod worth curve, showing how reactivity changes
+with incremental rod movement, rather than just a single "total worth" figure 3      8 .
+
+Experimental validation of these calculated worths is a standard practice, with facilities
+like JOYO having conducted regular measurements using methods like the period and
+neutron source techniques to calibrate their models 81 253.
+
+The second pillar of core physics is the fuel cycle design, which defines the reactor's
+sustainability and waste management capabilities. SFRs are designed for breeding fissile
+material from fertile isotopes like Uranium-238 or Thorium-232, or for burning
+transuranic elements from spent light water reactor fuel 90 183. This is reflected in the
+conversion ratio, which is ideally greater than 1.0 for breeder configurations 207. The
+specification must detail the fuel type (e.g., metallic uranium-plutonium alloy or mixed
+oxide), initial enrichment, and target discharge burnup. High burnup is a key objective,
+enabling longer core lifetimes and reducing the frequency of refueling. Typical values for
+modern SFRs aim for discharge burnups around 70 GWd/T 135, with large-scale designs
+targeting similar levels 230. The choice of fuel directly impacts neutronic performance and
+safety characteristics; for example, metallic fuels offer superior heat conductivity but may
+have different swelling behaviors compared to ceramic oxides 147236. The core lifetime,
+expressed in Effective Full Power Days (EFPD), is a direct consequence of the initial
+enrichment and target burnup. The BN-800 reactor, for instance, was designed for a
+significant core life, demonstrating the feasibility of long-life cores in SFRs 196. The
+specification must ensure these three parameters—enrichment, burnup, and lifetime—are
+mutually consistent. Higher enrichments can extend core life but may raise proliferation
+resistance concerns, while higher burnups place greater demands on fuel cladding
+materials to resist irradiation damage, corrosion, and fission gas release 155182.
+
+Finally, the inherent safety of the reactor is governed by its neutronic feedback
+coefficients, which describe how reactivity changes in response to variations in
+temperature or coolant density. Two of the most important are the Doppler coefficient
+(fuel temperature feedback) and the sodium void worth (coolant density feedback). A
+strong negative Doppler coefficient is a primary mechanism for stabilizing power
+excursions; as fuel temperature increases, the resonance absorption of neutrons
+broadens, causing a prompt reduction in reactivity 234. The sodium void worth is a critical
+safety feature unique to pool-type SFRs. It describes the change in reactivity if a portion
+of the liquid sodium coolant were to void (turn to gas). An SFR design with a low or
+negative sodium void worth is highly desirable because it means that a loss-of-flow or
+unprotected transient would lead to a decrease in reactivity, providing a powerful
+intrinsic stabilizing force 72 . The BN-800 reactor was specifically designed with this
+characteristic in mind 196. Conversely, a positive void worth, where voiding causes a
+power increase, is a major design challenge that requires complex mitigation strategies,
+such as the use of absorber rods or specific core zoning 235. The specification must clearly
+state the calculated values for both the Doppler coefficient and the sodium void worth at
+various stages of the core's life. These values are not static; they change as fuel burns up
+and fission products accumulate. International benchmark exercises, such as those
+organized by the OECD/NEA, regularly include the calculation of these parameters for
+various SFR core designs to validate predictive codes and methods 133136166. By
+comparing the specified values against these benchmarks, one can assess the credibility of
+the neutronics calculations underlying the entire design. The overall goal of Generation
+IV SFRs is to passively avoid fuel damage even if active scram systems fail, a capability
+that relies heavily on these favorable inherent reactivity characteristics 134.
+
+
+
+
+Thermal-Hydraulic System Integration and Energy
+Balance
+The thermal-hydraulic performance of a sodium-cooled fast reactor is paramount, as it
+dictates the safe transport of heat from the core to the power conversion system. An error
+in thermal-hydraulic specification can cascade into severe consequences, including fuel
+melting. Therefore, a thorough review must focus on the internal consistency of the
+thermal-hydraulic parameters, ensuring that the specified temperatures, pressures, flow
+rates, and heat transfer characteristics form a coherent and physically plausible energy
+balance. The system operates under a unique set of conditions: liquid sodium has
+excellent heat transfer properties but is chemically reactive with air and water, and it
+operates at very low pressure despite its high boiling point 1 15 . This combination
+necessitates precise engineering to maintain a large subcooling margin throughout the
+primary circuit.
+
+A primary area for verification is the temperature and pressure regime of the primary
+coolant loop. The specification must define the core inlet and outlet temperatures, as well
+as the operating pressure of the primary system. For advanced SFR designs, the typical
+core outlet temperature is specified in the range of 500-550°C 2 . However, operating
+experience from reactors like the BN-800 shows that under certain transient conditions,
+maximum outlet temperatures can approach 940 K (~667°C) 156. While these peak
+values are transient, they inform the design basis for materials and clad integrity. The
+operating pressure is kept intentionally low, often just above atmospheric pressure, to
+minimize stress on the reactor vessel and piping 1 . For example, at a core outlet
+temperature of 120°C, the pressure inside the vessel would be only around 0.5 MPa 333.
+However, to maintain a substantial subcooling margin and prevent boiling during normal
+operation and transients, the actual operating pressure is significantly higher. The
+specification must ensure that the chosen pressure is sufficient to keep the entire primary
+coolant path well below the saturation temperature corresponding to that pressure. Any
+inconsistency here could imply a risk of sodium boiling, which would trigger a positive
+sodium void reactivity insertion, potentially leading to a power excursion 72 . The
+relationship between these parameters is governed by the thermodynamic properties of
+sodium, which are well-documented and can be used to verify the consistency of the
+specified state points 87 .
+
+
+The next critical check is the mass and energy balance across the reactor core. The rate at
+which thermal energy is removed by the primary coolant must exactly equal the thermal
+power generated by the nuclear reactions. The specification must provide a clear link
+between the reactor's rated thermal power (in MWth), the specified mass flow rate of the
+sodium coolant (in kg/s), and the measured or calculated temperature rise across the
+core (ΔT = T_out - T_in). The fundamental equation for this balance is:
+
+
+                                       ˙ ṁ⋅Cp⋅ΔT
+                                       Q=
+
+
+where Q
+      ˙ is the thermal power, ṁ is the mass flow rate, Cp is the specific heat capacity
+of sodium, and ΔT is the temperature difference. A discrepancy in this equation indicates
+a fundamental inconsistency in the design. For example, if the specified thermal power is
+2100 MWth, the mass flow rate must be sufficient to absorb that much energy given the
+allowable ΔT and the known Cp of sodium at the operating temperature. The BN-800
+reactor provides a real-world data point: with a thermal power of 2100 MWth, its
+thermal-hydraulic tests were essential for determining the operational range of coolant
+flow rates needed to manage this heat load safely 191194. The flow distribution within the
+core is also critical; non-uniform flow can create localized hot spots that could
+compromise fuel integrity. Design methodologies often involve optimizing the r-z power
+distribution to ensure uniform heating and prevent such issues 235. Computational Fluid
+Dynamics (CFD) tools, validated against experimental data from wire-wrapped rod
+bundles, are now commonly used to analyze these 3D thermal-hydraulic characteristics
+13 21 .
+
+
+
+The heat transfer process extends beyond the core to the intermediate heat exchangers
+(IHX) and steam generators (SG). Most modern SFR designs employ a three-circuit
+arrangement to isolate the radioactive primary sodium from the conventional steam/
+water power conversion system 61 68 . In this configuration, the IHX transfers heat from
+the primary sodium loop to a secondary sodium loop, and the SG then transfers heat
+from the secondary loop to the tertiary water/steam loop 290. The specification must
+ensure the energy balance is maintained across both interfaces. The heat rejected by the
+primary sodium in the IHX must equal the heat absorbed by the secondary sodium.
+Similarly, the heat transferred from the secondary sodium in the SG must match the heat
+input to the water/steam cycle. Each heat exchanger introduces a temperature difference
+(ΔT) between the hot and cold fluids. A smaller ΔT requires a larger heat exchange
+surface area, increasing the size, weight, and cost of the component. The specification
+should justify the chosen design point (i.e., the ΔT for each heat exchanger) based on an
+economic and engineering trade-off analysis. Extensive testing on steam generator
+models, such as those performed for the BN-600 and BN-800 reactors, has been crucial
+for validating design parameters like the required superheat temperature to prevent
+moisture carryover into the turbine, which could cause blade erosion 192. The entire
+thermal-hydraulic system, from core to condenser, must be viewed as a single integrated
+energy transfer chain, and its consistency is the ultimate measure of a sound design.
+
+
+
+
+Power Conversion Efficiency and Component
+Performance
+The power conversion system is responsible for transforming the thermal energy carried
+by the reactor's coolant into usable electrical power. Its performance is a critical
+determinant of the plant's overall economics and efficiency. For a sodium-cooled fast
+reactor, the specification of the power conversion system must be consistent with the
+high-temperature, low-pressure characteristics of the primary coolant loop. A detailed
+review involves assessing the specified thermodynamic cycle, the efficiency of its
+components, and the resulting electrical output in relation to the reactor's thermal power.
+The primary metric for evaluation is the thermal-to-electrical efficiency, which is
+fundamentally constrained by the peak temperature of the working fluid.
+The most common approach for SFRs is to use a secondary sodium loop to transfer heat
+to a steam Rankine cycle, which drives a turbine-generator set 299. The efficiency of this
+cycle is dictated by the peak steam temperature and pressure entering the turbine.
+Because the secondary sodium loop is heated by the primary loop, its maximum
+temperature is limited by the core's outlet temperature and the temperature drop
+required across the steam generator. As established in thermal-hydraulic reviews, SFR
+core outlet temperatures typically range from 500-550°C 2 . This temperature ceiling
+directly influences the achievable cycle efficiency. Advanced SFR designs aim for
+efficiencies around 42%, which is notably higher than the typical 32-36% achieved by
+current pressurized water reactors (PWRs) 1 . This higher efficiency is a key advantage
+of the fast-spectrum design, allowing it to operate at higher temperatures than water-
+cooled reactors without requiring high system pressures 232. To validate the specification,
+one must perform a simple calculation: multiply the reactor's specified thermal power
+(MWth) by the stated cycle efficiency. The result should closely match the specified
+electrical power output (MWe). For example, the BN-800 reactor, with a thermal power
+of 2100 MWth, is designed to produce 880 MWe of electricity 64 317. The corresponding
+efficiency is approximately (880/2100)×100%≈41.9% , which falls squarely within the
+expected range for an SFR 317. Any significant deviation from this relationship would
+indicate a potential error in either the thermal power, electrical power, or efficiency
+value.
+
+Beyond the overall cycle efficiency, the performance of individual components within the
+power conversion system warrants scrutiny. The steam turbine itself is a complex piece of
+machinery, and its efficiency is influenced by numerous factors, including stage
+aerodynamics, blade wear, and steam conditions. Modern turbines are designed for high
+efficiency, but their performance degrades over time due to fouling and erosion 222. The
+specification should ideally reference the guaranteed turbine efficiency at design
+conditions. The validation of turbine stage work and the accuracy of energy balance
+calculations within the turbine are recognized best practices in the industry 51 167.
+Similarly, the steam generators and main circulation pumps play a vital role. The
+BN-800's design validation included extensive testing to confirm the thermal and
+hydraulic characteristics of its main circulation pumps, intermediate heat exchangers, and
+steam generators 200. These tests were crucial for establishing the operational parameters
+and confirming that the equipment could meet the design requirements. The specification
+should detail the key performance parameters of these components, such as the pump
+head and flow rate, or the heat transfer area and pressure drops for the heat exchangers.
+These values must be consistent with the overall thermal-hydraulic design of the plant.
+Furthermore, the dynamic behavior of the power conversion system, especially its ability
+to follow load changes, is an important aspect of performance. Load-following introduces
+thermal and mechanical transients into the reactor core and coolant systems, which must
+be managed safely 188. The design of the control systems for the turbine and associated
+valves is critical. Advanced modeling and experimental validation of turbine control
+actions are ongoing research areas to improve plant flexibility and reliability 52 124. While
+the user's specification may not go into extreme detail on control algorithms, it should at
+least acknowledge the consideration of load-following capabilities and their impact on
+the design basis. The integration of the power conversion system with the reactor's
+inherent safety features is also vital. For example, the system must be designed to
+automatically trip the turbine in response to a reactor scram or other safety-related
+signals. The validation of these interlocks and the overall plant response during transients
+is typically performed using sophisticated multi-physics simulation tools 110. In summary,
+the power conversion section of the specification must demonstrate that the chosen cycle
+and component efficiencies are realistic for an SFR, that the electrical output is consistent
+with the thermal power and stated efficiency, and that the system design accounts for
+both steady-state operation and dynamic transients.
+
+
+
+
+Safety Systems, Passive Decay Heat Removal, and
+Operational Margins
+Safety is a defining characteristic of Generation IV reactor designs, and for an SFR, it is
+achieved through a multi-layered defense-in-depth strategy. This includes inherent safety
+features, diverse and independent active systems, and robust passive systems. A critical
+part of the review is to evaluate whether the specification adequately addresses these
+layers, with a particular focus on the ultimate safety function: the reliable removal of
+decay heat after shutdown. The specification must also quantify the operational safety
+margins for key parameters, ensuring the plant can operate within its design limits under
+all foreseeable conditions.
+
+The most crucial safety function is the removal of decay heat, which continues to be
+produced by radioactive decay of fission products even after the chain reaction has been
+stopped. The specification must detail the Decay Heat Removal (DHR) system, including
+its architecture, capacity, and mode of operation. Modern SFR designs place a strong
+emphasis on passive DHR systems, which rely on natural phenomena like gravity and
+convection rather than active components like pumps and motors 2 . A common passive
+approach is to use natural circulation, where heated sodium in the core rises into heat
+exchangers located in a lower reservoir, transferring its heat to a cooling fluid before
+flowing back down into the core 189. The PERSEO facility in Italy was a dedicated test
+bed built specifically to study and validate such passive DHR systems operating in natural
+circulation 126213. The specification must state the rated heat removal capacity of the
+DHR system and confirm that it is sufficient to handle the maximum expected decay heat
+load, which is approximately 7% of the full power level immediately following shutdown.
+The system's design basis should also consider the required grace time or margin to fuel
+melting during various accident scenarios, which is a key focus of uncertainty analysis
+efforts 203. Redundancy and diversity are also important; the ESFR-SMART design, for
+example, incorporates multiple independent DHR trains to ensure reliability 289. The
+user's specification should describe the DHR system's design philosophy (active vs.
+passive), its capacity, and the number of redundant trains provided.
+
+In addition to post-accident heat removal, the specification must demonstrate that
+adequate safety margins exist for all operational parameters. This goes beyond simply
+stating pressure and temperature limits. The ASME Boiler and Pressure Vessel Code,
+Section III, Division 5, provides the framework for designing components for elevated
+temperatures, explicitly accounting for phenomena like creep, fatigue, and stress rupture
+144270. The specification should implicitly or explicitly show that all pressure-containing
+
+components have been designed in accordance with these rules, incorporating
+appropriate safety factors for manufacturing tolerances and corrosion allowances 49 . For
+example, the ASME code design fatigue curves incorporate safety factors of 2 for
+amplitude and 20 for number of cycles compared to best-fit material curves 218. The
+regulatory treatment of advanced reactors, including SFRs, increasingly relies on a Best-
+Estimate Plus Uncertainty (BEPU) approach, which requires a rigorous justification of
+these safety margins based on validated calculations and uncertainty quantification 203
+260. The specification should therefore not just list numbers but provide a rationale for
+
+them, referencing the applicable design codes and safety analyses.
+
+The overall safety posture is further enhanced by the use of diverse and independent
+shutdown systems. SFRs typically employ a combination of active and passive
+mechanisms 2 . Active systems might include absorber rod insertion driven by
+electromechanical mechanisms, while passive systems could consist of hydraulically
+suspended shutdown rods that fall into the core by gravity upon loss of signal 50 304. The
+specification should list these diverse systems and describe their modes of actuation. The
+effectiveness of these systems is tied to the control rod worth, as discussed previously,
+and the total shutdown margin must be sufficient to account for all credible initiating
+events and potential failures. For instance, a probabilistic safety assessment (PSA) for the
+Russian BN-800 design confirmed that its innovative features led to a reduced risk profile
+180. The specification should also address other safety considerations, such as the
+
+prevention of sodium-water reactions in the steam generators, which are mitigated by the
+three-circuit design, and measures to prevent containment bypass 2 331. Finally, the
+specification should mention the existence of an effective sodium removal capability, a
+fundamental design criterion for future fast reactors to facilitate maintenance and
+decommissioning 30 . By examining these elements—the DHR system's capacity, the
+justification of operational margins, the diversity of shutdown mechanisms, and the
+inclusion of other key safety features—the reviewer can gain confidence that safety has
+been treated as a primary design driver, not an afterthought.
+
+
+
+
+Structural Integrity, Materials Science, and Regulatory
+Code Compliance
+The long-term structural integrity of a sodium-cooled fast reactor is fundamentally
+dependent on the materials used for its construction and adherence to stringent design
+codes. The reactor operates at elevated temperatures and is exposed to a corrosive
+coolant environment, creating challenging conditions for structural components like the
+reactor vessel, piping, and fuel cladding. A thorough review of the specification must
+therefore verify that the chosen materials are appropriate for the service conditions and
+that the design complies with established regulatory frameworks, such as the ASME
+Boiler and Pressure Vessel Code (BPVC). These codes provide the necessary rules to
+ensure the mechanical reliability and safety of the plant throughout its intended service
+life.
+
+The selection of materials is a critical decision with far-reaching implications for safety,
+cost, and performance. Liquid sodium is an excellent coolant but can be corrosive,
+especially at high temperatures, so materials must be resistant to oxidation and
+dissolution 208. Nuclear-grade stainless steels, such as Type 316L, are commonly used for
+structural components like the reactor vessel and primary system piping 148208. Research
+and development efforts are continuously focused on improving these materials, seeking
+alloys with superior high-temperature strength and creep resistance. For example, Alloy
+617 has been added to the ASME code for high-temperature service due to its
+performance advantages over traditional alloys like 316H 149. The specification must
+clearly identify the materials selected for all key components, including the reactor
+pressure vessel, primary and intermediate heat exchanger tubes, steam generator tubing,
+and control rod drive mechanisms 254. The choice of material directly constrains the
+maximum allowable operating temperature and pressure for a given component
+thickness. For instance, the expansion of property data in the 2025 edition of the ASME
+code allows for more accurate assessments of new alloys 268. The specification cannot
+simply state a desired operating temperature; it must demonstrate that the chosen
+material can withstand that temperature for the required duration without exceeding
+allowable stress limits for creep, fatigue, and stress rupture 266270.
+
+Compliance with the ASME BPVC, Section III, Division 5, is non-negotiable for the
+construction of high-temperature reactors, including SFRs 101144. This division of the code
+provides specific rules for components that operate at elevated temperatures, where time-
+dependent deformation (creep) becomes a significant factor alongside elastic and plastic
+stresses 145. The code establishes allowable stress limits based on extensive material
+testing and historical performance data. The specification must show that every pressure-
+containing component has been designed according to these rules. This involves
+calculating the stresses induced by pressure, dead weight, seismic loads, and thermal
+gradients, and ensuring they remain within the code's allowable limits for the design
+lifetime 104146. The ASME code also provides specific guidance on design fatigue curves,
+weld joint categories, and flexibility analysis, all of which are essential for a safe design
+104218. Regulatory bodies like the U.S. Nuclear Regulatory Commission (NRC) accept
+
+approaches that comply with these ASME code rules to assure mechanical integrity 100.
+Therefore, a specification that omits references to these codes or whose stated pressures
+and temperatures would violate their rules is fundamentally flawed. The designer must
+provide evidence, either through direct compliance statements or through referenced
+analysis reports, that the design meets the intent of Division 5.
+
+Beyond static strength, the long-term behavior of materials under irradiation is a major
+concern, particularly for fuel cladding and internal reactor components. Irradiation can
+cause dimensional changes such as swelling and creep, as well as affect mechanical
+properties 155. The specification should address these effects, likely through conservative
+design margins or by referencing material qualification programs that account for
+irradiation damage. For example, the development of microreactors has spurred new
+research into material qualification for ASME Section III Division 5 components 148.
+Similarly, in-service inspection (ISI) rules must be developed rationally, considering the
+specific features of the SFR design 271. The specification should outline the general
+approach to ISI and aging management, which is a key requirement for maintaining
+component integrity over the plant's lifetime 42 . The entire materials and structures
+discipline is supported by a vast body of international research, including the
+development of databases for heavy liquid metal cooled fast reactors and the validation
+of structural analysis methods 88 270. A robust specification will demonstrate an
+awareness of these resources and incorporate sound engineering principles to manage the
+risks associated with high-temperature, high-radiation environments. By verifying the
+material choices, checking for compliance with ASME codes, and assessing the treatment
+of long-term degradation mechanisms, the reviewer can ensure the structural soundness
+of the proposed design.
+
+
+
+
+Validation Methodologies and Benchmarking Against
+International Standards
+Confidence in a self-crafted reactor specification cannot be based solely on internal
+consistency checks. It must be substantiated through a rigorous validation process that
+compares the design's key parameters and analytical methods against established
+benchmarks, experimental data, and the collective knowledge of the international nuclear
+community. The field of fast reactor technology has matured to a point where a wealth of
+data and standardized validation procedures are available. A comprehensive review must
+assess whether the user has employed a credible validation methodology, moving beyond
+hand calculations to embrace the accepted international practices of best-estimate plus
+uncertainty (BEPU) analysis and benchmarking.
+
+The cornerstone of modern nuclear reactor analysis is the use of sophisticated computer
+codes to model neutronics, thermal-hydraulics, and structural mechanics. However, these
+codes are mathematical approximations of physical reality and must be rigorously
+validated. The international community facilitates this through coordinated research
+projects (CRPs) and benchmark exercises, primarily organized by the International
+Atomic Energy Agency (IAEA) and the Organisation for Economic Co-operation and
+Development's Nuclear Energy Agency (OECD/NEA) 137227. These initiatives bring
+together experts from around the world to solve a common problem using their own
+codes and methods, allowing for a direct comparison of results and an identification of
+uncertainties. For SFRs, a prominent example is the OECD/NEA subgroup on Uncertainty
+Analysis in Modelling (UAM) for Sodium-cooled Fast Reactors (SFR-UAM) 162205. This
+group has defined a series of benchmarks covering topics like neutronics, reactivity
+feedback, and thermal-hydraulics, which participants run to evaluate their modeling
+capabilities 164296. The user's specification should ideally be supported by calculations
+that have been or could be submitted to such a benchmark exercise. Simply stating a
+calculated value is insufficient; the specification should, at a minimum, document the
+code used (e.g., PARCS, SPACE, TRACE), the nuclear data libraries, and the validation
+cases against which the models were checked 22 334. For example, the EUCLID/V2
+multiphysics code is validated on data from the BN-800 reactor 27 , and the HYDRA-
+IBRAE/LM/V1 code has been verified against BN-600 operating data 195.
+
+The validation process should follow a hierarchical approach, starting with separate-
+effect tests (SETs) and progressing to integral experiments. SETs focus on validating
+specific physical phenomena, such as sodium heat transfer correlations or the behavior of
+a single fuel pin bundle under forced flow 21 29 . Integral experiments, on the other
+hand, involve running an entire reactor or a large-scale test facility and measuring the
+global response to a transient event 227. Experiments conducted on past fast reactors like
+EBR-II in the United States and FFTF in the USA provide invaluable data for validating
+system codes against real-world transients 181334. More recently, dedicated test facilities
+like PERSEO in Italy have been built to study specific safety issues, such as passive decay
+heat removal in natural circulation 126128. The user's specification should be benchmarked
+against these sources of data. For instance, key thermal-hydraulic parameters like core
+pressure drop and exit temperature can be sensitive to uncertainties in power and
+hydraulic diameter; these sensitivities should be analyzed and, if possible, compared to
+results from benchmark studies 154. The goal of this validation effort is to build
+confidence that the predictive capabilities of the codes are acceptable for licensing
+purposes, as outlined in regulatory guides from bodies like the NRC 79 .
+
+Ultimately, the BEPU methodology represents the state-of-the-art in reactor analysis and
+safety justification 260. Instead of relying on overly conservative, "pessimistic"
+calculations, BEPU uses best-estimate codes to predict the most likely outcome of an
+event and then quantifies the uncertainties in that prediction 203. This approach provides
+a more realistic and less unnecessarily restrictive assessment of safety. The SFR-UAM
+benchmarks are explicitly designed to support the application of the BEPU methodology
+to SFRs 204. A specification developed using a BEPU approach would not just state a
+single value for a parameter like control rod worth, but would also provide an
+uncertainty band around that value, derived from sensitivity studies and comparisons
+with experimental data. The specification should demonstrate an understanding of this
+philosophy. Even if a full-blown uncertainty analysis is beyond the scope of a conceptual
+design, the user should at least discuss the key sources of uncertainty in their calculations
+and how they have been addressed. For example, they might compare their calculated
+sodium void worth against the results of international benchmark exercises to gauge the
+credibility of their neutronics model 166. By grounding the specification in a framework of
+international collaboration, transparent code usage, and validation against both
+experimental data and established benchmarks, the user can move from a collection of
+crafted values to a scientifically defensible and credible reactor design.
+
+
+
+
+Reference
+
+ 1. Feasibility and Economics of Small Nuclear Reactors https://www.oecd-nea.org/ndd/
+    reports/2011/current-status-small-reactors.pdf
+ 2. Sodium-Cooled Fast Reactor (SFR) System Safety ... https://www.gen-4.org/
+    resources/reports/sodium-cooled-fast-reactor-sfr-system-safety-assessment-2017
+ 3. Control Rod Worths and Interactions in Fast Reactors https://oecd-nea.org/upload/
+    docs/application/pdf/2020-07/neacrp-a-1983-0605.pdf
+ 4. PWR November 2020 Neutron Life Cycle https://www.nrc.gov/reactors/operator-
+    licensing/history-rulemaking-activities/generic-fundamentals-examinations/pwr/pwr-
+    files/192002.pdf
+ 5. Evaluation of the Control Rods Withdrawal in a Small ... https://cea.hal.science/
+    cea-02394085/document
+ 6. Control Rod Worth https://www.bohrium.com/en/sciencepedia/feynman/keyword/
+    control_rod_worth
+ 7. Development of a PC Based System for On-Line ... https://inis.iaea.org/records/3tssn-
+    jpp56/files/23005562.pdf?preview=0
+ 8. IV Reactor Validation (IRPhEP 2010 Handbook) https://inldigitallibrary.inl.gov/sites/
+    sti/sti/4537217.pdf
+ 9. What's the typical negative reactivity achievable by just ... https://www.reddit.com/r/
+    NuclearPower/comments/1lpffnx/whats_the_typical_negative_reactivity_achievable/
+10. Shutdown Margin - SDM | Definition | nuclear-power.com https://www.nuclear-
+    power.com/nuclear-power/reactor-physics/reactor-operation/shutdown-margin-sdm/
+11. Calculation of Control Rod Worth in APPR-1 https://www.osti.gov/biblio/4332277
+12. Differential control rod worth. | Download Scientific Diagram https://
+    www.researchgate.net/figure/Differential-control-rod-worth_fig1_327197164
+13. Analysis of full-scale thermal-hydraulic characteristics ... https://
+    www.sciencedirect.com/science/article/abs/pii/S1290072925002327
+14. Fast reactors http://www.iaea.org/topics/fast-reactors
+15. Review of State of the Art Thermal Hydraulics of Fast Reactors https://www-
+    pub.iaea.org/MTCD/publications/PDF/p15861-DOC-010-498_web.pdf
+16. Liquid metal cooled fast reactor thermal hydraulic research ... https://
+    pmc.ncbi.nlm.nih.gov/articles/PMC10241851/
+17. IAEA-CN245-359 Overview of the IAEA Activities in the ... https://
+    media.superevent.com/documents/
+    20170620/100fd3520e11e3499382a56e67290749/fr17-359.pdf
+18. Overview of Experiments and Code Validation Efforts for ... https://nucleus.iaea.org/
+    sites/nexshare/Focus%20Group/LMFR%20FG/LMFR%20FG%20-
+    %20Background%20Document%20on%20International%20Organization%20Activities
+    .pdf
+19. Grand challenges in advanced nuclear reactor design https://www.frontiersin.org/
+    journals/nuclear-engineering/articles/10.3389/fnuen.2022.1000754/full
+20. Sodium-Cooled Fast Reactor Thermal Hydraulics https://www.ans.org/meetings/
+    am2022/session/view-1246/
+21. A summary of sodium-cooled fast reactor development https://
+    www.sciencedirect.com/science/article/abs/pii/S0149197014001279
+22. IAEA-CN245-133 https://media.superevent.com/documents/
+    20170618/08563f896931149cdd38cb9ad4223c49/fr17-133.pdf
+23. New Reactor Safety Measures for the European Sodium Fast ... https://
+    pmc.ncbi.nlm.nih.gov/articles/PMC8641943/
+24. Full article: Design of Experiments to Support VTR Core ... https://
+    www.tandfonline.com/doi/full/10.1080/00295639.2022.2043540
+25. International Conference on Fast Reactors and Related Fuel ... https://
+    conferences.iaea.org/event/218/timetable/?print=1&view=standard
+26. BN-600 AND BN-800 OPERATING EXPERIENCE https://www.gen-4.org/gif/upload/
+    docs/application/pdf/2019-01/gifiv_webinar_pakhomov_19_dec_2018_final.pdf
+27. Codes of new generation for safety justification of power ... https://nucet.pensoft.net/
+    article/54710/
+28. Overview of the system alone and system/CFD coupled ... https://
+    www.researchgate.net/publication/
+    271225878_Overview_of_the_system_alone_and_systemCFD_coupled_calculations_of
+    _the_PHENIX_Natural_Circulation_Test_within_the_THINS_project
+29. Preliminary Experimental Validation of Single-Phase ... https://www.mdpi.com/
+    2673-4362/7/3/45
+30. Operational and decommissioning experience with fast reactors https://www-
+    pub.iaea.org/MTCD/Publications/PDF/te_1405_web.pdf
+31. Safety and proliferation resistance of small-sized sodium- ... https://www.aesj.net/
+    document/pnst007/data/338_344.pdf
+32. Status of Fast Reactor Research and Technology Development https://www-
+    pub.iaea.org/MTCD/Publications/PDF/TE_1691_CD/PDF/IAEA-TECDOC-1691.pdf
+33. IAEA concludes research project on fast reactor safety https://www.neimagazine.com/
+    news/iaea-concludes-research-project-on-fast-reactor-safety-5924019/
+34. Sodium cooled fast reactors development and operating ... https://inis.iaea.org/
+    records/sj4mx-sqk70
+35. Disposition Options for a Sodium Cooled Fast Reactor https://inldigitallibrary.inl.gov/
+    sites/sti/sti/Sort_26562.pdf
+36. Advanced reactor safety https://www.oecd-nea.org/jcms/pl_39897/advanced-reactor-
+    safety
+37. Experimental Facilities for Sodium Fast Reactor Safety ... https://www.oecd-nea.org/
+    jcms/pl_14592/experimental-facilities-for-sodium-fast-reactor-safety-studies?
+    details=true
+38. Status Report on Fuel Safety Implications of Extended ... https://one.oecd.org/
+    document/NEA/CSNI/R(2023)4/en/pdf
+39. Strategic Roadmap for Nuclear Reactor Safety Research https://www.oecd-nea.org/
+    upload/docs/application/pdf/
+    2025-10/7738_nea_strategic_safety_research_roadmap_publication_2025-10-20_16-4
+    6-2_313.pdf
+40. Advanced Nuclear Reactor Safety Issues and Research ... https://www.oecd.org/
+    content/dam/oecd/en/publications/reports/2002/05/advanced-nuclear-reactor-
+    safety-issues-and-research-needs_g1gh29d5/9789264194441-en.pdf
+41. Overview of Section III, Division 5 https://www.nrc.gov/docs/ML2120/
+    ML21200A072.pdf
+42. Comparison of lifetime assessments between ASME and ... https://
+    www.sciencedirect.com/science/article/abs/pii/S0029549322003399
+43. ASME Section III, Division 5, High Temperature Reactors https://
+    inldigitallibrary.inl.gov/sites/sti/sti/Sort_65172.pdf
+44. Reliability and Integrity Management Scoping Study https://www.osti.gov/servlets/
+    purl/2203928
+45. Achats normes ASME BPVC 2025 Section III Division 5 https://
+    www.boutique.afnor.org/fr-fr/norme/asme-bpvc-2025-section-iii-division-5//
+    as781/447336
+46. ASME Division 5: High Temp Reactor Codes | PDF https://www.scribd.com/
+    document/835106798/1-Div-5-Overview-Sham-rev
+47. ASME Boiler & Pressure Vessel Code (BPVC), Section III ... https://www.madcad.com/
+    store/package/ASME-BPVC-III-5/
+48. Analysis of the ASME Code Rules for Subsection III-5-HHB ... https://info.ornl.gov/
+    sites/publications/Files/Pub216010.pdf
+49. 2017 Asme Boiler And Pressure Vessel Code Bpvc ... https://foleyfamilymedicine.com/
+    archive/uOBEELK1K0R7/2017-Asme-Boiler-And-Pressure-Vessel-Code-Bpvc-2017
+50. Small Liquid Metal Cooled Reactor Safety Study http://large.stanford.edu/courses/
+    2017/ph241/tesfai1/docs/ucrl-tr-217093.pdf
+51. How to Validate Impulse Turbine Stage Work Using Energy ... https://
+    eureka.patsnap.com/report-how-to-validate-impulse-turbine-stage-work-using-energy-
+    balance
+52. Verification and Validation of Model-Scale Turbine ... https://www.mdpi.com/
+    1996-1073/15/20/7649
+53. Validation of an Integrated Simulation Method with High- ... http://
+    publications.isope.org/jowe/jowe-01-1/JOWE-01-1-p030-arr01-Kaufer.pdf
+54. Empirical Validation and Uncertainty Characterization for ... https://www.energy.gov/
+    sites/default/files/2021-09/bto-peer-2021-empirical-validation-uncertainty-
+    characterization.pdf
+55. (PDF) Modeling, Validation, and Control of the IEA‐15 MW ... https://
+    www.researchgate.net/publication/
+    403560247_Modeling_Validation_and_Control_of_the_IEA-15_MW_Reference_Wind_
+    Turbine_and_VolturnUS-S_Platform
+56. IEC and IEEE GFM Standardization Efforts https://www.esig.energy/attachment/
+    serve/ieee-iec_joint_standard_esig_spring_2026
+57. Enverus PRISM – complex energy data into fast, confident ... https://
+    www.enverus.com/products/prism/
+58. Integrated finite element models for aeroelastic analysis ... https://www.ijirss.com/
+    index.php/ijirss/article/view/5033
+59. Publications – Griffith Group https://labs.utdallas.edu/griffith/publications/
+60. A purely analytical and physical wind turbine wake model ... https://arxiv.org/html/
+    2510.17236v1
+61. Mastering the technology of fast reactors with liquid-metal ... https://
+    nucet.pensoft.net/article/182046/
+62. Inside Russia's BN-800 sodium cooled fast reactor at the ... https://
+    www.facebook.com/iaeaorg/posts/inside-russias-bn-800-sodium-cooled-fast-reactor-
+    at-the-beloyarsk-nuclear-power-/10155955193972062/
+63. IAEA-CN-245-405 THE BN-800 CORE WITH MOX FUEL https://
+    media.superevent.com/documents/20170620/11795dbfabe998cf38da0ea16b6c3181/
+    fr17-405.pdf
+64. BN-800 reactor https://en.wikipedia.org/wiki/BN-800_reactor
+65. BN-800 reactor is fully loaded with MOX fuel - IPFM Blog https://fissilematerials.org/
+    blog/2022/09/bn-800_reactor_is_fully_l.html
+66. BN-800 – HISTORY AND PERSPECTIVE https://www.osti.gov/etdeweb/servlets/purl/
+    20236635
+67. BN-800 design validation and construction status https://www.researchgate.net/
+    publication/245238325_BN-800_design_validation_and_construction_status
+68. Russia's BN-800 Reactor Enters Commercial Operation https://neutronbytes.com/
+    2016/11/05/russias-bn-800-reactor-enters-commercial-operation/
+69. Ultrasonic monitoring system tested for BN-800 reactor core https://www.world-
+    nuclear-news.org/articles/ultrasound-tested-for-monitoring-bn-800-reactor-core
+70. Pages - Fuel Materials for Fast Reactors (FMFR) https://nucleus.iaea.org/sites/
+    connect/NFEpublic/Pages/FMFR.aspx
+71. Expert Group on Physics of Reactor Systems (EGPRS) https://www.oecd-nea.org/
+    jcms/c_12860/expert-group-on-physics-of-reactor-systems-egprs
+72. IAEA-CN245-360 Overview of the international cooperation ... https://
+    media.superevent.com/documents/
+    20170620/88994326a1a193bc56522c5eb3cbc4b3/fr17-360.pdf
+73. OECD/NEA/CSNI/WGAMA PERSEO benchmark https://www.sciencedirect.com/
+    science/article/abs/pii/S0029549323000699
+74. Overview of Fast Reactor Activities in NEA https://esfr-smart.eu/wp-content/uploads/
+    2021/04/
+    S1_6_Tatiana_IVANOVA_NEA_ESFR_Smart_Spring_School_29_March_2021.pdf
+75. Engagement opportunities in OECD NEA benchmark ... https://www.frontiersin.org/
+    journals/energy-research/articles/10.3389/fenrg.2023.1085764/full
+76. [PDF] IAEA TECDOC SERIES https://www-pub.iaea.org/MTCD/Publications/PDF/
+    TE-1902web.pdf
+77. [PDF] Safeguarding Commercial Breed and Burn Sodium-Cooled Fast ... https://
+    www.osti.gov/servlets/purl/1971524
+78. Advanced Nuclear Reactor Safety Issues and Research ... https://www.oecd-nea.org/
+    upload/docs/application/pdf/2019-12/3613-advanced-safety-issues.pdf
+79. Regulatory Perspectives on Analytical Codes and Methods ... https://www.oecd-
+    nea.org/upload/docs/application/pdf/
+   2025-06/7617_regulatory_perspectives_on_analytical_codes_and_methods_for_advan
+   ced_reactors.pdf
+80. 3.18 reactor physics tests for the joyo mk-111 start-up core https://www.osti.gov/
+    etdeweb/servlets/purl/20531351
+81. Analysis of Control Rod Worth in Experimental Fast Reactor https://inis.iaea.org/
+    records/81k71-ec280/files/22016792.pdf?download=1
+82. COMPUTING CONTROL ROD WORTHS IN THERMAL ... - rertr https://
+    www.rertr.anl.gov/METHODS/TM29.pdf
+83. Control rod worth calculations using deterministic and ... https://
+    www.researchgate.net/publication/
+    260227692_Control_rod_worth_calculations_using_deterministic_and_stochastic_met
+    hods
+84. Lead-cooled Fast Reactor Benchmark (LFR) https://www.oecd-nea.org/jcms/
+    pl_66836/lead-cooled-fast-reactor-benchmark-lfr
+85. [PDF] OECD/NEA Data Bank Scientific And Integral Experiments ... https://
+    www.osti.gov/servlets/purl/911061
+86. [PDF] Nuclear Reactors - INIS-IAEA https://inis.iaea.org/records/80ycb-v5j86/files/
+    49059928.pdf
+87. [PDF] Sodium Coolant Handbook: Thermal Hydraulic Correlations https://www-
+    pub.iaea.org/MTCD/publications/PDF/CRCP_SOD_003web.pdf
+88. [PDF] IAEA TECDOC SERIES https://www-pub.iaea.org/MTCD/Publications/PDF/
+    TE-1978web.pdf
+89. Overview on Lead-Cooled Fast Reactor Design and Related ... - MDPI https://
+    www.mdpi.com/1996-1073/14/16/5157
+90. The International Conference on Fast Reactors and Related Fuel ... https://
+    www.facebook.com/iaeaorg/posts/the-international-conference-on-fast-reactors-and-
+    related-fuel-cycles-begins-on-/1442168804619332/
+91. [PDF] Joint NEA – IAEA International Symposium on Probabilistic Safety ... https://
+    www.oecd-nea.org/upload/docs/application/pdf/2026-06/nea_csni_r2024_3.pdf
+92. Enhancing fuel breed-burn performance in a sodium ... https://
+    www.sciencedirect.com/science/article/abs/pii/S014919702400386X
+93. Feasibility of Sodium-Cooled Breed-and-Burn Reactor with ... https://
+    www.tandfonline.com/doi/full/10.1080/00295639.2021.1951063
+94. Fast Neutron Reactors: From Core Physics to New Opportunities http://
+    large.stanford.edu/courses/2026/ph241/marchioni1/
+95. Heterogeneous Transmutation Sodium Fast Reactor https://digital.library.unt.edu/
+    ark:/67531/metadc896710/m2/1/high_res_d/920415.pdf
+ 96. System features of fast sodium reactors in a two ... https://nucet.pensoft.net/article/
+     129573/
+ 97. Status of Fast Reactor Research and Technology Development https://www-
+     pub.iaea.org/MTCD/Publications/PDF/te_1691_web.pdf
+ 98. FAST NEUTRON REACTORS https://www.xylenepower.com/
+     Fast%20Neutron%20Reactors.htm
+ 99. Neutron Flux Reactor Interactive Calculator https://www.firgelliauto.com/blogs/
+     calculators/neutron-flux-reactor-calculator?srsltid=AU7gw4Xy6pLPnu2soCuMTNtI-
+     lvxKRbXnLaMFSp5qs7hE2NGdMApSRH_
+100. [PDF] acceptability of asme code, section iii, division 5, “high temperature ... https://
+     www.nrc.gov/docs/ML2517/ML25176A084.pdf
+101. ASME BPVC III.5: Nuclear Components 2023 | PDF | Patent - Scribd https://
+     www.scribd.com/document/935950694/Asme-Bpvc-2023-Section-III-Div-5
+102. 2023 Edition of the American Society of Mechanical Engineers ... https://
+     www.regulations.gov/document/NRC-2020-0029-0001
+103. REGDOC-2.5.2, Design of Reactor Facilities, Version 2 https://www.cnsc-ccsn.gc.ca/
+     eng/acts-and-regulations/regulatory-documents/published/html/regdoc2-5-2-v2/
+104. New regulatory pathway for advanced nuclear components https://
+     www.facebook.com/umichNERS/posts/new-regulatory-and-design-pathway-
+     informally-known-as-class-b-new-code-approach-/1616198660509201/
+105. 10 CFR Part 50 -- Domestic Licensing of Production and Utilization ... https://
+     www.ecfr.gov/current/title-10/chapter-I/part-50
+106. [PDF] Vessel Code Comparison EN 13445 - ASME VIII Div.1 https://www.energy.gov/
+     sites/default/files/2024-08/Report%20-
+     %20EN%2013445%2C%20ASME%20VIII%20Div.1%20Comparison.pdf
+107. [PDF] Ended Guillotine Break Requirements: Evidence- Based Analysis of ... https://
+     inl.gov/content/uploads/2026/02/INLRPT_26-90155_DEGB-Technical-
+     Assessment.pdf
+108. Phenomena identification and ranking table of station blackout ... https://
+     www.sciencedirect.com/science/article/abs/pii/S030645492100116X
+109. [PDF] Thermal Hydraulic Experimental Test Article – Fiscal Year 2022 ... https://
+     publications.anl.gov/anlpubs/2022/10/178800.pdf
+110. Publications | Project FAST | PSI - Paul Scherrer Institut https://www.psi.ch/en/fast/
+     publications
+111. [PDF] Sodium Coolant Properties and Experience - Idaho State University https://
+     www.isu.edu/media/libraries/college-of-science-and-engineering/nuclear-
+     engineering/documents/Sodium-Properties-Experience-and-Safety.pdf
+112. (PDF) Research Progress in Key Thermal-hydraulic Issue of Sodium ... https://
+     www.researchgate.net/publication/402392306_Research_Progress_in_Key_Thermal-
+     hydraulic_Issue_of_Sodium-cooled_Fast_Reactor
+113. [PDF] Core Design and Thermal Hydraulic Technical Report https://www.nrc.gov/
+     docs/ML2408/ML24088A085.pdf
+114. [PDF] Verification and Validation Activities of Molten Salt Reactors ... https://
+     inldigitallibrary.inl.gov/sites/STI/STI/Sort_85068.pdf
+115. BN-800 reactor is a new stage in transition to ... - INIS-IAEA https://inis.iaea.org/
+     records/wdpyk-p6578
+116. BN-800: A key part of Russia's nuclear strategy https://www.researchgate.net/
+     publication/298624973_BN-800_A_key_part_of_Russia's_nuclear_strategy
+117. How does a fast neutron reactor work? Take a closer look ... https://
+     www.facebook.com/rosatomasia/videos/%EF%B8%8F-how-does-a-fast-neutron-
+     reactor-worktake-a-closer-look-at-the-bn-800-a-next-ge/1915144995695923/
+118. Study of Key Parameters and Uncertainties Based on ... https://www.mdpi.com/
+     2071-1050/15/23/16266
+119. Enhanced turbine monitoring using emissions ... https://www.sciencedirect.com/
+     science/article/am/pii/S0306261916304871
+120. Piecewise exact solution of the seismic energy balance ... https://
+     www.researchgate.net/publication/
+     360086174_Piecewise_exact_solution_of_the_seismic_energy_balance_equation_and_i
+     ts_verification_by_shake_table_tests
+121. Application of Reengineering Techniques for Analyzing the ... https://jemsjournal.org/
+     pdf/17d041fe-057c-4c8e-a75d-948e33c0152a/articles/jems.2026.60973/110-123.pdf
+122. Analysis and calibration of optimal power balance rotor- ... https://
+     wes.copernicus.org/preprints/wes-2024-158/wes-2024-158-manuscript-version3.pdf
+123. Integrated condition monitoring of a fleet of offshore wind ... https://www.vliz.be/
+     imisdocs/publications/314137.pdf
+124. Verification and Validation of Model-Scale Turbine ... https://psecommunity.org/wp-
+     content/plugins/wpor/includes/file/2302/LAPSE-2023.8806-1v1.pdf
+125. System for Generating Electric Power by the Sail Wind ... https://
+     www.espublisher.com/uploads/article_pdf/ee1637.pdf
+126. WGAMA PERSEO Benchmark Results Report https://www.oecd-nea.org/jcms/
+     pl_97018/wgama-perseo-benchmark-results-report?details=true
+127. WGAMA PERSEO Benchmark Results Report https://www.oecd-nea.org/nsd/docs/
+     2021/csni-r2021-2-add.pdf
+128. OECD-NEA Activities and Joint Projects https://nucleus.iaea.org/sites/nexshare/
+     Past%20Events%20Materials/NEXSHARE%20Workshop_1st_202406/Day1/10%20-
+     %20M.Adorni_Advancing%20SMR%20safety%20through%20safety%20assessment%2
+     0and%20validation%20of%20computer%20codes%20-%20OECD-
+     NEA%20Activities%20and%20Joint%20Projects.pdf
+129. CSNI Technical Opinion Paper No. 21 (EN) https://www.oecd.org/content/dam/
+     oecd/en/publications/reports/2023/10/csni-technical-opinion-paper-
+     no-21_b4fb0e0d/0df32944-en.pdf
+130. OECD/NEA/CSNI/WGAMA PERSEO benchmark https://ui.adsabs.harvard.edu/abs/
+     2023NuEnD.40512220M/abstract
+131. Thermal hydraulic code validation benchmark for high ... https://www.oecd-nea.org/
+     jcms/pl_71708/thermal-hydraulic-code-validation-benchmark-for-high-temperature-
+     gas-cooled-reactors-using-httf-data-htgr-t/h
+132. Pages - Publication Database - Nucleus https://nucleus.iaea.org/sites/fr/Pages/
+     Publication-database.aspx
+133. Benchmark for Neutronic Analysis of Sodium-cooled Fast ... https://
+     www.researchgate.net/publication/
+     296676448_Benchmark_for_Neutronic_Analysis_of_Sodium-
+     cooled_Fast_Reactor_Cores_with_Various_Fuel_Types_and_Core_Sizes
+134. Benchmark for Neutronic Analysis of Sodium-cooled Fast ... https://inis.iaea.org/
+     records/q5mcn-7gg40
+135. Analysis of Fuel Burnup and Transmutations at High Burnup of ... https://
+     www.researchgate.net/publication/
+     366025296_Analysis_of_Fuel_Burnup_and_Transmutations_at_High_Burnup_of_Sodi
+     um_Fast_Breeder_Reactor
+136. Benchmark for Neutronic Analysis of Sodium-cooled Fast ... https://www.oecd-
+     nea.org/upload/docs/application/pdf/2020-01/nsc-r2015-9.pdf
+137. IAEA Concludes Four-year Research Project on Fast Reactor ... https://www.iaea.org/
+     newscenter/news/iaea-concludes-four-year-research-project-on-fast-reactor-safety-
+     features
+138. Optimization of reactivity control in a small modular sodium-cooled ... https://
+     www.sciencedirect.com/science/article/pii/S1738573319306503
+139. Sodium-cooled fast reactors (SFRs) - Book chapter - IOPscience https://
+     iopscience.iop.org/book/mono/978-0-7503-6069-2/chapter/
+     bk978-0-7503-6069-2ch11
+140. [PDF] The Industrial Sodium Cooled Fast Reactor - INL Digital Library https://
+     inldigitallibrary.inl.gov/sites/sti/sti/4363828.pdf
+141. [PDF] ANNUAL REPORT - the Generation IV International Forum https://
+     www.gen-4.org/gif/upload/docs/application/pdf/2016-06/gif_2015_annual_report_-
+     _final_e-book.pdf
+142. [PDF] Fast reactors and related fuel cycles : safe technologies and ... https://www-
+     pub.iaea.org/MTCD/Publications/PDF/Pub1665Vol1Web-68441300.pdf
+143. [PDF] Use of Reprocessed Uranium https://www-pub.iaea.org/MTCD/publications/
+     PDF/TE_1630_CD/PDF/IAEA-TECDOC-1630.pdf
+144. [PDF] Advanced Structural Materials for High Temperature Reactor ... https://
+     www.nrc.gov/docs/ML2526/ML25261A140.pdf
+145. Design of type 316L stainless steel 700 °C high-temperature piping https://
+     www.sciencedirect.com/science/article/pii/S1738573323002851
+146. [PDF] IAEA Nuclear Energy Series Fatigue Assessment in Light Water ... https://www-
+     pub.iaea.org/MTCD/Publications/PDF/PUB2017_web.pdf
+147. Fuel, coolant, cladding, and structure—materials dictate reactor ... https://
+     www.facebook.com/metallurgist007/posts/fuel-coolant-cladding-and-
+     structurematerials-dictate-reactor-performanceindias-p/939259761820500/
+148. [PDF] FOR-868 Microreactor Applications Research Validation and ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/Sort_110881.pdf
+149. [PDF] Kairos Power, LLC - KP-FHR Metallic Material Qualification Topical ... https://
+     www.nrc.gov/docs/ML2310/ML23102A179.pdf
+150. [PDF] A Comparative Evaluation and Selection of High-Temperature Heat ... https://
+     inldigitallibrary.inl.gov/content/uploads/50/2026/04/Sort_68426.pdf
+151. [PDF] API 521 9th Edition Ballot https://eballotprodstorage.blob.core.windows.net/
+     eballotscontainer/521_e9-WI_11-20250610.pdf
+152. [PDF] NDT Handbooks Vol. 8 Magnetic Testing - IPGM – Servicios https://
+     www.ipgmservicios.com/wp-content/uploads/2024/03/ASNT-NDT-Handbooks-Vol.-8-
+     Magnetic-Testing-I.pdf
+153. Thermal-hydraulic modeling of CAREM-25 advanced small modular ... https://
+     www.sciencedirect.com/science/article/pii/S1738573323005636
+154. Full article: Modeling of Safety Basis Events in the VTR https://
+     www.tandfonline.com/doi/full/10.1080/00295639.2022.2053487
+155. Micro long-life lead-bismuth-cooled fast reactor - Frontiers https://
+     www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.965319/
+     full
+156. [PDF] Numerical analysis of dynamic load following response in a natural ... https://
+     www.osti.gov/servlets/purl/1959776
+157. [PDF] 1. Summary - the Generation IV International Forum https://www.gen-4.org/
+     sites/default/files/2024-07/2018%20RSWG%20Supercritical-water-
+     cooled%20reactor%20system%20%28SCWR%29%20System%20Safety%20Assessmen
+     t%20%282018%29.pdf
+158. Thermal hydraulic modeling needs for LWR-SMRs. OECD/NEA ... https://
+     www.researchgate.net/publication/
+     373108296_Thermal_hydraulic_modeling_needs_for_LWR-
+     SMRs_OECDNEACSNI_Specialists_Meeting_on_Transient_Thermal-
+     hydraulics_in_Water_Cooled_Nuclear_Reactors_SM-TH
+159. Evaluation of OECD/NEA/WPRS benchmark on medium size ... https://inis.iaea.org/
+     records/hh942-se365
+160. OECD/NEA Data Bank Scientific And Integral Experiments ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/3169776.pdf
+161. Evaluation of the OECD/NEA/SFR-UAM Neutronics Reactivity ... https://inis.iaea.org/
+     records/rc32s-sq984
+162. Nuclear Energy Agency (NEA) - Subgroup on Uncertainty ... https://www.oecd-
+     nea.org/jcms/pl_20438/subgroup-onuncertainty-analysis-in-modelling-uam-for-
+     design-operation-and-safety-analysis-of-sodium-cooled-fast-reactors-sfr-uam
+163. Nuclear Energy Agency (NEA) - Regulatory Perspectives on ... https://cms.oecd-
+     nea.org/jcms/pl_60806/regulatory-perspectives-on-safety-aspects-related-to-
+     advanced-sodium-fast-reactors-part-2-neutronics-and-criticality-safety-of-sodium-fast-
+     reactors?details=true
+164. Annual meeting of the OECD/NEA Fluoride Salt-Cooled High ... https://
+     www.oecdnea.org/upload/docs/application/pdf/2025-05/announcement-programme-
+     sfr-uam-10_v1.pdf
+165. Evaluation of the OECD/NEA/SFR-UAM Neutronics Reactivity ... https://
+     www.researchgate.net/publication/328174689_Evaluation_of_the_OECDNEASFR-
+     UAM_Neutronics_Reactivity_Feedback_and_Uncertainty_Benchmarks
+166. Benchmark for Neutronic Analysis of Sodium-cooled Fast ... https://tdb.oecd-nea.org/
+     upload/docs/application/pdf/2020-01/nsc-r2015-9.pdf
+167. A New Calculation Approach to the Energy Balance of a ... https://
+     www.researchgate.net/publication/
+     267499574_A_New_Calculation_Approach_to_the_Energy_Balance_of_a_Gas_Turbine
+     _Including_a_Study_of_the_Impact_of_the_Uncertainty_of_Measured_Parameters
+168. Analysis and calibration of optimal power balance rotor- ... https://
+     wes.copernicus.org/articles/10/987/2025/wes-10-987-2025.pdf
+169. World Energy Balances https://iea.blob.core.windows.net/assets/2144706e-
+     a521-4353-a9c0-2ff3b170669f/WORLDBAL_Documentation_July2025.pdf
+170. Decommissioning Nuclear Facilities https://world-nuclear.org/information-library/
+     nuclear-fuel-cycle/nuclear-waste/decommissioning-nuclear-facilities
+171. Blue Capsule Technology's Post - LinkedIn https://www.linkedin.com/posts/
+     bluecapsule-technology_what-is-elise-and-why-does-it-matter-building-
+     activity-7485310161138515968-0hHi
+172. Technical Review and Status of Small Modular Reactor Technologies https://
+     www.mdpi.com/1996-1073/18/7/1862
+173. The World Nuclear Industry Status Report 2024 (HTML) https://
+     www.worldnuclearreport.org/The-World-Nuclear-Industry-Status-Report-2024-HTML
+174. [PDF] Mineral Commodity Summaries 2026 - USGS Publications Warehouse https://
+     pubs.usgs.gov/periodicals/mcs2026/mcs2026.pdf
+175. China plans to fire up world-first accelerator-driven nuclear reactor ... https://
+     www.reddit.com/r/Futurology/comments/
+     1rm9qe7/1000year_source_china_plans_to_fire_up_worldfirst/
+176. References - LGI Sustainable Innovation https://www.lgi.earth/references
+177. [PDF] World Silver Survey 2026 https://silverinstitute.org/wp-content/uploads/
+     2026/04/World-Silver-Survey-2026.pdf
+178. [PDF] 2025 EFRC-HUBS-CMS-CCS PI MEETING - DOE Office of Science https://
+     science.osti.gov/-/media/bes/efrc/pdf/PI-Meetings/2025-EFRC-Hub-CMS-CCS-PI-
+     Meeting-Program-Book.pdf
+179. [PDF] Brent Fultz https://www.its.caltech.edu/~matsci/btf/BrentFultzCV.pdf
+180. [PDF] Assessment of Nuclear Energy Systems based on a Closed Nuclear ... https://
+     www-pub.iaea.org/MTCD/Publications/PDF/TE_1639_Rev1_web.pdf
+181. [PDF] Fast Breeder Reactor Programs: History and Status https://fissilematerials.org/
+     library/rr08.pdf
+182. [PDF] Initial Evaluation of Fuel-Reactor Concepts for Advanced LEU Fuel ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/Sort_22041.pdf
+183. Review of thorium-containing fuels in LWRs - ScienceDirect.com https://
+     www.sciencedirect.com/science/article/pii/S0149197024000866
+184. [PDF] Burnable Absorbers in Nuclear Reactors - A Review - OSTI https://
+     www.osti.gov/servlets/purl/1908247
+185. [PDF] tecdoc 1356 https://www-pub.iaea.org/MTCD/Publications/PDF/
+     te_1356_web.pdf
+186. [PDF] Research Needs for Fusion-Fission Hybrid Systems - The FIRE Place https://
+     fire.pppl.gov/Hybrid_Report_Final.pdf
+187. [PDF] Fast Breeder Reactor Programs: History and Status http://large.stanford.edu/
+     courses/2011/ph241/dunn1/docs/rr08.pdf
+188. [PDF] Proceedings of Advances in Reactor Physics 2022 - BARC https://
+     www.barc.gov.in/symposium/arp2022/proceedings.pdf
+189. Analysis on thermal hydraulic characteristics for PHENIX ... https://
+     www.sciencedirect.com/science/article/pii/S0149197024003202
+190. Calculation and experimental substantiation of thermal ... https://
+     www.researchgate.net/publication/
+     389534730_Calculation_and_experimental_substantiation_of_thermal-
+     hydraulic_characteristics_for_the_emergency_cooldown_system_of_BN-800_reactor
+191. Calculation and experimental substantiation of thermal ... https://link.springer.com/
+     article/10.1007/s10512-025-01182-3
+192. Testing of sodium-heated steam generator models at SSC RF ... https://
+     link.springer.com/content/pdf/10.1007/s10512-025-01216-w.pdf
+193. Multi-physics models for design basis accident analysis of ... https://
+     www.sciencedirect.com/science/article/pii/S0029549318302073
+194. Calculationandexperimentalsubstantiation ofthermal-hy ... https://rd.springer.com/
+     content/pdf/10.1007/s10512-025-01182-3.pdf
+195. (PDF) HYDRA-IBRAE/LM/V1 Thermohydraulic Code Verification ... https://
+     www.researchgate.net/publication/319645780_HYDRA-
+     IBRAELMV1_Thermohydraulic_Code_Verification_Based_on_BN-600_Experiments
+196. OPERATING EXPERIENCE OF THE BN-800 REACTOR CORE https://
+     conferences.iaea.org/event/436/contributions/38850/attachments/22649/39335/
+     FR26-269.pdf
+197. OPERATING EXPERIENCE OF THE BN-800 REACTOR CORE https://
+     conferences.iaea.org/event/436/contributions/38850/attachments/22649/41631/
+     FR26-269_Presentation.pdf
+198. BN800 | PDF | Nuclear Power Plant | Nuclear Reactor https://www.scribd.com/
+     document/1006809790/BN800
+199. BN-800 reactor — Grokipedia https://grokipedia.com/page/BN-800_reactor
+200. aten13102 - Springer https://link.springer.com/content/pdf/10.1007/
+     s10512-022-00838-8.pdf
+201. [PDF] Lead-cooled Fast Reactor (LFR) System Safety Assessment https://
+     www.gen-4.org/sites/default/files/
+     2024-07/2020%20RSWG%20GIF%20LFR%20SSA%20June%202020.pdf
+202. OECD Nuclear Energy Agency Nuclear Science Committee Eighth ... https://
+     www.oecd-nea.org/upload/docs/application/pdf/2023-05/announcement-
+     programme-sfr-uam-8.pdf
+203. OECD Nuclear Energy Agency - harbor.oecd-nea.org https://harbor.oecd-nea.org/
+     upload/docs/application/pdf/2023-05/announcement-programme-sfr-uam-8.pdf
+204. Nuclear Energy Agency (NEA) - Eighth NEA Benchmark for ... https://harbor.oecd-
+     nea.org/jcms/pl_81013/eighth-nea-benchmark-for-uncertainty-analysis-in-best-
+     estimate-modelling-uam-for-design-operation-and-safety-analysis-of-sodium-cooled-
+     fast-reactors-announcement-sfr-uam-8?details=true
+205. Uncertainty quantification of sodium-cooled fast reactor ... https://
+     www.sciencedirect.com/science/article/pii/S0306454919300428
+206. Analysis of Th and U breeding in a heat pipe cooled traveling wave ... https://
+     www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2023.1175254/
+     full
+207. Thorium - World Nuclear Association https://world-nuclear.org/information-library/
+     current-and-future-generation/thorium
+208. Review on sodium corrosion evolution of nuclear-grade 316 ... https://
+     www.sciencedirect.com/science/article/pii/S1738573321002874
+209. A review of nuclear electric fission space reactor technologies for ... https://
+     www.sciencedirect.com/science/article/pii/S0149197023002500
+210. Full text of "Bihar District Gazetteers: Shahabad" - Internet Archive https://
+     archive.org/stream/dli.ministry.07467/GR252_djvu.txt
+211. Pressurised Water Reactor Main Steam-Line Break (MSLB) ... https://www.oecd-
+     nea.org/jcms/pl_32205/pressurised-water-reactor-main-steam-line-break-mslb-
+     benchmark
+212. Analysis of the OECD/NEA PWR Main Steam Line Break ... https://inis.iaea.org/
+     records/mte00-t3w86
+213. OECD/NEA/CSNI/WGAMA PERSEO benchmark https://www.researchgate.net/
+     publication/
+     369480628_OECDNEACSNIWGAMA_PERSEO_benchmark_Main_outcomes_and_concl
+     usions
+214. TRACE/SIMULATE-3K Analysis of the NEA/OECD ... https://glc.ans.org/nureth-16/
+     data/papers/13418.pdf
+215. NURETH14-612 OECD/NEA MAIN STEAM LINE BREAK ... https://proceedings.cns-
+     snc.ca/index.php/pcns/article/download/4513/4512
+216. BN-800 fast reactor to reach criticality in April 2014 https://fissilematerials.org/blog/
+     2013/12/bn-800_fast_reactor_to_re.html
+217. [PDF] pvp 2023 - ASME Events https://event.asme.org/Events/media/library/
+     resources/pvp/PVP-2023-Final-Program.pdf
+218. ASME Section III CODe comparsion - pdfcoffee.com https://pdfcoffee.com/asme-
+     section-iii-code-comparsion-pdf-free.html
+219. [PDF] ARC20-FQ-003, Revision 0.0, "White Paper on ARC-100 Fuel ... https://
+     www.nrc.gov/docs/ML2332/ML23321A225.pdf
+220. Plant Flare Header Emergency Purge Gas & Thermal Bowing Effect https://
+     www.facebook.com/groups/380564708786032/posts/2611919682317179/
+221. Mechanical Model for Parabolic Dish Micro Gas Turbines https://www.mdpi.com/
+     1996-1073/19/5/1188
+222. Enhancing Turbine Performance Degradation Prediction ... https://
+     papers.phmsociety.org/index.php/phmconf/article/download/2580/1538
+223. Thermal Performance Program Assessment Guideline https://restservice.epri.com/
+     publicdownload/000000003002005343/0/Product
+224. Modeling and Energy Flow Calculation of Integrated ... https://
+     journals.riverpublishers.com/index.php/SPEE/article/download/26405/20803/99177
+225. turbine efficiency and power cycle performance https://www.powerinfotoday.com/
+     wp-content/uploads/2017/01/Exergy_Turbine_Powercycleperformance.pdf
+226. [PDF] Overview and Update of Sodium Fast Reactor Activities within the ... https://
+     www.gen-4.org/sites/default/files/2024-10/
+     Yoshitaka%20CHIKAZAWA%20GIF%20Webinar%20FINAL%2020%20SEP%202024%
+     20_R1.pdf
+227. Fast Reactor Program: Methods, Modeling, and Validation https://www.anl.gov/nse/
+     frp/methods-and-databases
+228. Calculation of Sodium Cooled Fast Reactor Concepts ... - INIS-IAEA https://
+     inis.iaea.org/records/fpfae-0yn18
+229. [PDF] Benchmark Study on Innovative Fuels for Fast Reactors with Fuel ... https://
+     www.oecd-nea.org/upload/docs/application/pdf/2023-05/nea_nsc_r_2022_5.pdf
+230. [PDF] Analysis of Fuel Burn-up Calculations of 3600 MWth Sodium-cooled ... https://
+     ajnsa.journals.ekb.eg/article_168967_08cc6b2ffa5c35e5f2cec6829bc5c53c.pdf
+231. SODIUM-COOLED FAST REACTOR (SFR) RSWG WHITE ... https://www.gen-4.org/
+     sites/default/files/2024-07/2016%20GIF%20RSWG%20SFR%20White%20Paper.pdf
+232. Survey of Advanced Generation IV Reactor Parameters for ... https://www.osti.gov/
+     servlets/purl/1782027
+233. Sodium-cooled Fast Reactor (SFR) Benchmark Task Force https://tdb.oecd-nea.org/
+     jcms/pl_46348/sodium-cooled-fast-reactor-sfr-benchmark-task-force
+234. DESIGN AND ANALYSIS OF SODIUM-COOLED FAST ... https://docs.lib.purdue.edu/
+     context/open_access_dissertations/article/2996/viewcontent/LinChingSheng.pdf
+235. (PDF) Design Considerations for Economically Competitive ... https://
+     www.researchgate.net/publication/
+     228705398_Design_Considerations_for_Economically_Competitive_Sodium_Cooled_F
+     ast_Reactors
+236. Sodium-cooled fast reactors (SFR) - Nuclear Energy https://www.gevernova.com/
+     nuclear/carbon-free-power/sodium-fast-reactors
+237. Numerical investigation on the core thermal hydraulic ... https://www.frontiersin.org/
+     journals/energy-research/articles/10.3389/fenrg.2024.1439022/full
+238. Nuclear waste more valuable than gold: The BN-800, a ... https://www.esi-africa.com/
+     industry-sectors/generation/nuclear-waste-more-valuable-than-gold-the-bn-800-a-
+     world-first/
+239. Boiling Water Reactor Turbine Trip (TT) Benchmark Volume I https://oecd-nea.org/
+     upload/docs/application/pdf/2019-12/nsc-doc2001-1.pdf
+240. Progress in NEA working group analysis of experiment on ... https://www.oecd-
+     nea.org/jcms/pl_108082/progress-in-nea-working-group-analysis-of-experiment-on-
+     multiple-steam-generator-u-tube-rupture
+241. Investigation of the OECD/NEA PWR MOX/UO{sub 2} core ... https://www.osti.gov/
+     biblio/23178701
+242. OECD/NEA and U.S. NRC PWR MOX/UO >2> core ... https://experts.illinois.edu/en/
+     publications/oecdnea-and-us-nrc-pwr-moxuo-sub2sub-core-transient-benchmark/
+243. [PDF] Regulatory Considerations Regarding Potential High-Temperature ... https://
+     publications.anl.gov/anlpubs/2023/04/180211.pdf
+244. [PDF] Sodium-Cooled Fast Test Reactors Using Fuel Plates https://
+     inldigitallibrary.inl.gov/sites/sti/sti/Sort_27089.pdf
+245. [PDF] BN-600 MOX Core Benchmark Analysis https://www-pub.iaea.org/MTCD/
+     Publications/PDF/TE-1700_web.pdf
+246. [PDF] Sodium Fast Reactor Fuels and Materials: Research Needs - OSTI https://
+     www.osti.gov/servlets/purl/1044975
+247. Survey of Advanced Generation IV Reactor Parameters ... - INFO https://info.ornl.gov/
+     sites/publications/Files/Pub154541.pdf
+248. Pressurised Water Reactor Main Steam Line Break (MSLB) ... https://www.oecd-
+     nea.org/upload/docs/application/pdf/2019-12/nsc-doc2003-21.pdf
+249. COMPARATIVE ANALYSIS OF EXERCISE 2 RESULTS OF ... https://inis.iaea.org/
+     records/wres5-me562/files/38071937.pdf
+250. RELAP5-3D Solutions to Exercise 1 of the OECD-NEA HTTF ... https://
+     inldigitallibrary.inl.gov/content/uploads/50/2026/04/Sort_64815.pdf
+251. Beyond Electricity: The Economics of Nuclear Cogeneration https://www.oecd.org/
+     content/dam/oecd/en/publications/reports/2022/07/beyond-electricity_c21e514b/
+     bed3e52c-en.pdf
+252. [PDF] Startup Physics Testing of Advanced Reactors - INL Digital Library https://
+     inldigitallibrary.inl.gov/sites/sti/sti/Sort_88374.pdf
+253. Control Rod Worth Measurement in Monju Restart Core - INIS-IAEA https://
+     inis.iaea.org/records/y8erm-km880
+254. Control rod drive mechanism for fast breeder reactor (Journal Article) https://
+     www.osti.gov/etdeweb/biblio/6315342
+255. Untitled - JOPSS https://jopss.jaea.go.jp/pdfdata/PNC-TN251-76-28.pdf
+256. On Line Measurement of Reactivity Worth of TRIGA Mark-II ... https://file.scirp.org/
+     Html/14-7500431_7144.htm
+257. [PDF] nedo-33091.pdf http://large.stanford.edu/courses/2017/ph241/barry1/docs/
+     nedo-33091.pdf
+258. Calculation of Control Rods Reactivity Worth of RSG-GAS First Core ... https://
+     atomindonesia.brin.go.id/index.php/aij/article/view/810
+259. [PDF] Existing Practices for Multi-physics Validation https://www.oecd-nea.org/
+     upload/docs/application/pdf/2022-10/nea_nsc_r_2019_7.pdf
+260. [PDF] MORPHEE a multiphysics tool for control rod withdrawal modeling in ...
+     https://www.sciencedirect.com/science/article/am/pii/S0306454924003876
+261. Thermal-Hydraulics of Water Cooled Nuclear Reactors [1st Edition ... https://
+     dokumen.pub/thermal-hydraulics-of-water-cooled-nuclear-reactors-1st-
+     edition-9780081006795-9780081006627.html
+262. Neutronics simulation of China Experimental Fast Reactor start-up ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0029549322003892
+263. [PDF] Superphénix Benchmark Part II: Transient Results - HZDR https://
+     www.hzdr.de/publications/PublDoc-17142.pdf
+264. Nuclear Data Sensitivity Study for the EBR-II Fast Reactor ... - MDPI https://
+     www.mdpi.com/2673-4362/2/4/28
+265. [PDF] Advances in fast reactor technology https://www-pub.iaea.org/MTCD/
+     Publications/PDF/te_1015_prn.pdf
+266. [PDF] Recommendation for Limiting Conditions for ASME BPVC Section III ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/Sort_47591.pdf
+267. [PDF] Overview of ASME Section III, Division 5, High Temperature Reactors https://
+     www.osti.gov/servlets/purl/1975270
+268. ASME Section III, Division 5: 2025 Code Updates - Munich Re https://
+     www.munichre.com/hsb/en/services/engineering/global-inspection/resource-center/
+     pressure-points/25q302.html
+269. A Study on Creep-Fatigue Evaluation of Nuclear Cladded ... - MDPI https://
+     www.mdpi.com/1996-1073/16/6/2898
+270. [PDF] structural analysis of nuclear safety related components for elevated ... https://
+     scholarworks.calstate.edu/downloads/q811kt31d
+271. [PDF] Development of In-Service Inspection Rules for Sodium-Cooled Fast ... https://
+     www.gen-4.org/sites/default/files/2024-09/Dr.%20Tayaya-
+     %20GIF%20Webinar%20SEP%2019%20SEP%202022_final.pdf
+272. [PDF] KEY CHANGES TO 2021 ASME BOILER CODE EDITIONS (BY ... https://
+     www.csagroup.org/wp-content/uploads/KEY-CHANGES-TO-2021-BOILER-CODE-CSA-
+     GROUP-FINAL.pdf?
+     srsltid=AU7gw4ViUmyK60gSgAWRdvM9z4Em4GEbnrufQDiidtqwI8jgh3HxFDGU
+273. Objectives and Status of the OECD/NEA sub-group on Uncertainty ... https://
+     inis.iaea.org/records/aaq3n-5sn02
+274. [PDF] Current Status and Perspectives of the OECD/NEA sub ... - Hal-CEA https://
+     cea.hal.science/cea-02339103/document
+275. Eighth NEA Benchmark for Uncertainty Analysis in Best-Estimate ... https://
+     www.oecd-nea.org/jcms/pl_81013/eighth-nea-benchmark-for-uncertainty-analysis-in-
+     best-estimate-modelling-uam-for-design-operation-and-safety-analysis-of-sodium-
+     cooled-fast-reactors-announcement-sfr-uam-8?details=true
+276. Benchmark for Uncertainty Analysis in Best-Estimate Modelling for ... https://
+     www.oecd-nea.org/jcms/pl_32175/benchmark-for-uncertainty-analysis-in-best-
+     estimate-modelling-for-design-operation-and-safety-analysis-of-light-water-reactors-
+     lwr-uam
+277. IAEA-CN245-149 Evaluation of the OECD/NEA/SFR-UAM ... http://
+     www.aztlanplatform.mx/wp-content/uploads/2018/11/FR17-149.pdf
+278. NEA/NRC Benchmark based on NUPEC BWR Full-size Fine-mesh ... https://
+     www.oecd-nea.org/science/wprs/egrsltb/BFBT/
+279. OECD/NRC Benchmark based on NUPEC BWR Full-size Fine-mesh ... https://
+     www.oecd-nea.org/jcms/pl_32183/oecd/nrc-benchmark-based-on-nupec-bwr-full-
+     size-fine-mesh-bundle-tests-bfbt
+280. NEA Data Bank Nuclear Data Services: JEF(F) Reports https://www.oecd-nea.org/
+     dbdata/nds_eval_jefrep.htm
+281. [PDF] NUREG-0800 - Chapter 15, Section 15.4.1, Revision 3, Uncontrolled ... https://
+     www.nrc.gov/docs/ML0636/ML063600413.pdf
+282. [PDF] IAEA Nuclear Energy Series Design Features and Operating ... https://www-
+     pub.iaea.org/MTCD/Publications/PDF/Pub1585_web.pdf
+283. [PDF] A Versatile Coupled Test Reactor Concept - INL Digital Library https://
+     inldigitallibrary.inl.gov/sites/sti/sti/8059201.pdf
+284. [PDF] The NEA Small Modular Reactor Dashboard: Third Edition https://www.oecd-
+     nea.org/upload/docs/application/pdf/2025-09/web_-_smr_dashboard_-
+     _third_edition.pdf
+285. [PDF] 2023 NEA https://www.oecd-nea.org/upload/docs/application/pdf/
+     2024-11/7676_ar_2023.pdf
+286. [PDF] Computational Fluid Dynamics for Nuclear Reactor Safety https://na-
+     admin.eventscloud.com/file_uploads/
+     698b61ae15db42ff1c249f298c51f8c1_Book_of_abstracts_v12.pdf
+287. [PDF] Nuclear Innovation and Newly Emerging Disruptive Technologies https://
+     www.oecd-nea.org/upload/docs/application/pdf/2025-11/
+     nuclear_innovation_and_newly_emerging_disruptive_technologies__recent_initiatives
+     _by_industry_research_laboratories_and_gove.pdf
+288. [PDF] Fast Breeder Reactor Programs: History and Status - ABEN https://aben.org.br/
+     wp-content/uploads/2023/07/Fast_breeder_reactor_programs_History_an.pdf
+289. ESFR-SMART Core Safety Measures and Their Preliminary ... https://
+     asmedigitalcollection.asme.org/nuclearengineering/article/8/1/011322/1120782/
+     ESFR-SMART-Core-Safety-Measures-and-Their
+290. BN-600: 45 Years of Fast Reactor Excellence https://rosatomnewsletter.com/
+     2025/04/28/bn-600-45-years-of-fast-reactor-excellence/
+291. Progress of Thermal Hydraulic Evaluation Methods and ... http://glc.ans.org/
+     nureth-16/data/papers/keynotepaper_Kamide.pdf
+292. PRISM: A competitive small modular sodium-cooled reactor https://
+     www.researchgate.net/publication/
+     282406273_PRISM_A_competitive_small_modular_sodium-cooled_reactor
+293. [PDF] PROFILES SUMMARY https://www-pub.iaea.org/MTCD/Publications/PDF/
+     SupplementaryMaterials/P1728/Summary_web.pdf
+294. [PDF] 24th National Symposium on Radiation Physics https://isrp.in/wp-content/
+     uploads/2025/04/E-Proceedings_NSRP_compressed.pdf
+295. Benchmark on Artificial Intelligence and Machine Learning ... https://one.oecd.org/
+     document/NEA/WKP(2023)1/en/pdf
+296. announcement-programme-sfr-uam- ... https://www.oecd-nea.org/upload/docs/
+     application/pdf/2025-05/announcement-programme-sfr-uam-10_v1.pdf
+297. Design Configurations and Coupling High Temperature Gas ... https://
+     inldigitallibrary.inl.gov/sites/sti/sti/4027517.pdf
+298. Russian BN-800 breeder has reached criticality - IPFM Blog https://
+     fissilematerials.org/blog/2014/06/russian_bn-800_breeder_re.html
+299. Thermal Performance Engineers Handbook, Volume II https://restservice.epri.com/
+     publicdownload/TR-107422-V2/0/Product
+300. Prioritization of VHTR System Modeling Needs Based on ... https://
+     publications.anl.gov/anlpubs/2007/08/59659.pdf
+301. [PDF] Use of NEA Database Projects Operating Experience Data ... - OECD https://
+     one.oecd.org/document/NEA/CSNI/R(2020)12/en/pdf
+302. [PDF] Reactor Pressure Vessel Fluence, DPA, and Uncertainty ... https://
+     www.nrc.gov/docs/ML2113/ML21137A310.pdf
+303. Nuclear Safety Research Joint Projects https://www.oecdnea.org/jcms/pl_72332/
+     nuclear-safety-research-joint-projects
+304. Main features of the BN-800 passive shutdown rods - INIS-IAEA https://inis.iaea.org/
+     records/tmrf5-h7v75
+305. [PDF] Status of HPRL entries - Nuclear Energy Agency (NEA) https://www.oecd-
+     nea.org/upload/docs/application/pdf/2020-03/
+     hprl_status_feedback_review_2018_cea.pdf
+306. Japan abandons Monju fast reactor: the slow death of a nuclear dream https://
+     theecologist.org/2016/oct/06/japan-abandons-monju-fast-reactor-slow-death-nuclear-
+     dream
+307. MASS: Masked Sequence to Sequence Pre-training for ... https://arxiv.org/abs/
+     1905.02450
+308. M.A.S.S. Home - M.A.S.S. https://www.massupt.org/
+309. Mass Formation and its Antidote | Mattias Desmet https://www.youtube.com/watch?
+     v=KN0G2pHBg18
+310. Midnight Mass | Teaser Trailer | Netflix https://www.youtube.com/watch?
+     v=89UV8vmWXlY
+311. Where Do Trees Get Their Mass? https://www.youtube.com/watch?v=2KZb2_vcNTg
+312. An Introduction to Moles and Molar Mass - AP Chem Unit 1, ... https://
+     www.youtube.com/watch?v=wynFro1c09k
+313. Gang Starr - Mass Appeal https://www.youtube.com/watch?v=y9lNbNGbo24
+314. Mass Flourishing https://press.princeton.edu/books/paperback/9780691165790/
+     mass-flourishing?
+     srsltid=AU7gw4VREu5AKticDtnflTSf4qpOgKQK395vqULA_R_L8TXbbeV9tZ1v
+315. Mass - Official Trailer https://www.youtube.com/watch?v=WgvsfKhGdgI
+316. Mass Spectrometry https://www.youtube.com/watch?v=mBT73Pesiog
+317. BASIC DESIGN DATA OF BN REACTORS https://www.researchgate.net/figure/
+     BASIC-DESIGN-DATA-OF-BN-REACTORS_tbl4_351614179
+318. MANUFACTURE, INSTALLATION AND ADJUSTMENT OF ... https://inis.iaea.org/
+     records/xgbhe-2cs85/files/48088104.pdf
+319. Russia BN 600 and BN 800 Mr. Ilya Pakhomov, IPPE, Russia https://gif.jaea.go.jp/
+     webinar/Series24/w24_BN-600_and_BN-800_Operating_Experience.pdf
+320. Engineering:BN-800 reactor https://www.handwiki.org/wiki/
+     Engineering:BN-800_reactor
+321. Balance Pan-Asian Grille: Fresh Bowls, Tacos & Salads https://balancegrille.com/
+322. The Golden Balance (@thegoldenbalance) https://www.tiktok.com/
+     @thegoldenbalance?lang=en
+323. Your Balance Will Continue to Get Worse After 60… Unless ... https://
+     www.youtube.com/watch?v=Ei7ecehRj6M
+324. Classic Chili Recipe https://www.budgetbytes.com/basic-chili/
+325. Balance Problems: Causes, Diagnosis & Improvement Tips https://
+     www.health.harvard.edu/topics/balance
+326. BALANCE (Better Approaches to Lifestyle and Nutrition ... https://www.cms.gov/
+     priorities/innovation/innovation-models/balance
+327. Meditation For Mental Balance and Grounding https://www.youtube.com/watch?
+     v=x0nZ1ZLephQ
+328. White Balance is Broken https://www.youtube.com/watch?v=WADuXiMZxq4
+329. Marry Me Chicken Pasta https://www.budgetbytes.com/marry-me-chicken-pasta/
+330. How to Create a Balanced Life: 9 Tips to Feel Calm and ... https://tinybuddha.com/
+     blog/9-tips-to-create-a-balanced-life/
+331. [PDF] Nuclear Energy and Technology https://nucet.pensoft.net/article/116657/
+     download/pdf/954748
+332. Fundamental and applied investigations of the liquid-metal cooled ... https://
+     www.sciencedirect.com/science/article/abs/pii/S0029549323001991
+333. [PDF] iaea-tecdoc-2056 https://www-pub.iaea.org/MTCD/publications/PDF/
+     TE-2056web.pdf
+334. Fast Reactors - INIS-IAEA https://inis.iaea.org/records/ffj4f-vg543/files/
+     49089593.pdf?download=1
+335. International Benchmark Activity in the Field of Sodium Fast Reactors https://
+     www.intechopen.com/chapters/76773
+

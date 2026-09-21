@@ -1,0 +1,5240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A3</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Sofia+Sans+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #EDF1ED;
+      --surface: #FFFFFF;
+      --ink: #1C2A2E;
+      --muted: #55656A;
+      --rule: #C6D0CB;
+      --panel: #DDE6E1;
+      --accent: #D9A300;
+      --link: #1D5C9C;
+      --red: #B23A2E;
+      --orange: #BE6810;
+      --blue: #2360A6;
+      --violet: #6A4FA0;
+      --teal: #11707A;
+      --amber: #A87A00;
+      --slate: #5A6870;
+      --inkc: #1C2A2E;
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #152024;
+        --surface: #1C282D;
+        --ink: #DBE3E0;
+        --muted: #9CAAA6;
+        --rule: #34454B;
+        --panel: #233237;
+        --accent: #F2C230;
+        --link: #8DC1FF;
+        --red: #FF7C6F;
+        --orange: #FFA650;
+        --blue: #7EB7FF;
+        --violet: #C4A6FF;
+        --teal: #5BC9D2;
+        --amber: #F2C230;
+        --slate: #A8B6BC;
+        --inkc: #DBE3E0;
+        color-scheme: dark;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #152024;
+      --surface: #1C282D;
+      --ink: #DBE3E0;
+      --muted: #9CAAA6;
+      --rule: #34454B;
+      --panel: #233237;
+      --accent: #F2C230;
+      --link: #8DC1FF;
+      --red: #FF7C6F;
+      --orange: #FFA650;
+      --blue: #7EB7FF;
+      --violet: #C4A6FF;
+      --teal: #5BC9D2;
+      --amber: #F2C230;
+      --slate: #A8B6BC;
+      --inkc: #DBE3E0;
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.55 "Sofia Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+
+    a {
+      color: var(--link);
+    }
+
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .skip {
+      position: absolute;
+      left: -999px;
+    }
+
+    .skip:focus {
+      left: 12px;
+      top: 12px;
+      background: var(--surface);
+      padding: 6px 10px;
+      z-index: 9;
+    }
+
+    .sys-ink    { --c: var(--inkc); }
+    .sys-red    { --c: var(--red); }
+    .sys-orange { --c: var(--orange); }
+    .sys-blue   { --c: var(--blue); }
+    .sys-violet { --c: var(--violet); }
+    .sys-teal   { --c: var(--teal); }
+    .sys-amber  { --c: var(--amber); }
+    .sys-slate  { --c: var(--slate); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 44px;
+      max-width: 1340px;
+      margin: 0 auto;
+      padding: 28px 24px 80px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      font-size: 14px;
+      padding-right: 6px;
+    }
+
+    .toc summary {
+      font-family: "Sofia Sans Condensed", "Arial Narrow", sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .toc li.n2 > a {
+      display: block;
+      margin-top: 6px;
+      padding: 4px 0 4px 11px;
+      border-left: 5px solid var(--c);
+      color: var(--ink);
+      font-weight: 700;
+      text-decoration: none;
+      line-height: 1.25;
+    }
+
+    .toc li.n3 a {
+      display: block;
+      padding: 2px 0 2px 16px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .toc a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      min-width: 0;
+      max-width: 1010px;
+    }
+
+    main p,
+    main li,
+    blockquote {
+      max-width: 76ch;
+    }
+
+    h1, h2, h3 {
+      font-family: "Sofia Sans Condensed", "Arial Narrow", sans-serif;
+      line-height: 1.12;
+      scroll-margin-top: 14px;
+    }
+
+    h1 {
+      font-size: clamp(34px, 5vw, 50px);
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -.01em;
+    }
+
+    h2 {
+      font-size: 30px;
+      font-weight: 800;
+      margin: 64px 0 14px;
+      padding: 4px 0 6px 14px;
+      border-left: 9px solid var(--c);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    h3 {
+      font-size: 21px;
+      font-weight: 700;
+      margin: 34px 0 8px;
+    }
+
+    .tw {
+      overflow-x: auto;
+      margin: 10px 0 22px;
+      border: 1px solid var(--rule);
+      background: var(--surface);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14.5px;
+      line-height: 1.4;
+    }
+
+    th {
+      background: var(--panel);
+      text-align: left;
+      font-family: "Sofia Sans Condensed", "Arial Narrow", sans-serif;
+      font-weight: 700;
+      font-size: 14.5px;
+      padding: 7px 10px;
+      border-bottom: 2px solid var(--rule);
+      vertical-align: bottom;
+    }
+
+    td {
+      padding: 6px 10px;
+      border-top: 1px solid var(--rule);
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(120, 140, 132, .07);
+    }
+
+    td:first-child {
+      font-weight: 600;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .88em;
+      background: var(--panel);
+      padding: 1px 5px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    pre {
+      overflow-x: auto;
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      white-space: pre;
+    }
+
+    pre.mermaid {
+      text-align: center;
+      padding: 18px;
+    }
+
+    blockquote {
+      margin: 16px 0;
+      padding: 10px 16px;
+      background: var(--surface);
+      border-left: 5px solid var(--accent);
+    }
+
+    blockquote p {
+      margin: 4px 0;
+    }
+
+    .titleblock {
+      border: 2px solid var(--ink);
+      background: var(--surface);
+      margin-bottom: 8px;
+    }
+
+    .titleblock .head {
+      padding: 22px 22px 16px;
+    }
+
+    .titleblock .sub {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      max-width: 70ch;
+    }
+
+    .tb {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--ink);
+      border-top: 2px solid var(--ink);
+      margin: 0;
+    }
+
+    .tb div {
+      background: var(--surface);
+      padding: 7px 12px;
+    }
+
+    .tb dt {
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .tb dd {
+      margin: 0;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .key {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      padding: 10px 22px;
+      border-top: 2px solid var(--ink);
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+
+    .key span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .key i {
+      display: inline-block;
+      width: 22px;
+      height: 6px;
+      background: var(--c);
+    }
+
+    @media (max-width: 1000px) {
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 14px 14px 60px;
+      }
+
+      .toc {
+        position: static;
+        max-height: none;
+        border: 1px solid var(--rule);
+        background: var(--surface);
+        padding: 10px 12px;
+      }
+
+      .tb {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      h2 {
+        font-size: 25px;
+      }
+    }
+
+    @media print {
+      .toc {
+        display: none;
+      }
+
+      .layout {
+        display: block;
+      }
+
+      h2 {
+        break-after: avoid;
+      }
+
+      .tw {
+        overflow: visible;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <details open id="tocd">
+        <summary>Contents</summary>
+        <ul>
+          <li class="n2 sys-ink">
+            <a href="#0-how-to-read-this-spec">0. How to read this spec</a>
+            <ul>
+              <li class="n3"><a href="#01-conventions">0.1 Conventions</a></li>
+              <li class="n3"><a href="#02-clocks">0.2 Clocks</a></li>
+              <li class="n3"><a href="#03-decisions">0.3 Decisions</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-ink">
+            <a href="#1-plant-overview-and-site">1. Plant overview and site</a>
+            <ul>
+              <li class="n3"><a href="#11-plant-at-a-glance">1.1 Plant at a glance</a></li>
+              <li class="n3"><a href="#12-topology">1.2 Topology</a></li>
+              <li class="n3"><a href="#13-where-each-idea-comes-from">1.3 Where each idea comes from</a></li>
+              <li class="n3"><a href="#14-site">1.4 Site</a></li>
+              <li class="n3"><a href="#15-history">1.5 History</a></li>
+              <li class="n3"><a href="#16-people-and-language">1.6 People and language</a></li>
+              <li class="n3"><a href="#17-seasons">1.7 Seasons</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-red">
+            <a href="#2-reactor-core">2. Reactor core</a>
+            <ul>
+              <li class="n3"><a href="#21-geometry">2.1 Geometry</a></li>
+              <li class="n3"><a href="#22-core-map-by-ring">2.2 Core map by ring</a></li>
+              <li class="n3"><a href="#23-fuel-pin-and-assembly">2.3 Fuel pin and assembly</a></li>
+              <li class="n3"><a href="#24-thermal-limits">2.4 Thermal limits</a></li>
+              <li class="n3"><a href="#25-flow-zoning">2.5 Flow zoning</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-red">
+            <a href="#3-reactor-physics-and-kinetics">3. Reactor physics and kinetics</a>
+            <ul>
+              <li class="n3"><a href="#31-kinetics-constants">3.1 Kinetics constants</a></li>
+              <li class="n3"><a href="#32-feedback-coefficients">3.2 Feedback coefficients</a></li>
+              <li class="n3"><a href="#33-reactivity-budget-beginning-of-cycle">3.3 Reactivity budget, beginning of cycle</a></li>
+              <li class="n3"><a href="#34-rod-systems">3.4 Rod systems</a></li>
+              <li class="n3"><a href="#35-neutron-instrumentation">3.5 Neutron instrumentation</a></li>
+              <li class="n3"><a href="#36-decay-heat">3.6 Decay heat</a></li>
+              <li class="n3"><a href="#37-core-physics-model">3.7 Core physics model</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-red">
+            <a href="#4-primary-system">4. Primary system</a>
+            <ul>
+              <li class="n3"><a href="#41-vessel-and-pools">4.1 Vessel and pools</a></li>
+              <li class="n3"><a href="#42-primary-pumps-pp1pp3">4.2 Primary pumps PP1–PP3</a></li>
+              <li class="n3"><a href="#43-intermediate-heat-exchangers-primary-side">4.3 Intermediate heat exchangers, primary side</a></li>
+              <li class="n3"><a href="#44-cover-gas">4.4 Cover gas</a></li>
+              <li class="n3"><a href="#45-decay-heat-removal-dracs">4.5 Decay heat removal (DRACS)</a></li>
+              <li class="n3"><a href="#46-primary-purification">4.6 Primary purification</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-orange">
+            <a href="#5-secondary-sodium-loops">5. Secondary sodium loops</a>
+            <ul>
+              <li class="n3"><a href="#51-loop-parameters-each-of-3">5.1 Loop parameters (each of 3)</a></li>
+              <li class="n3"><a href="#52-sodium-water-reaction-protection">5.2 Sodium-water reaction protection</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-orange">
+            <a href="#6-steam-generators-splitter-and-reheat-routing">6. Steam generators, splitter and reheat routing</a>
+            <ul>
+              <li class="n3"><a href="#61-construction">6.1 Construction</a></li>
+              <li class="n3"><a href="#62-main-steam">6.2 Main steam</a></li>
+              <li class="n3"><a href="#63-splitter-valves-steam-generator-desk">6.3 Splitter valves (steam generator desk)</a></li>
+              <li class="n3"><a href="#64-reheat-routing-od-4">6.4 Reheat routing (OD-4)</a></li>
+              <li class="n3"><a href="#65-loss-of-loop-3-what-each-split-actually-gives">6.5 Loss of loop 3: what each split actually gives</a></li>
+              <li class="n3"><a href="#66-startup-and-low-load-behaviour">6.6 Startup and low-load behaviour</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-blue">
+            <a href="#7-turbine-generators-condensers-and-feedwater">7. Turbine-generators, condensers and feedwater</a>
+            <ul>
+              <li class="n3"><a href="#71-turbine-generator-each-of-2">7.1 Turbine-generator (each of 2)</a></li>
+              <li class="n3"><a href="#72-turbine-protection">7.2 Turbine protection</a></li>
+              <li class="n3"><a href="#73-bypass">7.3 Bypass</a></li>
+              <li class="n3"><a href="#74-condenser-and-cooling-water">7.4 Condenser and cooling water</a></li>
+              <li class="n3"><a href="#75-feed-heating-each-unit">7.5 Feed heating (each unit)</a></li>
+              <li class="n3"><a href="#76-feedwater-trains">7.6 Feedwater trains</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-violet">
+            <a href="#8-electrical-system">8. Electrical system</a>
+            <ul>
+              <li class="n3"><a href="#81-grid-connection-and-main-circuits">8.1 Grid connection and main circuits</a></li>
+              <li class="n3"><a href="#82-11-kv-load-allocation">8.2 11 kV load allocation</a></li>
+              <li class="n3"><a href="#83-essential-systems">8.3 Essential systems</a></li>
+              <li class="n3"><a href="#84-grid-parameters-nordic-synchronous-area">8.4 Grid parameters: Nordic synchronous area</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-teal">
+            <a href="#9-control-protection-and-operating-limits">9. Control, protection and operating limits</a>
+            <ul>
+              <li class="n3"><a href="#91-operating-modes">9.1 Operating modes</a></li>
+              <li class="n3"><a href="#92-part-load-program">9.2 Part-load program</a></li>
+              <li class="n3"><a href="#93-who-controls-what">9.3 Who controls what</a></li>
+              <li class="n3"><a href="#94-automatic-controllers-deliberately-worse-than-a-crew">9.4 Automatic controllers, deliberately worse than a crew</a></li>
+              <li class="n3"><a href="#95-reactor-protection">9.5 Reactor protection</a></li>
+              <li class="n3"><a href="#96-operating-limits">9.6 Operating limits</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-teal">
+            <a href="#10-control-rooms-desks-and-crew">10. Control rooms, desks and crew</a>
+            <ul>
+              <li class="n3"><a href="#101-rooms-and-walking-times">10.1 Rooms and walking times</a></li>
+              <li class="n3"><a href="#102-desk-contents">10.2 Desk contents</a></li>
+              <li class="n3"><a href="#103-local-only-actions">10.3 Local-only actions</a></li>
+              <li class="n3"><a href="#104-crew-sizes">10.4 Crew sizes</a></li>
+              <li class="n3"><a href="#105-attention-intervals-on-manual">10.5 Attention intervals on manual</a></li>
+              <li class="n3"><a href="#106-hybrid-control-rooms">10.6 Hybrid control rooms</a></li>
+              <li class="n3"><a href="#107-access-trust-and-griefing">10.7 Access, trust and griefing</a></li>
+              <li class="n3"><a href="#108-guides">10.8 Guides</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-violet">
+            <a href="#11-grid-dispatcher">11. Grid dispatcher</a>
+            <ul>
+              <li class="n3"><a href="#111-instruction-types">11.1 Instruction types</a></li>
+              <li class="n3"><a href="#112-frequency-model">11.2 Frequency model</a></li>
+              <li class="n3"><a href="#113-scoring">11.3 Scoring</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-amber">
+            <a href="#12-damage-and-degradation-model">12. Damage and degradation model</a>
+            <ul>
+              <li class="n3"><a href="#121-thermal-fatigue">12.1 Thermal fatigue</a></li>
+              <li class="n3"><a href="#122-fuel">12.2 Fuel</a></li>
+              <li class="n3"><a href="#123-sodium-systems">12.3 Sodium systems</a></li>
+              <li class="n3"><a href="#124-sg-tube-leak-growth">12.4 SG tube leak growth</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-amber">
+            <a href="#13-scenario-library">13. Scenario library</a>
+            <ul>
+              <li class="n3"><a href="#131-scenario-director">13.1 Scenario director</a></li>
+              <li class="n3"><a href="#132-scenarios">13.2 Scenarios</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-slate">
+            <a href="#14-simulation-implementation-in-roblox">14. Simulation implementation in Roblox</a>
+            <ul>
+              <li class="n3"><a href="#141-tick-structure">14.1 Tick structure</a></li>
+              <li class="n3"><a href="#142-space-time-kinetics-in-real-time">14.2 Space-time kinetics in real time</a></li>
+              <li class="n3"><a href="#143-thermal-nodes">14.3 Thermal nodes</a></li>
+              <li class="n3"><a href="#144-keeping-it-multiplayer">14.4 Keeping it multiplayer</a></li>
+              <li class="n3"><a href="#145-performance-guardrails">14.5 Performance guardrails</a></li>
+              <li class="n3"><a href="#146-persistence-and-reset">14.6 Persistence and reset</a></li>
+              <li class="n3"><a href="#147-modules">14.7 Modules</a></li>
+            </ul>
+          </li>
+          <li class="n2 sys-ink">
+            <a href="#appendix-a-sodium-properties">Appendix A. Sodium properties</a>
+            <ul></ul>
+          </li>
+          <li class="n2 sys-ink">
+            <a href="#appendix-b-tags-and-glossary">Appendix B. Tags and glossary</a>
+            <ul></ul>
+          </li>
+          <li class="n2 sys-ink">
+            <a href="#appendix-c-revision-log">Appendix C. Revision log</a>
+            <ul></ul>
+          </li>
+        </ul>
+      </details>
+    </nav>
+
+    <main id="main">
+      <header class="titleblock">
+        <div class="head">
+          <h1>Kallskär Nuclear Power Plant</h1>
+          <p class="sub">SFR-1000 unit design specification: a pool-type sodium fast reactor feeding two 500 MWe turbine-generators through three loops, for a multi-control-room Roblox simulator.</p>
+        </div>
+
+        <dl class="tb">
+          <div><dt>Revision</dt><dd>A3, 3D space-time kinetics</dd></div>
+          <div><dt>Date</dt><dd>15 September 2026</dd></div>
+          <div><dt>Prepared for</dt><dd>Aqua</dd></div>
+          <div><dt>Rating</dt><dd>2,380 MWt, 1,000 MWe gross</dd></div>
+          <div><dt>Site</dt><dd>Hälsingland coast, Sweden</dd></div>
+          <div><dt>Reference plants</dt><dd>BN-600, BN-800, Superphénix, PFR, EFR</dd></div>
+        </dl>
+
+        <div class="key" aria-label="Section colour key">
+          <span class="sys-red"><i></i>Core and primary sodium</span>
+          <span class="sys-orange"><i></i>Secondary sodium and SGs</span>
+          <span class="sys-blue"><i></i>Steam and water</span>
+          <span class="sys-violet"><i></i>Electrical and grid</span>
+          <span class="sys-teal"><i></i>Control and crew</span>
+          <span class="sys-amber"><i></i>Damage and scenarios</span>
+          <span class="sys-slate"><i></i>Implementation</span>
+        </div>
+      </header>
+
+      <h2 class="sys-ink" id="0-how-to-read-this-spec">0. How to read this spec</h2>
+      <p>Every number here is a starting value that agrees with every other number. The heat balance was computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't need to be.</p>
+
+      <h3 id="01-conventions">0.1 Conventions</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Convention</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pressure</td>
+              <td>Absolute, MPa or kPa, unless marked g</td>
+            </tr>
+            <tr>
+              <td>Temperature</td>
+              <td>°C; temperature differences in K</td>
+            </tr>
+            <tr>
+              <td>Reactivity</td>
+              <td>pcm (10⁻⁵ Δk/k); $1 = 360 pcm</td>
+            </tr>
+            <tr>
+              <td>Rod position</td>
+              <td>mm withdrawn from fully inserted, 0–1,100 mm</td>
+            </tr>
+            <tr>
+              <td>Power</td>
+              <td>%FP of 2,380 MWt; MWe gross unless marked net</td>
+            </tr>
+            <tr>
+              <td>†</td>
+              <td>Tuning value: realistic in size, meant to change in playtesting</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="02-clocks">0.2 Clocks</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Clock</th>
+              <th>Rate</th>
+              <th>Drives</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Physics</td>
+              <td>×1 real time, always</td>
+              <td>Kinetics, thermal-hydraulics, pumps, valves, electrical, protection</td>
+            </tr>
+            <tr>
+              <td>Low-power acceleration †</td>
+              <td>×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree</td>
+              <td>Heatup, cooldown, long waits in blackout scenarios</td>
+            </tr>
+            <tr>
+              <td>Grid clock †</td>
+              <td>×12 (one grid day = 2 h real)</td>
+              <td>Dispatcher schedule, demand curve, weather and sea, LCO completion times</td>
+            </tr>
+            <tr>
+              <td>Slow processes †</td>
+              <td>×360 of real time</td>
+              <td>Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures, fuel failure hazard</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Ramp limits and response windows are real time unless marked grid time.</p>
+
+      <h3 id="03-decisions">0.3 Decisions</h3>
+      <p>All nine open decisions from Rev A are closed.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Decision</th>
+              <th>Chosen</th>
+              <th>Affects</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>OD-1</td>
+              <td>Names and setting</td>
+              <td>Kallskär Nuclear Power Plant, unit K1, on the Hälsingland coast of Sweden. Reactor unit: SFR-1000</td>
+              <td>§1.4–1.7, grid rules, cooling water, scenarios</td>
+            </tr>
+            <tr>
+              <td>OD-2</td>
+              <td>Sodium plenum above core</td>
+              <td>None</td>
+              <td>Void worth stays +1,800 pcm, so boiling is as unforgiving as it gets</td>
+            </tr>
+            <tr>
+              <td>OD-3</td>
+              <td>Neutron channels between source and power range</td>
+              <td>Log wide-range, no range switching</td>
+              <td>§3.5, §9.5, reactor desk</td>
+            </tr>
+            <tr>
+              <td>OD-4</td>
+              <td>Loop 2 reheaters split 4 sections to A, 4 to B</td>
+              <td>Yes</td>
+              <td>§6.4–6.5</td>
+            </tr>
+            <tr>
+              <td>OD-5</td>
+              <td>Default control mode</td>
+              <td>Reactor leads</td>
+              <td>§9.3</td>
+            </tr>
+            <tr>
+              <td>OD-6</td>
+              <td>DRACS air dampers on loss of power</td>
+              <td>Fail as-is: motor-operated, can't move without power</td>
+              <td>Blackouts need field crews at the stacks (S-16)</td>
+            </tr>
+            <tr>
+              <td>OD-7</td>
+              <td>Primary pump trip at power</td>
+              <td>Automatic runback RB-2</td>
+              <td>§9.5</td>
+            </tr>
+            <tr>
+              <td>OD-8</td>
+              <td>Refuelling outage</td>
+              <td>Timed wait for now, 30 min real †</td>
+              <td>§2.3</td>
+            </tr>
+            <tr>
+              <td>OD-9</td>
+              <td>Plant condition persistence</td>
+              <td>Per private server; owner can reset</td>
+              <td>§14.6</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-ink" id="1-plant-overview-and-site">1. Plant overview and site</h2>
+
+      <h3 id="11-plant-at-a-glance">1.1 Plant at a glance</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Station</td>
+              <td>Kallskär Nuclear Power Plant, unit K1, Hälsingland coast, Sweden</td>
+            </tr>
+            <tr>
+              <td>Reactor</td>
+              <td>SFR-1000: pool-type sodium-cooled fast reactor, MOX fuel</td>
+            </tr>
+            <tr>
+              <td>Thermal power</td>
+              <td>2,380 MWt</td>
+            </tr>
+            <tr>
+              <td>Gross output</td>
+              <td>1,000 MWe at the 5.0 kPa rating point (2 × 500 MWe); up to ≈ 1,028 MWe with cold winter seawater</td>
+            </tr>
+            <tr>
+              <td>Net output</td>
+              <td>≈ 935 MWe (house load ≈ 65 MWe)</td>
+            </tr>
+            <tr>
+              <td>Gross efficiency</td>
+              <td>42.0%</td>
+            </tr>
+            <tr>
+              <td>Primary circuit</td>
+              <td>1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,690 kg/s</td>
+            </tr>
+            <tr>
+              <td>Secondary circuit</td>
+              <td>3 loops, 3,110 kg/s each, 320 → 520 °C, ≈ 400 t sodium each</td>
+            </tr>
+            <tr>
+              <td>Steam generators</td>
+              <td>3 × 8 sections (evaporator, superheater, reheater), 99.5 MWt per section</td>
+            </tr>
+            <tr>
+              <td>Steam at SG outlet</td>
+              <td>14.0 MPa, 505 °C; reheat 2.6 MPa, 505 °C; feedwater 240 °C</td>
+            </tr>
+            <tr>
+              <td>Main steam flow</td>
+              <td>291.7 kg/s per loop; 437.5 kg/s per turbine</td>
+            </tr>
+            <tr>
+              <td>Turbines</td>
+              <td>2 × HP + IP + 2 LP, 3,000 rpm, condenser 5.0 kPa, seawater cooled</td>
+            </tr>
+            <tr>
+              <td>Core</td>
+              <td>301 fuel assemblies, 30 rod positions, 1.0 m active height, ≈ 29 tHM</td>
+            </tr>
+            <tr>
+              <td>Kinetics</td>
+              <td>Real-time 3D multigroup space-time kinetics (§3.7); β_eff 360 pcm; Λ 4.0 × 10⁻⁷ s; no xenon effect</td>
+            </tr>
+            <tr>
+              <td>Decay heat removal</td>
+              <td>4 DRACS loops × 20 MWt, natural circulation</td>
+            </tr>
+            <tr>
+              <td>Emergency power</td>
+              <td>4 EDGs × 6.3 MW</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="12-topology">1.2 Topology</h3>
+      <pre class="mermaid">
+flowchart LR
+  subgraph POOL["Reactor pool, primary sodium"]
+    CORE["Core 2,380 MWt"] --> HOT["Hot pool 550 °C"]
+    HOT --> IHX1["IHX 1A 1B"]
+    HOT --> IHX2["IHX 2A 2B"]
+    HOT --> IHX3["IHX 3A 3B"]
+    IHX1 --> COLD["Cold pool 375 °C"]
+    IHX2 --> COLD
+    IHX3 --> COLD
+    COLD --> PP["Primary pumps PP1 PP2 PP3"]
+    PP --> CORE
+  end
+  IHX1 ==>|loop 1 sodium| SG1["SG1, 8 sections"]
+  IHX2 ==>|loop 2 sodium| SG2["SG2, 8 sections"]
+  IHX3 ==>|loop 3 sodium| SG3["SG3, 8 sections"]
+  SG1 -->|MSIV-1| HA["Header A"]
+  SG2 --> SPL{"Splitter"}
+  SPL -->|CV-2A and NRV-2A| HA
+  SPL -->|CV-2B and NRV-2B| HB["Header B"]
+  SG3 -->|MSIV-3| HB
+  HA --> TA["Turbine A 500 MWe"]
+  HB --> TB["Turbine B 500 MWe"]
+  TA -.->|cold reheat A| RHA["Reheaters: SG1 all, SG2 sections 1-4"]
+  TB -.->|cold reheat B| RHB["Reheaters: SG3 all, SG2 sections 5-8"]
+</pre>
+
+      <h3 id="13-where-each-idea-comes-from">1.3 Where each idea comes from</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pool primary with 3 pumps, 6 IHXs, 3 secondary loops</td>
+              <td>BN-600, BN-800</td>
+            </tr>
+            <tr>
+              <td>Sectional SGs, each section isolable at power</td>
+              <td>BN-600</td>
+            </tr>
+            <tr>
+              <td>Scale; 271-pin 8.5 mm assemblies</td>
+              <td>Superphénix</td>
+            </tr>
+            <tr>
+              <td>Diverse shutdown rods with Curie-point latches</td>
+              <td>EFR and Japanese SFR concepts</td>
+            </tr>
+            <tr>
+              <td>DRACS decay heat removal</td>
+              <td>Superphénix, EFR</td>
+            </tr>
+            <tr>
+              <td>Two turbines on one reactor</td>
+              <td>Superphénix, Sizewell B</td>
+            </tr>
+            <tr>
+              <td>Three loops into two turbines through a shared loop 2</td>
+              <td>Invented for this plant</td>
+            </tr>
+            <tr>
+              <td>Loop 2 reheaters hard-split between turbines</td>
+              <td>Invented (§6.4)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The plant's history (§1.5) explains the asymmetry.</p>
+
+      <h3 id="14-site">1.4 Site</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Choice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Location</td>
+              <td>Kallskär, a former skerry on the Hälsingland coast of the Bothnian Sea, Sweden, about 61.5° N. Land uplift joined it to the mainland long ago; the name stayed</td>
+            </tr>
+            <tr>
+              <td>Bidding zone</td>
+              <td>SE2. Power flows south to the load centres in SE3 across transfer limits, so grid control sometimes holds the plant back</td>
+            </tr>
+            <tr>
+              <td>Ground</td>
+              <td>Precambrian granite and gneiss; very low seismicity</td>
+            </tr>
+            <tr>
+              <td>Sea</td>
+              <td>Brackish, about 5 psu; no tide worth modelling; sea level swings about ±0.5 m with wind and air pressure</td>
+            </tr>
+            <tr>
+              <td>Ice</td>
+              <td>Fast ice in the archipelago from January to April in a normal winter; frazil ice at the intake on cold, clear nights before the ice forms</td>
+            </tr>
+            <tr>
+              <td>Cooling water</td>
+              <td>Intake canal on the north side drawing from about 10 m depth; outfall to the south so warm water doesn't recirculate by accident; a recirculation gate sends some back on purpose for de-icing</td>
+            </tr>
+            <tr>
+              <td>Land uplift</td>
+              <td>About 7 mm a year, so the intake canal is dredged every decade or so</td>
+            </tr>
+            <tr>
+              <td>Layout</td>
+              <td>Reactor building on bedrock at the centre; SG buildings set apart for sodium fire separation; turbine hall on the seaward side; switchyard inland; four EDG buildings in separated divisions; backup control room on the landward side. The headland is a natural map boundary</td>
+            </tr>
+            <tr>
+              <td>Time zone, daylight</td>
+              <td>CET/CEST; about 6 h of daylight in December, about 19 h in June</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="15-history">1.5 History</h3>
+      <p>Sweden never built a fast reactor. Everything below is alternate history.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Event</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1974</td>
+              <td>After the oil crisis, a Swedish utility consortium studies a sodium fast reactor to stretch uranium supplies</td>
+            </tr>
+            <tr>
+              <td>1978</td>
+              <td>Kallskär chosen for its bedrock, cold deep water and a nearby 400 kV line. Kallskär Kraftgrupp AB (KKG) is formed to build and run it</td>
+            </tr>
+            <tr>
+              <td>1980</td>
+              <td>Neutral Sweden licenses from both sides: pool and core from the French fast reactor programme, sectional steam generators from the Soviet BN-600. The joint design office works in English, and so does the control room to this day</td>
+            </tr>
+            <tr>
+              <td>1981</td>
+              <td>Construction starts. Both 500 MWe turbine-generators are ordered full size, on the expectation of three loops</td>
+            </tr>
+            <tr>
+              <td>1988</td>
+              <td>First criticality. Loop 1 and turbine A enter service; the reactor is limited to one-third power</td>
+            </tr>
+            <tr>
+              <td>1991</td>
+              <td>Loop 3 and turbine B enter service</td>
+            </tr>
+            <tr>
+              <td>1996</td>
+              <td>SG2 arrives after years of fabrication problems. Both turbines already exist, so loop 2 is split between them through the splitter</td>
+            </tr>
+            <tr>
+              <td>2009</td>
+              <td>Modernisation: variable-speed pump drives, digital protection and plant computer, new hydrogen meters. Screens join the original analog panels (§10.6)</td>
+            </tr>
+            <tr>
+              <td>2026</td>
+              <td>38 years in service. Swedish licences have no fixed end date, so the next milestone is the ten-yearly periodic safety review in 2028</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="16-people-and-language">1.6 People and language</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Choice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Operator</td>
+              <td>Kallskär Kraftgrupp AB (KKG)</td>
+            </tr>
+            <tr>
+              <td>Unit designation</td>
+              <td>K1</td>
+            </tr>
+            <tr>
+              <td>Control room language</td>
+              <td>English on panels, procedures, guides and phones</td>
+            </tr>
+            <tr>
+              <td>Signage and PA</td>
+              <td>Swedish first, English second</td>
+            </tr>
+            <tr>
+              <td>Role flavour</td>
+              <td>English titles in the interface; Swedish on name badges, such as skiftchef for shift supervisor</td>
+            </tr>
+            <tr>
+              <td>Regulator</td>
+              <td>Strålsäkerhetsmyndigheten (SSM), the Swedish Radiation Safety Authority</td>
+            </tr>
+            <tr>
+              <td>Grid control</td>
+              <td>Modelled on Svenska kraftnät; dispatcher callsign Driftcentralen †</td>
+            </tr>
+            <tr>
+              <td>Outage season</td>
+              <td>Refuelling outages in summer, when demand is lowest</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="17-seasons">1.7 Seasons</h3>
+      <p>The season follows the real-world calendar by default; a private server owner can pin one.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Season</th>
+              <th>Grid</th>
+              <th>Sea and weather</th>
+              <th>Plant effects</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Winter, Dec–Mar</td>
+              <td>Cold snaps drive peak demand and maximum-output instructions</td>
+              <td>Sea ice; frazil ice on cold clear nights; wet snow and ice on lines; aurora nights</td>
+              <td>Best vacuum, ≈ 514 MWe per unit; intake icing (S-24); line trips (S-27, S-28); geomagnetic storms (S-26)</td>
+            </tr>
+            <tr>
+              <td>Spring, Apr–Jun</td>
+              <td>Snowmelt floods northern hydro: transfer-limit curtailments, sometimes negative prices</td>
+              <td>Ice break-up, drift ice</td>
+              <td>Frequent down-ramps and fatigue; drift ice on intake screens</td>
+            </tr>
+            <tr>
+              <td>Summer, Jul–Aug</td>
+              <td>Lowest demand; outage season</td>
+              <td>Warmest water; upwelling can drop intake temperature 5–10 K in a day; algae and drift weed</td>
+              <td>Worst vacuum, down to the 500 MWe rating; screen fouling (S-25)</td>
+            </tr>
+            <tr>
+              <td>Autumn, Sep–Nov</td>
+              <td>Demand climbing; variable wind</td>
+              <td>Storms; sea level swings</td>
+              <td>Line trips; frazil ice risk from November</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-red" id="2-reactor-core">2. Reactor core</h2>
+
+      <h3 id="21-geometry">2.1 Geometry</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Core type</td>
+              <td>Two-zone homogeneous MOX; steel reflectors, no breeding blankets</td>
+            </tr>
+            <tr>
+              <td>Assembly pitch</td>
+              <td>179 mm; wrapper 173 mm across flats, 4.5 mm wall</td>
+            </tr>
+            <tr>
+              <td>Assembly length</td>
+              <td>4.80 m</td>
+            </tr>
+            <tr>
+              <td>Fissile height</td>
+              <td>1,000 mm; lower steel reflector 300 mm; upper gas plenum 1,100 mm</td>
+            </tr>
+            <tr>
+              <td>Core equivalent diameter</td>
+              <td>3.42 m (rings 0–10)</td>
+            </tr>
+            <tr>
+              <td>Core volume, power density</td>
+              <td>9.18 m³; 259 MW/m³ average</td>
+            </tr>
+            <tr>
+              <td>Positions on diagrid</td>
+              <td>817 (rings 0–16)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="22-core-map-by-ring">2.2 Core map by ring</h3>
+      <p>Ring <em>n</em> holds 6<em>n</em> positions (ring 0 holds 1). Space each rod set evenly so it is 3-fold symmetric, and offset bank B by 30° from bank A so they don't shadow each other.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Ring</th>
+              <th>Positions</th>
+              <th>Contents</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>1</td>
+              <td>Fuel, inner zone</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>6</td>
+              <td>Fuel</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>12</td>
+              <td>3 regulating rods (RR) at 0°, 120°, 240°; 9 fuel</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>18</td>
+              <td>6 shim rods, bank A; 12 fuel</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>24</td>
+              <td>3 secondary shutdown rods (SSR); 21 fuel</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>30</td>
+              <td>Fuel</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>36</td>
+              <td>6 shim rods, bank B; 30 fuel</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>42</td>
+              <td>6 SSR; 36 fuel (last inner-zone ring)</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>48</td>
+              <td>6 shim rods, bank C; 42 fuel (first outer-zone ring)</td>
+            </tr>
+            <tr>
+              <td>9–10</td>
+              <td>54, 60</td>
+              <td>Fuel</td>
+            </tr>
+            <tr>
+              <td>11–12</td>
+              <td>66, 72</td>
+              <td>Steel reflector</td>
+            </tr>
+            <tr>
+              <td>13–14</td>
+              <td>78, 84</td>
+              <td>B₄C shield</td>
+            </tr>
+            <tr>
+              <td>15</td>
+              <td>90</td>
+              <td>In-vessel storage: spent assemblies decay here for one cycle</td>
+            </tr>
+            <tr>
+              <td>16</td>
+              <td>96</td>
+              <td>Steel shield</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Totals: 301 fuel (145 inner, 156 outer), 3 RR, 18 shim, 9 SSR.</p>
+
+      <h3 id="23-fuel-pin-and-assembly">2.3 Fuel pin and assembly</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pins per assembly</td>
+              <td>271 on a 9.7 mm triangular pitch</td>
+            </tr>
+            <tr>
+              <td>Cladding</td>
+              <td>15-15Ti austenitic steel, OD 8.50 mm, wall 0.56 mm</td>
+            </tr>
+            <tr>
+              <td>Pellet</td>
+              <td>Annular (U,Pu)O₂, OD 7.28 mm, hole 2.0 mm, 95% TD</td>
+            </tr>
+            <tr>
+              <td>Plutonium fraction</td>
+              <td>≈ 18% inner zone, ≈ 23% outer zone</td>
+            </tr>
+            <tr>
+              <td>Spacer</td>
+              <td>Helical wire 1.2 mm, 200 mm pitch</td>
+            </tr>
+            <tr>
+              <td>Wrapper</td>
+              <td>Ferritic-martensitic steel</td>
+            </tr>
+            <tr>
+              <td>Total pins, heavy metal</td>
+              <td>81,571 pins; ≈ 29 tHM</td>
+            </tr>
+            <tr>
+              <td>Cycle</td>
+              <td>160 EFPD; a quarter of the core replaced per outage; discharge ≈ 51 GWd/tHM</td>
+            </tr>
+            <tr>
+              <td>Refuelling outage</td>
+              <td>Timed wait (OD-8), 30 min real †; reactor held in Mode 5</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="24-thermal-limits">2.4 Thermal limits</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Quantity</th>
+              <th>At 100%</th>
+              <th>Alarm</th>
+              <th>Limit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Average linear heat rate</td>
+              <td>27.7 kW/m</td>
+              <td>–</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Peak linear heat rate (1.20 radial × 1.04 pin × 1.22 axial)</td>
+              <td>42 kW/m</td>
+              <td>44</td>
+              <td>45 steady; centreline melting above ≈ 60</td>
+            </tr>
+            <tr>
+              <td>Fuel centreline, hot pin</td>
+              <td>≈ 1,950 °C</td>
+              <td>–</td>
+              <td>MOX melts ≈ 2,700 °C</td>
+            </tr>
+            <tr>
+              <td>Cladding midwall, hot spot</td>
+              <td>≈ 620 °C</td>
+              <td>650</td>
+              <td>700 short term; above 850 burst likely within minutes †</td>
+            </tr>
+            <tr>
+              <td>Fuel assembly outlet, average</td>
+              <td>559 °C</td>
+              <td>–</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Hottest assembly outlet</td>
+              <td>580–585 °C</td>
+              <td>deviation alarms, §9.5</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Mixed core outlet</td>
+              <td>550 °C</td>
+              <td>565</td>
+              <td>Trip 580</td>
+            </tr>
+            <tr>
+              <td>Sodium boiling</td>
+              <td>–</td>
+              <td>–</td>
+              <td>≈ 950 °C at core-outlet static pressure; 881 °C at 1 atm</td>
+            </tr>
+            <tr>
+              <td>Sodium freezing</td>
+              <td>–</td>
+              <td>–</td>
+              <td>97.8 °C</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="25-flow-zoning">2.5 Flow zoning</h3>
+      <p>Fuel assemblies take 92.5% of primary flow, rod positions 1.5%, reflector, shield and storage positions 3%, and leakage 3%. Mean fuel assembly flow is 32.9 kg/s, bundle velocity ≈ 5.4 m/s, core transit time 0.19 s, assembly pressure drop ≈ 0.45 MPa.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Orifice zone</th>
+              <th>Rings</th>
+              <th>Fuel assemblies</th>
+              <th>Flow factor <em>f</em></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>I</td>
+              <td>0–5</td>
+              <td>79</td>
+              <td>1.12</td>
+            </tr>
+            <tr>
+              <td>II</td>
+              <td>6–8</td>
+              <td>108</td>
+              <td>1.00</td>
+            </tr>
+            <tr>
+              <td>III</td>
+              <td>9–10</td>
+              <td>114</td>
+              <td>0.92</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Per-assembly outlet for the thermocouple map: <code>T_out = T_in + 183.7 × (p / f) × (P/Q)</code>, where <em>p</em> is that assembly's relative power from the 3D model (§3.7). Add ±1 K noise and a 3 s sensor lag. The point-kinetics fallback uses a static radial map multiplied by rod-shadow factors instead.</p>
+
+      <h2 class="sys-red" id="3-reactor-physics-and-kinetics">3. Reactor physics and kinetics</h2>
+      <p>The simulation runs real-time 3D multigroup space-time kinetics (§3.7). Everything in §3.1–3.6 describes the core that model must reproduce.</p>
+
+      <h3 id="31-kinetics-constants">3.1 Kinetics constants</h3>
+      <p>β_eff = 360 pcm, Λ = 4.0 × 10⁻⁷ s, mean delayed neutron lifetime 10.7 s. Six groups blended for MOX (Pu-239, U-238 fast fission, U-235):</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>λ (s⁻¹)</th>
+              <th>Relative abundance</th>
+              <th>β_i (pcm)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>0.0130</td>
+              <td>0.024</td>
+              <td>8.8</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>0.0315</td>
+              <td>0.198</td>
+              <td>71.3</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>0.135</td>
+              <td>0.185</td>
+              <td>66.6</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>0.345</td>
+              <td>0.366</td>
+              <td>131.8</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>1.37</td>
+              <td>0.171</td>
+              <td>61.6</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>3.82</td>
+              <td>0.056</td>
+              <td>20.2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <blockquote>
+        <p><strong>No xenon.</strong> Xe-135 barely absorbs fast neutrons, so there is no poison-out after a trip. Restarts are gated by thermal limits, investigation and paperwork instead. One small real effect does remain: Np-239 decaying to Pu-239 adds about +30 pcm over the week after shutdown (half-life 2.36 d). Include it in the estimated critical position.</p>
+      </blockquote>
+
+      <h3 id="32-feedback-coefficients">3.2 Feedback coefficients</h3>
+      <p>In the 3D model (§3.7), Doppler and sodium density act through each node's cross sections, and expansion acts through geometry and rod offsets. The coefficients below are the whole-core values the model must reproduce, and the lags are the thermal time constants of the driving temperatures. The point-kinetics fallback uses them directly.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Feedback</th>
+              <th>Driving temperature</th>
+              <th>Coefficient</th>
+              <th>Lag</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Doppler</td>
+              <td>Fuel average (K)</td>
+              <td><code>ρ = −900 pcm × ln(T_f / T_ref)</code></td>
+              <td>4 s</td>
+            </tr>
+            <tr>
+              <td>Fuel axial expansion</td>
+              <td>Fuel average</td>
+              <td>−0.12 pcm/K</td>
+              <td>4 s</td>
+            </tr>
+            <tr>
+              <td>Sodium density in core</td>
+              <td>Core-average sodium</td>
+              <td>+0.40 pcm/K</td>
+              <td>0.2 s</td>
+            </tr>
+            <tr>
+              <td>Above-core load pads</td>
+              <td>Core outlet</td>
+              <td>−0.35 pcm/K</td>
+              <td>15 s</td>
+            </tr>
+            <tr>
+              <td>Diagrid radial expansion</td>
+              <td>Core inlet</td>
+              <td>−0.80 pcm/K</td>
+              <td>120 s</td>
+            </tr>
+            <tr>
+              <td>Control rod drivelines</td>
+              <td>Upper hot pool</td>
+              <td>−0.30 pcm/K</td>
+              <td>90 s</td>
+            </tr>
+            <tr>
+              <td>Vessel and core support</td>
+              <td>Cold pool</td>
+              <td>+0.15 pcm/K (rods effectively withdraw)</td>
+              <td>900 s</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Derived quantity</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Whole-core sodium void worth</td>
+              <td>+1,800 pcm (≈ +$5); no sodium plenum</td>
+            </tr>
+            <tr>
+              <td>Isothermal coefficient at 375 °C</td>
+              <td>−2.41 pcm/K</td>
+            </tr>
+            <tr>
+              <td>Isothermal defect, 230 → 375 °C</td>
+              <td>−376 pcm</td>
+            </tr>
+            <tr>
+              <td>Fuel average temperature at 100%</td>
+              <td>≈ 1,107 °C</td>
+            </tr>
+            <tr>
+              <td>Power defect, hot zero power to 100%</td>
+              <td>−844 pcm (Doppler −680, axial −88, sodium +37, pads −61, drivelines −51)</td>
+            </tr>
+            <tr>
+              <td>Power coefficient at 100%</td>
+              <td>≈ −5.3 pcm/%FP in the first 5 s; ≈ −6.4 pcm/%FP after 2 min</td>
+            </tr>
+            <tr>
+              <td>Inlet temperature sensitivity</td>
+              <td>≈ −0.4 %FP per K of inlet rise, settled in 2–3 min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The vessel term is the quiet troublemaker. After a long spell at a different cold pool temperature it drifts reactivity for about 15 minutes, which is exactly the kind of thing an attentive reactor operator notices and a distracted one doesn't (scenario S-23).</p>
+
+      <h3 id="33-reactivity-budget-beginning-of-cycle">3.3 Reactivity budget, beginning of cycle</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>pcm</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Isothermal 230 → 375 °C</td>
+              <td>376</td>
+            </tr>
+            <tr>
+              <td>Power defect</td>
+              <td>844</td>
+            </tr>
+            <tr>
+              <td>Burnup over the cycle (160 EFPD × 3.0 pcm/EFPD)</td>
+              <td>480</td>
+            </tr>
+            <tr>
+              <td>Operating margin (RR band, load following)</td>
+              <td>250</td>
+            </tr>
+            <tr>
+              <td>Uncertainty allowance</td>
+              <td>300</td>
+            </tr>
+            <tr>
+              <td>Required excess reactivity, 230 °C, all rods out</td>
+              <td>≈ 2,250 (k_eff ≈ 1.023)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="34-rod-systems">3.4 Rod systems</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>System</th>
+              <th>Rods</th>
+              <th>Worth each (pcm)</th>
+              <th>Total (pcm)</th>
+              <th>Normal position</th>
+              <th>Drive speed</th>
+              <th>Scram</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Regulating (RR)</td>
+              <td>3</td>
+              <td>100</td>
+              <td>300</td>
+              <td>400–700 mm band</td>
+              <td>5 mm/s</td>
+              <td>Primary shutdown system (PSS), 90% in ≤ 1.2 s</td>
+            </tr>
+            <tr>
+              <td>Shim, banks A/B/C</td>
+              <td>18</td>
+              <td>400 / 300 / 200</td>
+              <td>5,400</td>
+              <td>Per ECP</td>
+              <td>2 mm/s single; 1 mm/s bank; 10 mm/s drive-in on runback</td>
+              <td>PSS</td>
+            </tr>
+            <tr>
+              <td>Secondary shutdown (SSR)</td>
+              <td>9</td>
+              <td>330</td>
+              <td>2,970</td>
+              <td>Parked at 1,100 mm, latched</td>
+              <td>5 mm/s, withdraw only</td>
+              <td>Own logic plus Curie latch; 90% in ≤ 2.0 s</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Shutdown margins: all PSS rods in with the most reactive rod stuck, 230 °C, beginning of cycle ≈ −3,050 pcm. SSS alone at 375 °C ≈ −1,100 pcm, or ≈ −770 pcm with one SSR stuck.</p>
+      <p>Integral rod worth: <code>W(d) = W_total × (d − sin(2πd) / 2π)</code>, where <em>d</em> is the inserted fraction of the 1,000 mm active height. In the 3D model this is a validation target, not a formula the code uses.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Inserted</th>
+              <th>10%</th>
+              <th>20%</th>
+              <th>30%</th>
+              <th>40%</th>
+              <th>50%</th>
+              <th>60%</th>
+              <th>70%</th>
+              <th>80%</th>
+              <th>90%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Worth fraction</td>
+              <td>0.006</td>
+              <td>0.049</td>
+              <td>0.149</td>
+              <td>0.306</td>
+              <td>0.500</td>
+              <td>0.694</td>
+              <td>0.851</td>
+              <td>0.951</td>
+              <td>0.994</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s. The period and overpower trips must catch that (scenario S-19).</p>
+
+      <h3 id="35-neutron-instrumentation">3.5 Neutron instrumentation</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Range</th>
+              <th>Detectors</th>
+              <th>Span</th>
+              <th>Channels</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Source (SR)</td>
+              <td>Pulse-counting fission chambers</td>
+              <td>1–10⁶ cps</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td>Wide range (WR)</td>
+              <td>Fission chambers in pulse and Campbell modes, log output</td>
+              <td>10⁻⁸ to 150 %FP, no range switching</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td>Power (PR)</td>
+              <td>DC ionisation chambers</td>
+              <td>0–125 %FP linear</td>
+              <td>4 quadrants</td>
+            </tr>
+            <tr>
+              <td>Period</td>
+              <td>From SR and WR</td>
+              <td>−100 s to +3 s</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Delayed neutron detectors (DND)</td>
+              <td>At each IHX primary inlet</td>
+              <td>Background ≈ 40 cps †</td>
+              <td>6</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>SR count rate ≈ <code>15 / (1 − k)</code> cps †, about 250 cps with all rods in. The approach to critical is flown on SR counts and a 1/M plot. SR high voltage switches off once WR reads above 10⁻³ %FP, and from there WR carries log power and period continuously into the power range.</p>
+
+      <h3 id="36-decay-heat">3.6 Decay heat</h3>
+      <p><code>P/P₀ = 0.066 × (t^−0.2 − (t + T_op)^−0.2)</code> with <em>t</em> and <em>T_op</em> in seconds. For T_op = 160 EFPD:</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>After trip</th>
+              <th>1 s</th>
+              <th>10 s</th>
+              <th>1 min</th>
+              <th>10 min</th>
+              <th>30 min</th>
+              <th>1 h</th>
+              <th>4 h</th>
+              <th>1 d</th>
+              <th>3 d</th>
+              <th>7 d</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>% of 2,380 MWt</td>
+              <td>6.35</td>
+              <td>3.92</td>
+              <td>2.66</td>
+              <td>1.59</td>
+              <td>1.23</td>
+              <td>1.04</td>
+              <td>0.73</td>
+              <td>0.43</td>
+              <td>0.30</td>
+              <td>0.22</td>
+            </tr>
+            <tr>
+              <td>MW</td>
+              <td>151</td>
+              <td>93</td>
+              <td>63</td>
+              <td>38</td>
+              <td>29</td>
+              <td>25</td>
+              <td>17</td>
+              <td>10</td>
+              <td>7</td>
+              <td>5</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The fission-power tail from delayed neutrons comes out of the kinetics model on its own and should not be added here.</p>
+
+      <h3 id="37-core-physics-model">3.7 Core physics model</h3>
+      <p><strong>Real-time 3D multigroup space-time kinetics:</strong> hexagonal-Z nodal diffusion, solved with the improved quasi-static method and coupled assembly by assembly to the thermal-hydraulics. Every value in §3.1–3.6, plus the peaking factors in §2.4, is a target the model must reproduce, not an input to it.</p>
+
+      <blockquote>
+        <p><strong>Why multigroup, not two-group.</strong> Two-group diffusion is the standard for light-water reactor simulators, where neutrons split cleanly into fast and thermal. A sodium fast reactor has almost no thermal neutrons, so its realistic equivalent is several fast energy groups.</p>
+      </blockquote>
+
+      <p>What 3D adds in this core: a single rod moving tilts the flux and the thermocouple map; sodium voiding adds reactivity at the core centre but removes it in the outer rings; a blocked assembly changes local power; a gas bubble's reactivity depends on its path. Whole-core power response changes little, because a fast core is tightly coupled. That is also why real sodium fast reactor safety codes often still use point kinetics.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Specification</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Method</td>
+              <td>Time-dependent multigroup neutron diffusion in hexagonal-Z geometry, factorised by the improved quasi-static (IQS) method: flux = amplitude(t) × shape(r, E, t)</td>
+            </tr>
+            <tr>
+              <td>Energy groups</td>
+              <td>4 †, raised to 6 once performance allows. No upscattering in a fast spectrum, so groups are solved in sequence from fastest to slowest</td>
+            </tr>
+            <tr>
+              <td>Delayed neutrons</td>
+              <td>6 precursor groups in every fuel node, constants from §3.1</td>
+            </tr>
+            <tr>
+              <td>Radial mesh</td>
+              <td>One node per hexagonal position in rings 0–12 (469 positions: fuel, rods, reflector); albedo boundary outside ring 12 †</td>
+            </tr>
+            <tr>
+              <td>Axial mesh</td>
+              <td>14 layers: 2 lower reflector, 10 fuel at 100 mm each, 2 upper plenum and structure †</td>
+            </tr>
+            <tr>
+              <td>Size</td>
+              <td>469 × 14 × 4 = 26,264 flux unknowns, plus precursors in the fuel nodes</td>
+            </tr>
+            <tr>
+              <td>Amplitude step</td>
+              <td>Every 0.1 s: prompt-jump point kinetics (§14.2) using reactivity, β_eff and Λ recomputed from the latest shape, weighted by the adjoint flux</td>
+            </tr>
+            <tr>
+              <td>Shape step</td>
+              <td>Every 2 s at steady power; every 0.5 s while reactivity changes faster than 5 pcm/s, and for 60 s after any trip †. Time-sliced across frames</td>
+            </tr>
+            <tr>
+              <td>Steady state</td>
+              <td>Eigenvalue (k_eff) and adjoint solve at server start, after a reset, and on demand for the ECP calculator</td>
+            </tr>
+            <tr>
+              <td>Rods</td>
+              <td>The rod tip splits its node into absorber and sodium-follower fractions by volume, with a cusping correction</td>
+            </tr>
+            <tr>
+              <td>Doppler</td>
+              <td>Each fuel node's absorption and fission cross sections vary with ln(T_fuel) of that node</td>
+            </tr>
+            <tr>
+              <td>Sodium density</td>
+              <td>Each node's cross sections vary linearly with that node's sodium density, so voiding happens node by node</td>
+            </tr>
+            <tr>
+              <td>Axial fuel expansion</td>
+              <td>Fuel node height grows with fuel temperature; number densities fall to match</td>
+            </tr>
+            <tr>
+              <td>Radial expansion</td>
+              <td>Diagrid (core inlet temperature) and load pads (core outlet temperature) scale the assembly pitch; cross sections scale with density</td>
+            </tr>
+            <tr>
+              <td>Drivelines and vessel</td>
+              <td>Offsets added to every rod's effective position, with the §3.2 lags</td>
+            </tr>
+            <tr>
+              <td>Burnup</td>
+              <td>Every fuel assembly tracks its own burnup; cross sections interpolate between tabulated burnup points</td>
+            </tr>
+            <tr>
+              <td>Detectors</td>
+              <td>PR quadrant chambers and SR and WR channels read weighted sums of peripheral node fluxes, so quadrant tilt is physical</td>
+            </tr>
+            <tr>
+              <td>Thermocouple map</td>
+              <td>Each outlet temperature comes from that assembly's own nodal power and flow (§2.5)</td>
+            </tr>
+            <tr>
+              <td>Fallback</td>
+              <td>Point kinetics with lumped feedback (§3.2) stays in the code as a low-load fallback and as a cross-check during development</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>Cross sections</strong></p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Material sets</td>
+              <td>Inner fuel, outer fuel, regulating absorber, shim absorber, SSR absorber, sodium follower, steel reflector, lower structure, upper plenum</td>
+            </tr>
+            <tr>
+              <td>Data per set and group</td>
+              <td>Diffusion coefficient, removal, νΣf, κΣf, fission spectrum χ, downscatter matrix</td>
+            </tr>
+            <tr>
+              <td>Feedback tables †</td>
+              <td>Fuel temperature at 4 points (600–2,000 K); sodium density at 3 points including voided; burnup at 3 points</td>
+            </tr>
+            <tr>
+              <td>Best source</td>
+              <td>Generated offline with an open-source Monte Carlo code such as OpenMC, homogenised per material set, collapsed to the chosen groups</td>
+            </tr>
+            <tr>
+              <td>Acceptable source</td>
+              <td>A few-group set tuned by hand until every validation target below passes</td>
+            </tr>
+            <tr>
+              <td>Reference compositions</td>
+              <td>The OECD/NEA sodium fast reactor benchmark cores include a large oxide core that is a realistic starting point</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>Validation targets</strong> †</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Quantity</th>
+              <th>Target</th>
+              <th>Tolerance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>β_eff and Λ</td>
+              <td>360 pcm; 4.0 × 10⁻⁷ s</td>
+              <td>±5%</td>
+            </tr>
+            <tr>
+              <td>Bank worths</td>
+              <td>A 2,400; B 1,800; C 1,200; RR 300; SSR 2,970 pcm</td>
+              <td>±10%</td>
+            </tr>
+            <tr>
+              <td>Single rod worth shape</td>
+              <td>§3.4 S-curve</td>
+              <td>±5% of total worth at every 10% of travel</td>
+            </tr>
+            <tr>
+              <td>Peaking</td>
+              <td>Radial 1.20; axial 1.22</td>
+              <td>±0.03</td>
+            </tr>
+            <tr>
+              <td>Doppler constant</td>
+              <td>−900 pcm</td>
+              <td>±10%</td>
+            </tr>
+            <tr>
+              <td>Whole-core void worth</td>
+              <td>+1,800 pcm; positive in the central rings, negative in the outer rings</td>
+              <td>±15%</td>
+            </tr>
+            <tr>
+              <td>Power defect; isothermal coefficient</td>
+              <td>−844 pcm; −2.41 pcm/K</td>
+              <td>±10%</td>
+            </tr>
+            <tr>
+              <td>Excess reactivity, 230 °C, beginning of cycle</td>
+              <td>≈ 2,250 pcm</td>
+              <td>±150 pcm</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-red" id="4-primary-system">4. Primary system</h2>
+
+      <h3 id="41-vessel-and-pools">4.1 Vessel and pools</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Main vessel</td>
+              <td>15.0 m ID, 14.5 m high, 316LN, 40 mm wall</td>
+            </tr>
+            <tr>
+              <td>Guard vessel</td>
+              <td>15.6 m ID, 0.3 m gap, leak detectors in the gap</td>
+            </tr>
+            <tr>
+              <td>Roof</td>
+              <td>2.5 m shielded slab; large and small rotating plugs</td>
+            </tr>
+            <tr>
+              <td>Primary sodium</td>
+              <td>1,250 t: hot pool 620 t, cold pool 560 t, core and diagrid 70 t</td>
+            </tr>
+            <tr>
+              <td>Sodium per MWt</td>
+              <td>0.53 t/MWt, close to BN-600 (Superphénix ≈ 1.1). This is the main responsiveness knob</td>
+            </tr>
+            <tr>
+              <td>Free surface</td>
+              <td>Hot pool 95 m²; cold pool annulus 45 m²</td>
+            </tr>
+            <tr>
+              <td>Mixing time constants</td>
+              <td>Hot pool 58 s (model as 40 s + 18 s nodes); cold pool 52 s plus 8 s transport from IHX outlets to pump inlets</td>
+            </tr>
+            <tr>
+              <td>Heat capacity, sodium plus internals</td>
+              <td>≈ 2,400 MJ/K</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Pool levels: the hot pool sits above the cold pool, and that head difference is what pushes sodium through the IHXs.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Level relation</th>
+              <th>Formula</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Head difference</td>
+              <td><code>ΔL = 1.5 m × (Q/Q₀)²</code></td>
+            </tr>
+            <tr>
+              <td>Hot pool</td>
+              <td><code>L_mean + 0.32 × ΔL</code></td>
+            </tr>
+            <tr>
+              <td>Cold pool</td>
+              <td><code>L_mean − 0.68 × ΔL</code></td>
+            </tr>
+            <tr>
+              <td>Mean level</td>
+              <td>+0.26 m from 375 °C isothermal to 100%; +0.64 m from 230 °C to 100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="42-primary-pumps-pp1pp3">4.2 Primary pumps PP1–PP3</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Type</td>
+              <td>Vertical centrifugal, free surface in pump tank, suction from cold pool, discharge to diagrid through a flap check valve</td>
+            </tr>
+            <tr>
+              <td>Rated flow</td>
+              <td>3,565 kg/s each (4.13 m³/s at 375 °C); 10,694 kg/s total</td>
+            </tr>
+            <tr>
+              <td>Head, speed</td>
+              <td>0.65 MPa (≈ 77 m sodium); 740 rpm</td>
+            </tr>
+            <tr>
+              <td>Power</td>
+              <td>3.3 MW shaft; 4.0 MW motor on a variable-frequency drive</td>
+            </tr>
+            <tr>
+              <td>Speed range</td>
+              <td>25–105% on the main motor; ramp ≤ 2 %/s</td>
+            </tr>
+            <tr>
+              <td>Pony motor</td>
+              <td>250 kW, 10% speed, on essential boards (Divisions 1–3)</td>
+            </tr>
+            <tr>
+              <td>Coastdown</td>
+              <td><code>Q(t) = Q₀ / (1 + t / 10 s)</code>: 50% at 10 s, 25% at 30 s; flywheel J ≈ 5,500 kg·m²</td>
+            </tr>
+            <tr>
+              <td>Natural circulation, no pumps</td>
+              <td><code>Q_nc ≈ 3.5% × (P / 1 %FP)^(1/3)</code> †</td>
+            </tr>
+            <tr>
+              <td>Start interlocks</td>
+              <td>Cover gas ≥ 0.105 MPa; sodium ≥ 180 °C; bearing oil pressure normal</td>
+            </tr>
+            <tr>
+              <td>Cavitation</td>
+              <td>Cover gas below 0.108 MPa with speed above 90%: cavitation alarm and vibration rise †</td>
+            </tr>
+            <tr>
+              <td>Gas entrainment</td>
+              <td>Cold pool 1.3 m below program with speed above 95%: bubbles reach the core (S-10) †</td>
+            </tr>
+            <tr>
+              <td>Pump heat to sodium</td>
+              <td>≈ 10 MWt total</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="43-intermediate-heat-exchangers-primary-side">4.3 Intermediate heat exchangers, primary side</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Units</td>
+              <td>6 (1A, 1B, 2A, 2B, 3A, 3B), 400 MWt each</td>
+            </tr>
+            <tr>
+              <td>Arrangement</td>
+              <td>Primary on shell side flowing down; secondary in tubes flowing up</td>
+            </tr>
+            <tr>
+              <td>Primary side</td>
+              <td>1,782 kg/s each; 545 °C in from hot pool, 375 °C out to cold pool</td>
+            </tr>
+            <tr>
+              <td>Secondary side</td>
+              <td>1,556 kg/s each; 320 → 520 °C</td>
+            </tr>
+            <tr>
+              <td>Thermal</td>
+              <td>LMTD ≈ 40 K; UA ≈ 10 MW/K; ≈ 2,000 m²</td>
+            </tr>
+            <tr>
+              <td>Inlet shutter (fictional)</td>
+              <td>Closes in 60 s with 5% leak-by. Used when a loop is out, so hot sodium doesn't bypass straight into the cold pool</td>
+            </tr>
+            <tr>
+              <td>Pressure rule</td>
+              <td>Secondary side stays ≥ 0.4 MPa above primary, so a tube leak runs secondary into primary</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="44-cover-gas">4.4 Cover gas</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Gas, volume</td>
+              <td>Argon, 320 m³ above the pools at 100%</td>
+            </tr>
+            <tr>
+              <td>Pressure</td>
+              <td>Setpoint 0.120 MPa; auto band 0.115–0.125</td>
+            </tr>
+            <tr>
+              <td>Limits</td>
+              <td>Alarm low 0.105, high 0.140; trip 0.160; never below 0.102 (air ingress)</td>
+            </tr>
+            <tr>
+              <td>Heatup and cooldown</td>
+              <td>Sodium expansion moves the gas volume by ≈ 90 m³ between 230 °C and full power. With a fixed gas inventory, cooldown alone would pull pressure down to ≈ 0.074 MPa, so argon has to be admitted on cooldown and vented to decay tanks on heatup</td>
+            </tr>
+            <tr>
+              <td>Normal activity</td>
+              <td>Ar-41 (110 min half-life)</td>
+            </tr>
+            <tr>
+              <td>Fuel failure signature</td>
+              <td>Xe-133, Xe-135, Kr-85m, Kr-88</td>
+            </tr>
+            <tr>
+              <td>Decay tanks</td>
+              <td>3 × 50 m³, 72 h hold-up before the stack †</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="45-decay-heat-removal-dracs">4.5 Decay heat removal (DRACS)</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Loops</td>
+              <td>4 independent: sodium-sodium exchanger in hot pool, natural-circulation sodium loop, sodium-air exchanger, stack</td>
+            </tr>
+            <tr>
+              <td>Capacity</td>
+              <td>20 MWt per loop at 550 °C hot pool; <code>Q = 20 MW × ((T_hot − 30) / 520)^1.4</code> †</td>
+            </tr>
+            <tr>
+              <td>Standby</td>
+              <td>Dampers 5% open, 0.3 MW loss per loop keeps the loop warm</td>
+            </tr>
+            <tr>
+              <td>Dampers</td>
+              <td>2 per loop, motor-operated from essential boards; fail as-is (OD-6) because the motors can't move them without power; local handwheel 90 s each</td>
+            </tr>
+            <tr>
+              <td>Coping time</td>
+              <td>With no heat sink at all, the pool rises 200 K in ≈ 5 h after a trip from 100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="46-primary-purification">4.6 Primary purification</h3>
+      <p>Two 100% cold traps, 8 kg/s each †, trap wall 125 °C. Plugging temperature normal ≤ 125 °C, alarm 150 °C, LCO 180 °C. Oxygen meter online; tritium and carbon by sampling.</p>
+
+      <h2 class="sys-orange" id="5-secondary-sodium-loops">5. Secondary sodium loops</h2>
+
+      <h3 id="51-loop-parameters-each-of-3">5.1 Loop parameters (each of 3)</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Duty</td>
+              <td>796 MWt</td>
+            </tr>
+            <tr>
+              <td>Flow</td>
+              <td>3,112 kg/s (3.65 m³/s)</td>
+            </tr>
+            <tr>
+              <td>Temperatures</td>
+              <td>IHX outlet and SG inlet 520 °C; SG outlet and IHX inlet 320 °C</td>
+            </tr>
+            <tr>
+              <td>Piping</td>
+              <td>DN900 (0.90 m ID), 5.9 m/s; hot leg 180 m; cold leg 180 m</td>
+            </tr>
+            <tr>
+              <td>Transport delays</td>
+              <td>Hot leg 31 s; SG shell residence 41 s; buffer tank 17 s; cold leg 32 s; IHX tubes 5 s; one lap ≈ 125 s</td>
+            </tr>
+            <tr>
+              <td>Inventory</td>
+              <td>≈ 400 t</td>
+            </tr>
+            <tr>
+              <td>Pump</td>
+              <td>Cold leg, free surface, 0.45 MPa head, 980 rpm, 2.0 MW shaft, 2.5 MW motor with VFD; coastdown <code>Q₀ / (1 + t / 5 s)</code></td>
+            </tr>
+            <tr>
+              <td>Pressures</td>
+              <td>Buffer tank gas 0.30 MPa; pump discharge 0.75; IHX inlet 0.72; IHX outlet 0.62; SG inlet 0.55; SG outlet 0.32</td>
+            </tr>
+            <tr>
+              <td>Isolation</td>
+              <td>Sodium gate valves at IHX secondary inlet and outlet, 180 s stroke</td>
+            </tr>
+            <tr>
+              <td>Dump tank</td>
+              <td>450 m³, gravity drain in 20 min, electrically heated</td>
+            </tr>
+            <tr>
+              <td>Trace heating</td>
+              <td>42 zones per loop †; idle setpoint 200 °C; alarm below 150 °C</td>
+            </tr>
+            <tr>
+              <td>Cold trap</td>
+              <td>1 per loop; plugging temperature normal ≤ 140 °C, alarm 160 °C</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="52-sodium-water-reaction-protection">5.2 Sodium-water reaction protection</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Leak class</th>
+              <th>Water leak rate</th>
+              <th>Detected by</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Micro</td>
+              <td>below 0.05 g/s</td>
+              <td>Hydrogen trend over grid-hours</td>
+            </tr>
+            <tr>
+              <td>Small</td>
+              <td>0.05–10 g/s</td>
+              <td>Section hydrogen meter within minutes</td>
+            </tr>
+            <tr>
+              <td>Intermediate</td>
+              <td>10 g/s – 2 kg/s</td>
+              <td>Acoustic leak detection, seconds</td>
+            </tr>
+            <tr>
+              <td>Large</td>
+              <td>above 2 kg/s</td>
+              <td>Pressure rise and rupture discs, immediate</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Hydrogen signal: a 1 g/s water leak adds +0.28 ppm at its section outlet meter and +0.036 ppm at the loop outlet meter about 10 s later. Background is ≈ 0.06 ppm at 100% and 0.02 ppm at hot standby, drifting ±0.01 ppm per grid day †.</p>
+      <p>Large leak, automatic sequence: rupture discs burst at 1.2 MPa, then separator tank, pump trip and loop isolation, water side isolated in ≤ 5 s and blown down, nitrogen purge, sodium drained to the dump tank, and reactor runback RB-1.</p>
+
+      <h2 class="sys-orange" id="6-steam-generators-splitter-and-reheat-routing">6. Steam generators, splitter and reheat routing</h2>
+
+      <h3 id="61-construction">6.1 Construction</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Arrangement</td>
+              <td>3 SGs × 8 identical sections (1-1 … 3-8). Each section has an evaporator (EV), superheater (SH) and reheater (RH) module; straight tubes, sodium on shell side</td>
+            </tr>
+            <tr>
+              <td>Materials</td>
+              <td>2¼Cr-1Mo evaporator; 9Cr-1Mo superheater and reheater †</td>
+            </tr>
+            <tr>
+              <td>Section duty</td>
+              <td>99.5 MWt: EV 62.6, SH 21.2, RH 15.7</td>
+            </tr>
+            <tr>
+              <td>Loop duty</td>
+              <td>EV 501, SH 170, RH 125 MWt</td>
+            </tr>
+            <tr>
+              <td>Sodium path</td>
+              <td>520 °C in, split 57.6% SH and 42.4% RH in parallel, both leave at 445 °C, mix, then EV, out at 320 °C</td>
+            </tr>
+            <tr>
+              <td>Water path, per section</td>
+              <td>Feed 36.5 kg/s at 16.0 MPa, 240 °C; EV outlet 14.6 MPa, 355 °C (15 K superheat); SH outlet 14.0 MPa, 505 °C</td>
+            </tr>
+            <tr>
+              <td>Reheat path, per section</td>
+              <td>31.9 kg/s from 2.75 MPa, 292 °C to 2.6 MPa, 505 °C</td>
+            </tr>
+            <tr>
+              <td>Pinch</td>
+              <td>≈ 20 K where boiling starts (sodium 360 °C, saturation 340 °C)</td>
+            </tr>
+            <tr>
+              <td>Hot-end approach</td>
+              <td>15 K (sodium 520 °C, steam 505 °C)</td>
+            </tr>
+            <tr>
+              <td>Section isolation</td>
+              <td>Sodium valves 60 s; feed and steam valves ≤ 5 s; water dump valve; N₂ purge</td>
+            </tr>
+            <tr>
+              <td>One section isolated at 100%</td>
+              <td>Loop capacity −12.5%; reactor −4.2 %FP</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="62-main-steam">6.2 Main steam</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pressure drop</td>
+              <td>SG outlet 14.0 MPa, header 13.7 MPa, turbine stop valve 13.5 MPa and 500 °C</td>
+            </tr>
+            <tr>
+              <td>Loop 1</td>
+              <td>SG1 through MSIV-1 to header A</td>
+            </tr>
+            <tr>
+              <td>Loop 3</td>
+              <td>SG3 through MSIV-3 to header B</td>
+            </tr>
+            <tr>
+              <td>Loop 2</td>
+              <td>Branch A through CV-2A and NRV-2A to header A; branch B through CV-2B and NRV-2B to header B</td>
+            </tr>
+            <tr>
+              <td>Protection</td>
+              <td>SG safety valves 15.8 MPa (3 × 35% per SG); atmospheric relief valve 15.2 MPa, auto or manual; MSIVs close in ≤ 5 s</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="63-splitter-valves-steam-generator-desk">6.3 Splitter valves (steam generator desk)</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CV-2A, CV-2B</td>
+              <td>Hydraulic control valves; 20 s full stroke; 5 s fast close; fail as-is on loss of hydraulic pressure †</td>
+            </tr>
+            <tr>
+              <td>Losses</td>
+              <td>Fully open 0.10 MPa at full branch flow; equal-percentage trim; throttled to 50% open costs ≈ 0.8 MPa, about 6 MWe on that branch †</td>
+            </tr>
+            <tr>
+              <td>NRV-2A, NRV-2B</td>
+              <td>Swing check valves; close on reverse ΔP above 0.02 MPa</td>
+            </tr>
+            <tr>
+              <td>Turbine desks see</td>
+              <td>Valve position, branch flow, check valve state, both header pressures. Repeaters only</td>
+            </tr>
+            <tr>
+              <td>Auto mode</td>
+              <td>Holds position. Does nothing on a loop loss</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="64-reheat-routing-od-4">6.4 Reheat routing (OD-4)</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Turbine</th>
+              <th>Reheater modules</th>
+              <th>Capacity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A</td>
+              <td>SG1 sections 1–8 plus SG2 sections 1–4 (12 modules)</td>
+              <td>1.5 loops' worth</td>
+            </tr>
+            <tr>
+              <td>B</td>
+              <td>SG3 sections 1–8 plus SG2 sections 5–8 (12 modules)</td>
+              <td>1.5 loops' worth</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Each reheater group (SG1, SG2-A, SG2-B, SG3) has steam-side isolation valves, 30 s stroke. Each hot reheat line has an attemperator spray fed from the feed pump interstage; sprays can only cool.</p>
+      <p>Why this matters: the splitter moves loop 2's main steam between turbines, but reheater capacity is fixed by pipework. Push steam towards B and B's reheat runs cold while A's runs hot. Isolating a single SG2 section nudges the balance by about 2 K in each direction, which a good steam generator desk trims out with a small split change.</p>
+
+      <h3 id="65-loss-of-loop-3-what-each-split-actually-gives">6.5 Loss of loop 3: what each split actually gives</h3>
+      <p>Reactor at 67%, loops 1 and 2 at 100%, loop 3 and its reheaters isolated. Output includes the efficiency effect of reheat temperature and the turbine reheat load limit (§7.1).</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Loop 2 steam to B</th>
+              <th>Turbine A (MWe)</th>
+              <th>A hot reheat</th>
+              <th>Turbine B (MWe)</th>
+              <th>B hot reheat</th>
+              <th>B load limit</th>
+              <th>Plant (MWe)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>50%</td>
+              <td>500</td>
+              <td>505 °C</td>
+              <td>167</td>
+              <td>505 °C</td>
+              <td>100%</td>
+              <td>667</td>
+            </tr>
+            <tr>
+              <td>60%</td>
+              <td>467</td>
+              <td>508 °C</td>
+              <td>198</td>
+              <td>495 °C</td>
+              <td>100%</td>
+              <td>665</td>
+            </tr>
+            <tr>
+              <td>70%</td>
+              <td>433</td>
+              <td>511 °C, spraying</td>
+              <td>229</td>
+              <td>484 °C</td>
+              <td>94%</td>
+              <td>662</td>
+            </tr>
+            <tr>
+              <td>80%</td>
+              <td>400</td>
+              <td>513 °C, spraying</td>
+              <td>259</td>
+              <td>473 °C</td>
+              <td>83%</td>
+              <td>659</td>
+            </tr>
+            <tr>
+              <td>90%</td>
+              <td>367</td>
+              <td>516 °C, spraying</td>
+              <td>288</td>
+              <td>462 °C</td>
+              <td>72%</td>
+              <td>655</td>
+            </tr>
+            <tr>
+              <td>100%</td>
+              <td>333</td>
+              <td>517 °C, spraying</td>
+              <td>311, capped by reheat; 6 MWe to bypass</td>
+              <td>452 °C</td>
+              <td>62%</td>
+              <td>645</td>
+            </tr>
+            <tr>
+              <td>Trip B</td>
+              <td>500</td>
+              <td>505 °C</td>
+              <td>0</td>
+              <td>–</td>
+              <td>–</td>
+              <td>500; reactor to 50% or dump 146 kg/s</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Reading it: 50/50 keeps reheat perfect but leaves B at 33%, a hair above its 30% minimum load, where the next disturbance trips it. Sending everything to B looks balanced, yet it loses 22 MWe and runs both reheat lines out of specification. The right answer is 60–70% of loop 2 to B: about 3 MWe lost, B comfortably above minimum, reheat within limits. Crews who understand the plant will find it, and crews who don't will pick one of the obvious answers.</p>
+
+      <h3 id="66-startup-and-low-load-behaviour">6.6 Startup and low-load behaviour</h3>
+      <p>Once-through modules have no drum. Steam temperature is set by the ratio of feed flow to sodium flow.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Startup separator</td>
+              <td>One per SG between EV and SH; separator level 2.0 m; drains to deaerator when hot, condenser when cold</td>
+            </tr>
+            <tr>
+              <td>Minimum evaporator flow</td>
+              <td>25% (73 kg/s per SG) through the separator</td>
+            </tr>
+            <tr>
+              <td>Switch to once-through</td>
+              <td>EV outlet superheat ≥ 15 K held for 5 min, around 30–35% load</td>
+            </tr>
+            <tr>
+              <td>Water admission interlocks</td>
+              <td>Sodium ≥ 250 °C; feed temperature ≥ sodium − 80 K</td>
+            </tr>
+            <tr>
+              <td>Density-wave oscillation</td>
+              <td>EV flow below 20% with EV sodium inlet above 400 °C: section flow oscillates with a 6–10 s period, growing 5% per cycle until flow is raised or sodium cooled †</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-blue" id="7-turbine-generators-condensers-and-feedwater">7. Turbine-generators, condensers and feedwater</h2>
+
+      <h3 id="71-turbine-generator-each-of-2">7.1 Turbine-generator (each of 2)</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Rating</td>
+              <td>500 MWe gross at 5.0 kPa; 590 MVA, 0.85 pf, 22 kV, 3,000 rpm, 2-pole</td>
+            </tr>
+            <tr>
+              <td>Cooling</td>
+              <td>Hydrogen-cooled rotor, water-cooled stator</td>
+            </tr>
+            <tr>
+              <td>Cylinders</td>
+              <td>HP single flow; IP double flow; 2 LP double flow</td>
+            </tr>
+            <tr>
+              <td>Main steam</td>
+              <td>437.5 kg/s (1,575 t/h) at 13.5 MPa, 500 °C</td>
+            </tr>
+            <tr>
+              <td>Cold reheat</td>
+              <td>2.8 MPa, 292 °C; reheat flow 87.4% of main steam</td>
+            </tr>
+            <tr>
+              <td>Hot reheat at IP stop valve</td>
+              <td>2.5 MPa, 500 °C</td>
+            </tr>
+            <tr>
+              <td>LP exhaust</td>
+              <td>5.0 kPa, dryness 0.92</td>
+            </tr>
+            <tr>
+              <td>Efficiency</td>
+              <td>41.9% gross on steam generator heat</td>
+            </tr>
+            <tr>
+              <td>Minimum stable load</td>
+              <td>30% (150 MWe)</td>
+            </tr>
+            <tr>
+              <td>Loading rate</td>
+              <td>≤ 5 %/min hot; ≤ 1 %/min warm. Plant rate is set by the reactor (§9.6)</td>
+            </tr>
+            <tr>
+              <td>Critical speed bands</td>
+              <td>1,050–1,350 and 1,900–2,350 rpm; no dwell, accelerate ≥ 300 rpm/min through them</td>
+            </tr>
+            <tr>
+              <td>Run-up</td>
+              <td>Turning gear 30 rpm; heat soak at 600 rpm for 10 min warm, 30 min cold</td>
+            </tr>
+            <tr>
+              <td>Synchronising</td>
+              <td>Slip ≤ 0.1 Hz, voltage ±5%, phase ±10°; take 25 MWe immediately</td>
+            </tr>
+            <tr>
+              <td>Reheat load limit †</td>
+              <td>100% at ≥ 490 °C; 60% at 450 °C; 30% at 430 °C; trip below 420 °C; linear between</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="72-turbine-protection">7.2 Turbine protection</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Normal</th>
+              <th>Alarm</th>
+              <th>Trip</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Speed</td>
+              <td>3,000 rpm</td>
+              <td>3,150</td>
+              <td>3,300</td>
+            </tr>
+            <tr>
+              <td>Condenser pressure</td>
+              <td>5.0 kPa</td>
+              <td>10</td>
+              <td>20</td>
+            </tr>
+            <tr>
+              <td>LP exhaust hood</td>
+              <td>40 °C</td>
+              <td>70 (sprays on at 60)</td>
+              <td>90, 60 s delay</td>
+            </tr>
+            <tr>
+              <td>Bearing vibration</td>
+              <td>2 mm/s</td>
+              <td>7.1</td>
+              <td>11</td>
+            </tr>
+            <tr>
+              <td>Thrust position</td>
+              <td>0</td>
+              <td>±0.6 mm</td>
+              <td>±1.0 mm</td>
+            </tr>
+            <tr>
+              <td>Lube oil pressure</td>
+              <td>0.15 MPa</td>
+              <td>0.10</td>
+              <td>0.07</td>
+            </tr>
+            <tr>
+              <td>Main steam at stop valve</td>
+              <td>500 °C</td>
+              <td>480 (tracks program below 40%)</td>
+              <td>430, or a 50 K fall within 10 min</td>
+            </tr>
+            <tr>
+              <td>Main steam superheat</td>
+              <td>166 K</td>
+              <td>80 K</td>
+              <td>50 K</td>
+            </tr>
+            <tr>
+              <td>Hot reheat</td>
+              <td>500 °C</td>
+              <td>480</td>
+              <td>420</td>
+            </tr>
+            <tr>
+              <td>Generator</td>
+              <td>–</td>
+              <td>–</td>
+              <td>Differential, loss of field, reverse power 10 s, negative sequence, below 47.5 Hz for 20 s, above 52 Hz</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="73-bypass">7.3 Bypass</h3>
+      <p>Two-stage bypass on each turbine: HP bypass from main steam to cold reheat, and LP bypass from hot reheat to the condenser, each sized for 60% of turbine flow, quick-opening in ≤ 2 s on a turbine trip, with desuperheating. The condenser absorbs 60% bypass indefinitely at design cooling water; beyond that, condenser pressure rises about 1 kPa per extra 10% †. Bypass buys time. Every kilogram through it is output thrown away.</p>
+      <p>House-load operation: when the grid separates, one unit can run back to the plant's own house load (≈ 65 MWe) with the rest of its steam on bypass, while the other unit trips and the reactor runs back. Getting it right keeps the plant off its diesels (S-28).</p>
+
+      <h3 id="74-condenser-and-cooling-water">7.4 Condenser and cooling water</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cooling</td>
+              <td>Brackish Bothnian Sea water from about 10 m depth; 2 × 50% CW pumps per unit, 3.7 MW each</td>
+            </tr>
+            <tr>
+              <td>Flow</td>
+              <td>Both pumps: 15.3 m³/s per unit, 11 K rise. One pump: ≈ 60% flow because system resistance falls, 18 K rise</td>
+            </tr>
+            <tr>
+              <td>Condenser duty</td>
+              <td>690 MWt per unit</td>
+            </tr>
+            <tr>
+              <td>Rating point</td>
+              <td>500 MWe per unit at 5.0 kPa: late summer, intake water 19 °C, both pumps</td>
+            </tr>
+            <tr>
+              <td>Choke</td>
+              <td>Below ≈ 3.0 kPa the last LP stage gains nothing more, so colder water only helps down to there</td>
+            </tr>
+            <tr>
+              <td>Intake</td>
+              <td>Trash racks and travelling band screens with automatic wash; screen ΔP alarm; warm-water recirculation gate for de-icing</td>
+            </tr>
+            <tr>
+              <td>Hotwell</td>
+              <td>0.8 m normal, auto level control, naturally stable</td>
+            </tr>
+            <tr>
+              <td>Vacuum pumps</td>
+              <td>2 × 100% per unit</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Pump lineup is a real decision for the turbine desks. Figures are per unit; net is gross minus that unit's CW pump power.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Intake water</th>
+              <th>Both pumps</th>
+              <th>One pump</th>
+              <th>Better</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>3 °C</td>
+              <td>1.9 kPa, choked: 514 gross, 507 net</td>
+              <td>3.0 kPa: 514 gross, 510 net</td>
+              <td>One pump</td>
+            </tr>
+            <tr>
+              <td>5 °C</td>
+              <td>2.2 kPa, choked: 514 gross, 507 net</td>
+              <td>3.4 kPa: 511 gross, 507 net</td>
+              <td>Either</td>
+            </tr>
+            <tr>
+              <td>8 °C</td>
+              <td>2.7 kPa, choked: 514 gross, 507 net</td>
+              <td>4.1 kPa: 506 gross, 502 net</td>
+              <td>Both</td>
+            </tr>
+            <tr>
+              <td>12 °C</td>
+              <td>3.4 kPa: 511 gross, 504 net</td>
+              <td>5.1 kPa: 499 gross, 496 net</td>
+              <td>Both</td>
+            </tr>
+            <tr>
+              <td>15 °C</td>
+              <td>4.0 kPa: 506 gross, 499 net</td>
+              <td>6.1 kPa: 494 gross, 491 net</td>
+              <td>Both</td>
+            </tr>
+            <tr>
+              <td>19 °C</td>
+              <td>5.0 kPa: 500 gross, 492 net</td>
+              <td>7.5 kPa: 488 gross, 484 net</td>
+              <td>Both</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="75-feed-heating-each-unit">7.5 Feed heating (each unit)</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Heater</th>
+              <th>Steam from</th>
+              <th>Feedwater out</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>LP1</td>
+              <td>LP extraction 0.03 MPa</td>
+              <td>66 °C</td>
+            </tr>
+            <tr>
+              <td>LP2</td>
+              <td>LP extraction 0.08 MPa</td>
+              <td>91 °C</td>
+            </tr>
+            <tr>
+              <td>LP3</td>
+              <td>LP extraction 0.20 MPa</td>
+              <td>117 °C</td>
+            </tr>
+            <tr>
+              <td>LP4</td>
+              <td>IP exhaust 0.55 MPa</td>
+              <td>152 °C</td>
+            </tr>
+            <tr>
+              <td>Deaerator</td>
+              <td>IP extraction 1.1 MPa</td>
+              <td>180 °C at 1.0 MPa; 250 m³ storage ≈ 8 min</td>
+            </tr>
+            <tr>
+              <td>Main feed pumps</td>
+              <td>–</td>
+              <td>17.5 MPa</td>
+            </tr>
+            <tr>
+              <td>HP6</td>
+              <td>Cold reheat 2.8 MPa</td>
+              <td>227 °C</td>
+            </tr>
+            <tr>
+              <td>HP7</td>
+              <td>HP turbine mid-stage 3.5 MPa</td>
+              <td>240 °C</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Feed temperature at part load ≈ <code>170 + 70 × (P/100)^0.6</code> °C.</p>
+
+      <h3 id="76-feedwater-trains">7.6 Feedwater trains</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Train A and train B each</td>
+              <td>3 × 50% condensate extraction pumps; condensate polishing plant; 2 × 55% main feed pumps (12 MW motors on VFDs, 9.8 MW absorbed at 100%); 1 × 30% startup feed pump; HP heater bypass</td>
+            </tr>
+            <tr>
+              <td>Capacity</td>
+              <td>2 main pumps 481 kg/s; with the startup pump 612 kg/s</td>
+            </tr>
+            <tr>
+              <td>Normal lineup</td>
+              <td>Train A feeds SG1 and half of SG2 (437.5 kg/s); train B feeds SG3 and the other half</td>
+            </tr>
+            <tr>
+              <td>Loop 2 crosstie</td>
+              <td>XV-2A and XV-2B let either train feed all of SG2</td>
+            </tr>
+            <tr>
+              <td>Train B lost</td>
+              <td>Train A must supply SG1 and SG2, 583 kg/s: both main pumps and the startup pump flat out (612 kg/s). Turbine A can only take 437.5 kg/s, so the rest goes to bypass</td>
+            </tr>
+            <tr>
+              <td>Feed control</td>
+              <td>Per SG: main feed control valve plus low-flow valve, 10 s stroke; flow indicated per section</td>
+            </tr>
+            <tr>
+              <td>Chemistry (all-volatile treatment)</td>
+              <td>O₂ ≤ 5 ppb (alarm 10); pH 9.3–9.6; cation conductivity ≤ 0.2 µS/cm (alarm 0.3); Na ≤ 3 ppb; Cl ≤ 2 ppb</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-violet" id="8-electrical-system">8. Electrical system</h2>
+
+      <h3 id="81-grid-connection-and-main-circuits">8.1 Grid connection and main circuits</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Switchyard</td>
+              <td>400 kV double busbar; bays for GT-A, GT-B, Line 1, Line 2, ST-1</td>
+            </tr>
+            <tr>
+              <td>Generator side</td>
+              <td>Generator circuit breakers GCB-A/B; generator transformers GT-A/B, 22/400 kV, 600 MVA</td>
+            </tr>
+            <tr>
+              <td>Unit supplies</td>
+              <td>Unit auxiliary transformers UAT-A/B, 22/11 kV, 50 MVA, feeding unit boards UB-A and UB-B</td>
+            </tr>
+            <tr>
+              <td>Station supplies</td>
+              <td>ST-1 400/11 kV 60 MVA feeding station boards SB-1 and SB-2; ST-2 130/11 kV 40 MVA from the regional 130 kV network as backup</td>
+            </tr>
+            <tr>
+              <td>Transfer on unit trip</td>
+              <td>Fast transfer from UB to SB in ≤ 150 ms with residual voltage check; if that fails, slow transfer after 2 s bus decay while pumps coast</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="82-11-kv-load-allocation">8.2 11 kV load allocation</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Board</th>
+              <th>Loads</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>UB-A</td>
+              <td>PP1, SP1, MFP-A1, MFP-A2, condensate pumps A, CW pumps A</td>
+            </tr>
+            <tr>
+              <td>UB-B</td>
+              <td>PP3, SP3, MFP-B1, MFP-B2, condensate pumps B, CW pumps B</td>
+            </tr>
+            <tr>
+              <td>SB-1</td>
+              <td>PP2, SP2, startup feed pump A, trace heating boards 1–2, HVAC</td>
+            </tr>
+            <tr>
+              <td>SB-2</td>
+              <td>Startup feed pump B, trace heating boards 3–4, cold traps, argon and nitrogen plant, feeds to essential boards</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="83-essential-systems">8.3 Essential systems</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Divisions</td>
+              <td>4; 3.3 kV essential boards ESS-1 to ESS-4, normally fed from SB-1 and SB-2</td>
+            </tr>
+            <tr>
+              <td>EDG-1 to EDG-4</td>
+              <td>6.3 MW, 3.3 kV; rated voltage and frequency in ≤ 15 s; load steps at 15, 20, 25, 30 and 40 s; 110% for 2 h in 24 h; day tank 8 h; main store 7 days; starting air for 5 starts</td>
+            </tr>
+            <tr>
+              <td>Essential loads</td>
+              <td>Pony motors (Divisions 1–3); DRACS dampers and fans (all 4); essential trace heating; cover gas control; instrument UPS chargers; control room HVAC; fire systems</td>
+            </tr>
+            <tr>
+              <td>UPS</td>
+              <td>230 V AC per division, 2 h</td>
+            </tr>
+            <tr>
+              <td>DC</td>
+              <td>220 V per division, 4 h</td>
+            </tr>
+            <tr>
+              <td>Rod hold power</td>
+              <td>PSS and SSR hold coils on UPS; losing hold power drops rods</td>
+            </tr>
+            <tr>
+              <td>Station blackout</td>
+              <td>Batteries only. DRACS works on natural circulation, but only if its dampers are open</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="84-grid-parameters-nordic-synchronous-area">8.4 Grid parameters: Nordic synchronous area</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Voltage</td>
+              <td>400 kV ±5%; backup supply from the 130 kV regional network</td>
+            </tr>
+            <tr>
+              <td>Frequency</td>
+              <td>50 Hz; normal band 49.9–50.1 Hz</td>
+            </tr>
+            <tr>
+              <td>Generator operating range</td>
+              <td>Continuous 49.0–51.0 Hz; time-limited down to 47.5 Hz and up to 51.5 Hz</td>
+            </tr>
+            <tr>
+              <td>Automatic load shedding</td>
+              <td>From about 48.8 Hz</td>
+            </tr>
+            <tr>
+              <td>Scale of a K1 trip</td>
+              <td>The grid is sized to ride through losing its largest unit, which is bigger than K1. Losing both turbines at once is serious but survivable</td>
+            </tr>
+            <tr>
+              <td>Reactive capability</td>
+              <td>+300 / −150 MVAr per unit at rated MW; less above 500 MWe in winter †</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Reserve product</th>
+              <th>What it asks of the plant</th>
+              <th>K1 contract size †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FCR-N</td>
+              <td>Proportional response across 49.9–50.1 Hz; 63% within 60 s, 100% within 3 min</td>
+              <td>±10 MWe per unit</td>
+            </tr>
+            <tr>
+              <td>FCR-D up</td>
+              <td>Adds power as frequency falls from 49.9 to 49.5 Hz; 50% within 5 s, 100% within 30 s</td>
+              <td>25 MWe per unit, held as headroom below the unit's limit</td>
+            </tr>
+            <tr>
+              <td>FCR-D down</td>
+              <td>Sheds power as frequency rises from 50.1 to 50.5 Hz; same speed</td>
+              <td>25 MWe per unit</td>
+            </tr>
+            <tr>
+              <td>aFRR</td>
+              <td>Follows a setpoint signal from grid control</td>
+              <td>±20 MWe for the plant, full within 5 min</td>
+            </tr>
+            <tr>
+              <td>mFRR</td>
+              <td>Manual instruction delivered within 15 min</td>
+              <td>The dispatcher's normal MW instructions</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-teal" id="9-control-protection-and-operating-limits">9. Control, protection and operating limits</h2>
+
+      <h3 id="91-operating-modes">9.1 Operating modes</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Mode</th>
+              <th>Name</th>
+              <th>Conditions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Power</td>
+              <td>Above 5 %FP</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Startup</td>
+              <td>k_eff ≥ 0.99, up to 5 %FP</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Hot standby</td>
+              <td>≥ 1,000 pcm subcritical; core inlet 350–380 °C</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Shutdown</td>
+              <td>≥ 1,000 pcm subcritical; 200–350 °C</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Refuelling</td>
+              <td>230 ± 20 °C; ≥ 3,000 pcm subcritical; rotating plugs unlocked</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>No sodium that is meant to stay liquid goes below 180 °C in any mode.</p>
+
+      <h3 id="92-part-load-program">9.2 Part-load program</h3>
+      <p>Core inlet is held at 375 °C throughout. With <code>r = P/Q</code>: core outlet <code>375 + 175r</code>; secondary cold <code>375 − 55r</code>; secondary hot <code>375 + 145r</code>; main steam <code>min(505, secondary hot − 15r)</code>.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Power</th>
+              <th>Primary and secondary flow</th>
+              <th>Core outlet</th>
+              <th>Secondary cold / hot</th>
+              <th>Main steam</th>
+              <th>SG pressure</th>
+              <th>Feed</th>
+              <th>Gross MWe</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>100%</td>
+              <td>100%</td>
+              <td>550 °C</td>
+              <td>320 / 520 °C</td>
+              <td>505 °C</td>
+              <td>14.0 MPa</td>
+              <td>240 °C</td>
+              <td>1,000</td>
+            </tr>
+            <tr>
+              <td>80%</td>
+              <td>80%</td>
+              <td>550</td>
+              <td>320 / 520</td>
+              <td>505</td>
+              <td>14.0</td>
+              <td>231</td>
+              <td>783</td>
+            </tr>
+            <tr>
+              <td>60%</td>
+              <td>60%</td>
+              <td>550</td>
+              <td>320 / 520</td>
+              <td>505</td>
+              <td>14.0</td>
+              <td>222</td>
+              <td>573</td>
+            </tr>
+            <tr>
+              <td>40%</td>
+              <td>40%</td>
+              <td>550</td>
+              <td>320 / 520</td>
+              <td>505</td>
+              <td>14.0</td>
+              <td>210</td>
+              <td>371</td>
+            </tr>
+            <tr>
+              <td>30%</td>
+              <td>40% (minimum)</td>
+              <td>506</td>
+              <td>334 / 484</td>
+              <td>472</td>
+              <td>14.0</td>
+              <td>204</td>
+              <td>273</td>
+            </tr>
+            <tr>
+              <td>20%</td>
+              <td>40%</td>
+              <td>462</td>
+              <td>348 / 448</td>
+              <td>440</td>
+              <td>11.5</td>
+              <td>197</td>
+              <td>178</td>
+            </tr>
+            <tr>
+              <td>10%</td>
+              <td>40%</td>
+              <td>419</td>
+              <td>361 / 411</td>
+              <td>408</td>
+              <td>9.0</td>
+              <td>188</td>
+              <td>86</td>
+            </tr>
+            <tr>
+              <td>5%</td>
+              <td>25%</td>
+              <td>410</td>
+              <td>364 / 404</td>
+              <td>401</td>
+              <td>7.75</td>
+              <td>182</td>
+              <td>42</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Below 40% the core outlet falls with power, so load changes down there cost fatigue even when coordination is perfect.</p>
+
+      <h3 id="93-who-controls-what">9.3 Who controls what</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Owner</th>
+              <th>Main actuator</th>
+              <th>Upset by</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Neutron power, core outlet temperature</td>
+              <td>Reactor desk (MCR)</td>
+              <td>RR, shim banks</td>
+              <td>Inlet temperature, flow, burnup, anomalies</td>
+            </tr>
+            <tr>
+              <td>Core flow, P/Q = 1.00</td>
+              <td>Primary desk (MCR)</td>
+              <td>PP speeds</td>
+              <td>Power changes, pump trips</td>
+            </tr>
+            <tr>
+              <td>Core inlet temperature</td>
+              <td>Secondary sodium desk (SGCR)</td>
+              <td>SP speeds</td>
+              <td>Feed flow and temperature, loop loss</td>
+            </tr>
+            <tr>
+              <td>SG sodium outlet, main steam temperature</td>
+              <td>Steam generator desk (SGCR) with feedwater desk</td>
+              <td>Feed flow per SG, sprays</td>
+              <td>Turbine load, feed temperature</td>
+            </tr>
+            <tr>
+              <td>Loop 2 split, reheat balance</td>
+              <td>Steam generator desk</td>
+              <td>CV-2A/2B, sprays, reheater isolation</td>
+              <td>Turbine loads, section isolations</td>
+            </tr>
+            <tr>
+              <td>Header pressure, MWe</td>
+              <td>Turbine A and B desks (TCR)</td>
+              <td>Control valves, bypass</td>
+              <td>Reactor power, grid frequency</td>
+            </tr>
+            <tr>
+              <td>Feed supply, deaerator, hotwell</td>
+              <td>Feedwater desk (FWCR)</td>
+              <td>Feed pump speeds, crosstie</td>
+              <td>Load, pump trips</td>
+            </tr>
+            <tr>
+              <td>Boards, EDGs, MVAr</td>
+              <td>Electrical desk (ECR)</td>
+              <td>Breakers, AVR setpoints</td>
+              <td>Grid events, trips</td>
+            </tr>
+            <tr>
+              <td>Trace heating, cold traps, argon</td>
+              <td>Sodium services desk (NSCR)</td>
+              <td>Zone heaters, trap flows</td>
+              <td>Faults, drift</td>
+            </tr>
+            <tr>
+              <td>Water and sodium chemistry, activity</td>
+              <td>Chemistry desk (NSCR)</td>
+              <td>Sampling, polishing, dosing</td>
+              <td>Leaks, fuel failures</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>In <strong>reactor leads</strong> mode (default), the shift supervisor sets reactor power and the turbines hold header pressure. In <strong>turbine leads</strong> mode (OD-5), the supervisor sets MWe: header pressure falls, the SG and feedwater desks follow, the core inlet cools, and reactor power rises through inlet feedback about 1–2 minutes later while the reactor desk trims. It's slower and needs four desks to cooperate.</p>
+
+      <h3 id="94-automatic-controllers-deliberately-worse-than-a-crew">9.4 Automatic controllers, deliberately worse than a crew</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Controller</th>
+              <th>Holds</th>
+              <th>Weakness built in</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Rod auto</td>
+              <td>Core outlet 550 ±2 K using RR only</td>
+              <td>Never moves shims; stops and alarms when RR leave the 400–700 mm band; reacts after thermocouples move</td>
+            </tr>
+            <tr>
+              <td>Primary flow auto</td>
+              <td>P/Q at 1.00</td>
+              <td>10 s filter on power, so P/Q swings ±5% on fast changes; ignores a pump trip</td>
+            </tr>
+            <tr>
+              <td>Secondary flow auto</td>
+              <td>Core inlet 375 ±3 K</td>
+              <td>Drives all three loops equally even with isolated sections; 60 s integral time</td>
+            </tr>
+            <tr>
+              <td>Feed auto</td>
+              <td>Main steam 505 ±3 K</td>
+              <td>Overshoots ±8 K on 10% steps; no turbine feedforward; off in separator mode</td>
+            </tr>
+            <tr>
+              <td>Attemperation auto</td>
+              <td>Hot reheat ≤ 505 °C</td>
+              <td>Can only cool</td>
+            </tr>
+            <tr>
+              <td>Splitter auto</td>
+              <td>Valve position</td>
+              <td>Holds it and nothing more</td>
+            </tr>
+            <tr>
+              <td>Turbine auto, pressure mode</td>
+              <td>Header 13.5 ±0.2 MPa, plus FCR response when contracted</td>
+              <td>Ignores the reheat load limit; A and B don't coordinate</td>
+            </tr>
+            <tr>
+              <td>Bypass auto</td>
+              <td>Opens at header + 0.4 MPa</td>
+              <td>Slow; pressure swings ±0.3 MPa</td>
+            </tr>
+            <tr>
+              <td>Cover gas auto</td>
+              <td>0.115–0.125 MPa</td>
+              <td>Cycles on heatup; vents without checking activity</td>
+            </tr>
+            <tr>
+              <td>Trace heating auto</td>
+              <td>Zone setpoints</td>
+              <td>Can't see failed heaters or stuck contactors</td>
+            </tr>
+            <tr>
+              <td>Deaerator and hotwell auto</td>
+              <td>Levels</td>
+              <td>Robust: naturally stable by design</td>
+            </tr>
+            <tr>
+              <td>EDGs and sequencer</td>
+              <td>Essential boards</td>
+              <td>Robust, but restores essential loads only</td>
+            </tr>
+            <tr>
+              <td>Load-follow master</td>
+              <td>Dispatcher MW at exactly 1 %/min</td>
+              <td>Follows dispatch straight into violations</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="95-reactor-protection">9.5 Reactor protection</h3>
+      <p>Primary shutdown system (PSS) logic is 2-out-of-3 on independent channels.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Normal</th>
+              <th>Alarm or first action</th>
+              <th>Trip</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>PR high flux</td>
+              <td>100%</td>
+              <td>105%</td>
+              <td>115%</td>
+            </tr>
+            <tr>
+              <td>PR high flux, low setpoint (below 10% permissive)</td>
+              <td>–</td>
+              <td>–</td>
+              <td>25%</td>
+            </tr>
+            <tr>
+              <td>Period, SR and WR below 10%</td>
+              <td>Infinite</td>
+              <td>30 s rod block</td>
+              <td>10 s</td>
+            </tr>
+            <tr>
+              <td>Flux rate</td>
+              <td>0</td>
+              <td>–</td>
+              <td>+10 %FP/s, or −5 %FP/s (Phénix-style)</td>
+            </tr>
+            <tr>
+              <td>P/Q, above 5 %FP</td>
+              <td>1.00</td>
+              <td>1.05</td>
+              <td>1.12</td>
+            </tr>
+            <tr>
+              <td>Core outlet, mixed</td>
+              <td>550 °C</td>
+              <td>565</td>
+              <td>580</td>
+            </tr>
+            <tr>
+              <td>Assembly outlet vs expected</td>
+              <td>0 K</td>
+              <td>+20 K alarm; +30 K rod block</td>
+              <td>+45 K on 2 adjacent thermocouples</td>
+            </tr>
+            <tr>
+              <td>Core inlet</td>
+              <td>375 °C</td>
+              <td>390 high, 360 low</td>
+              <td>405 high, 345 low</td>
+            </tr>
+            <tr>
+              <td>Hot pool level vs program</td>
+              <td>0 m</td>
+              <td>±0.25 m</td>
+              <td>−0.50 m</td>
+            </tr>
+            <tr>
+              <td>Cover gas</td>
+              <td>0.120 MPa</td>
+              <td>0.140</td>
+              <td>0.160</td>
+            </tr>
+            <tr>
+              <td>DND</td>
+              <td>Background</td>
+              <td>×3</td>
+              <td>×20</td>
+            </tr>
+            <tr>
+              <td>Primary pumps</td>
+              <td>3 running</td>
+              <td>1 lost: RB-2</td>
+              <td>2 lost</td>
+            </tr>
+            <tr>
+              <td>Secondary loops</td>
+              <td>3 running</td>
+              <td>1 lost: RB-1</td>
+              <td>2 lost</td>
+            </tr>
+            <tr>
+              <td>Both turbines lost</td>
+              <td>–</td>
+              <td>RB-3 to bypass capacity</td>
+              <td>If bypass unavailable</td>
+            </tr>
+            <tr>
+              <td>Large sodium-water reaction</td>
+              <td>–</td>
+              <td>Loop isolation plus RB-1</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>All 11 kV boards lost</td>
+              <td>–</td>
+              <td>–</td>
+              <td>Immediate</td>
+            </tr>
+            <tr>
+              <td>Seismic</td>
+              <td>–</td>
+              <td>0.04 g</td>
+              <td>0.08 g</td>
+            </tr>
+            <tr>
+              <td>Manual</td>
+              <td>–</td>
+              <td>–</td>
+              <td>2 buttons in MCR, 1 in the backup control room</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Secondary shutdown system, diverse sensors: flux 118%, P/Q 1.15 using pump-speed-derived flow, core outlet 590 °C, manual. Each SSR also has a Curie-point latch that releases at 640 °C local sodium, with ≈ 20 s thermal lag.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Runback</th>
+              <th>Trigger</th>
+              <th>Target</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RB-1</td>
+              <td>One secondary loop lost</td>
+              <td>64 %FP</td>
+              <td>30 %/min: shim drive-in at 10 mm/s plus flow program</td>
+            </tr>
+            <tr>
+              <td>RB-2</td>
+              <td>One primary pump lost</td>
+              <td>60 %FP</td>
+              <td>60 %/min</td>
+            </tr>
+            <tr>
+              <td>RB-3</td>
+              <td>One or both turbines lost</td>
+              <td>Bypass-limited power</td>
+              <td>20 %/min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Rod withdrawal blocks: period below 30 s; P/Q above 1.05; any assembly rod block; reactivity balance beyond ±50 pcm; RR out of band during a bank move; more than one bank selected.</p>
+
+      <h3 id="96-operating-limits">9.6 Operating limits</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Limit</th>
+              <th>If exceeded</th>
+              <th>Completion (grid time)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>LCO-1</td>
+              <td>SSS: at least 8 of 9 rods operable</td>
+              <td>Hot shutdown</td>
+              <td>6 h</td>
+            </tr>
+            <tr>
+              <td>LCO-2</td>
+              <td>DRACS: at least 3 of 4 loops</td>
+              <td>Restore or shut down</td>
+              <td>72 h</td>
+            </tr>
+            <tr>
+              <td>LCO-3</td>
+              <td>EDGs: at least 3 of 4</td>
+              <td>Restore or shut down</td>
+              <td>72 h</td>
+            </tr>
+            <tr>
+              <td>LCO-4</td>
+              <td>DND: at least 4 of 6 channels</td>
+              <td>≤ 30 %FP</td>
+              <td>12 h</td>
+            </tr>
+            <tr>
+              <td>LCO-5</td>
+              <td>Reactivity balance within ±50 pcm</td>
+              <td>No power increase; explain the deviation</td>
+              <td>1 h</td>
+            </tr>
+            <tr>
+              <td>LCO-6</td>
+              <td>Primary plugging temperature ≤ 180 °C</td>
+              <td>≤ 60 %FP and restore</td>
+              <td>24 h</td>
+            </tr>
+            <tr>
+              <td>LCO-7</td>
+              <td>IHX secondary minus primary pressure ≥ 0.2 MPa</td>
+              <td>Isolate the loop</td>
+              <td>1 h</td>
+            </tr>
+            <tr>
+              <td>LCO-8</td>
+              <td>Every running SG section has a working hydrogen meter</td>
+              <td>Isolate the section</td>
+              <td>4 h</td>
+            </tr>
+            <tr>
+              <td>LCO-9</td>
+              <td>Feed O₂ ≤ 10 ppb and cation conductivity ≤ 0.5 µS/cm</td>
+              <td>≤ 50 %FP</td>
+              <td>24 h</td>
+            </tr>
+            <tr>
+              <td>LCO-10</td>
+              <td>Ramp ≤ 1 %/min above 40% (≤ 3 %/min with supervisor approval, logged)</td>
+              <td>Report</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>LCO-11</td>
+              <td>Hot pool rate of change ≤ 1.5 K/min, trips excepted</td>
+              <td>Report and fatigue review</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>LCO-12</td>
+              <td>Cover gas Xe-133 below limit †</td>
+              <td>≤ 30 %FP and locate failed fuel</td>
+              <td>8 h</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-teal" id="10-control-rooms-desks-and-crew">10. Control rooms, desks and crew</h2>
+
+      <h3 id="101-rooms-and-walking-times">10.1 Rooms and walking times</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Room</th>
+              <th>Desks</th>
+              <th>Walk from MCR †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Main control room (MCR)</td>
+              <td>Reactor, primary, shift supervisor</td>
+              <td>–</td>
+            </tr>
+            <tr>
+              <td>Electrical control room (ECR)</td>
+              <td>Electrical</td>
+              <td>40 s; EDG rooms a further 90–120 s</td>
+            </tr>
+            <tr>
+              <td>Steam generator control room (SGCR)</td>
+              <td>Secondary sodium, steam generator</td>
+              <td>60 s</td>
+            </tr>
+            <tr>
+              <td>Sodium services control room (NSCR)</td>
+              <td>Sodium services, chemistry</td>
+              <td>60 s</td>
+            </tr>
+            <tr>
+              <td>Turbine control room (TCR)</td>
+              <td>Turbine A, turbine B</td>
+              <td>75 s</td>
+            </tr>
+            <tr>
+              <td>Feedwater control room (FWCR)</td>
+              <td>Feedwater</td>
+              <td>90 s</td>
+            </tr>
+            <tr>
+              <td>Backup control room (BCR)</td>
+              <td>Emergency shutdown panel</td>
+              <td>150 s, separate building</td>
+            </tr>
+            <tr>
+              <td>DRACS stacks</td>
+              <td>Local dampers only</td>
+              <td>150 s</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Place rooms so that no two desks that have to talk during a fault can see each other.</p>
+
+      <h3 id="102-desk-contents">10.2 Desk contents</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Desk</th>
+              <th>Controls</th>
+              <th>Indications</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Reactor (RO)</td>
+              <td>RR 1–3; shim rod or bank select A/B/C, in/out; rod mode; SSR latch and withdraw (key); ECP calculator with 1/M plot; trip buttons</td>
+              <td>SR, WR log power, PR, period; 30 rod positions; 331-position core map with temperature and deviation views; mixed outlet and inlet; P/Q ×3; reactivity balance; DND ×6; quadrant tilt; first-out annunciator</td>
+            </tr>
+            <tr>
+              <td>Primary (PO)</td>
+              <td>PP1–3 start, stop, speed, mode; pony motors; IHX shutters ×6; cover gas admit and vent; DRACS dampers ×8 and mode</td>
+              <td>Pump speed, flow, current, bearing and winding temperatures, vibration, check valve state; hot and cold pool levels and temperatures; level difference; cover gas pressure and temperature; IHX inlet and outlet ×6; DRACS temperatures and airflow; guard vessel leak detector</td>
+            </tr>
+            <tr>
+              <td>Shift supervisor (SS)</td>
+              <td>Mode key; control mode; plant load master; reserve contracts FCR-N, FCR-D and aFRR; dispatcher line; room phones; authorisations for bypasses, isolations and fast ramps; emergency declaration</td>
+              <td>Plant mimic; gross and net MWe; frequency; dispatcher instructions; LCO status; event log; end-of-shift report</td>
+            </tr>
+            <tr>
+              <td>Secondary sodium (SSO)</td>
+              <td>SP1–3; IHX secondary isolation valves; buffer tank argon; loop drain; SWR protection reset</td>
+              <td>Loop flows, temperatures and pressures; pump data; buffer and dump tank levels; rupture disc status; cell leak detectors; IHX pressure difference</td>
+            </tr>
+            <tr>
+              <td>Steam generator (SGO)</td>
+              <td>Section isolation ×24 (grouped, individual override); water dump and N₂ purge; MSIV-1 and MSIV-3; SG relief valves; CV-2A/2B; reheater isolation groups; sprays A/B; separator mode and level ×3</td>
+              <td>Hydrogen meters ×27; acoustic detectors ×24; section EV, SH and RH outlet temperatures; section feed flows; SG outlet pressure and temperature; header A/B pressure; splitter branch flows and check valve state; hot reheat A/B; separator levels; oscillation monitor</td>
+            </tr>
+            <tr>
+              <td>Turbine A, Turbine B (TO-A, TO-B)</td>
+              <td>Latch and trip; speed target and run-up; synchroscope and breaker close; load setpoint and rate; speed, load, pressure or limit mode; FCR response enable; HP and LP bypass; vacuum pumps; CW pumps; hood sprays; turning gear; oil pumps; AVR</td>
+              <td>Speed, MWe, MVAr, frequency; valve positions; stop-valve steam conditions; bypass flows; condenser pressure; CW temperatures; hood temperature; vibration on 8 bearings; eccentricity; differential expansion; thrust; oil pressure and temperature; rotor stress margin; reheat load limit; splitter repeaters</td>
+            </tr>
+            <tr>
+              <td>Feedwater (FWO)</td>
+              <td>Condensate pumps ×6; polishing in or bypassed; LP and HP heater bypasses; main feed pumps ×4; startup feed pumps ×2; feed control valves ×3 plus low-flow valves; crosstie XV-2A/2B; makeup</td>
+              <td>Feed flow per SG and section; heater outlet temperatures; pump suction and discharge; deaerator level and pressure; hotwell levels; condensate conductivity and O₂; pump speeds and currents; recirculation valves</td>
+            </tr>
+            <tr>
+              <td>Electrical (EO)</td>
+              <td>Switchyard breakers and isolators; generator, station and unit transformer breakers; 11 kV incomers and bus sections; essential board incomers; EDG start, stop, sync, load; sequencer reset; UPS and charger lineups; trace heating feeders</td>
+              <td>Voltage, current and frequency on every board; transformer temperatures and taps; EDG speed, voltage, kW, fuel, coolant, starting air; battery voltage, current and time remaining; relay flags</td>
+            </tr>
+            <tr>
+              <td>Sodium services (NSO)</td>
+              <td>Trace heating zones (≈ 180); cold traps; fill, drain and dump tanks; argon and nitrogen systems; cell ventilation and fire dampers; nitrogen flooding; leak detector resets</td>
+              <td>Zone temperatures and heater currents; plugging temperatures; oxygen and hydrogen meters; cell O₂ and temperature; aerosol detectors; tank levels; gas inventories</td>
+            </tr>
+            <tr>
+              <td>Chemistry (CHO)</td>
+              <td>Sample selectors; failed fuel location scan; cover gas routing to decay tanks; dosing; polishing regeneration</td>
+              <td>Cover gas gamma spectrum; DND; sodium impurities and tritium; feedwater chemistry; stack and area radiation</td>
+            </tr>
+            <tr>
+              <td>Backup control room</td>
+              <td>PSS and SSS trip; pony motors; DRACS dampers; SG relief valves; essential boards</td>
+              <td>Trends for core outlet, pools, DRACS and flux</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="103-local-only-actions">10.3 Local-only actions</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Where</th>
+              <th>Time on the spot †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>EDG local start or reset after a trip</td>
+              <td>EDG room</td>
+              <td>60 s</td>
+            </tr>
+            <tr>
+              <td>DRACS damper by handwheel</td>
+              <td>Air cooler stack</td>
+              <td>90 s per damper, 8 dampers</td>
+            </tr>
+            <tr>
+              <td>11 kV breaker rack out or in</td>
+              <td>Switchgear room</td>
+              <td>120 s</td>
+            </tr>
+            <tr>
+              <td>Trace heating breaker reset; heater replacement</td>
+              <td>Local boards</td>
+              <td>45 s; 10 min</td>
+            </tr>
+            <tr>
+              <td>Thaw a freeze valve</td>
+              <td>Loop cells</td>
+              <td>10–20 min, heating from the free end</td>
+            </tr>
+            <tr>
+              <td>Cold trap valve lineup and regeneration</td>
+              <td>Purification cell</td>
+              <td>5 min</td>
+            </tr>
+            <tr>
+              <td>SG section water isolation by hand (backup)</td>
+              <td>SG building</td>
+              <td>120 s</td>
+            </tr>
+            <tr>
+              <td>Hydrogen meter restart or recalibration</td>
+              <td>SG building</td>
+              <td>5 min</td>
+            </tr>
+            <tr>
+              <td>Isolate half a condenser waterbox</td>
+              <td>Condenser pit</td>
+              <td>4 min</td>
+            </tr>
+            <tr>
+              <td>Lube oil filter changeover; engage turning gear</td>
+              <td>Turbine hall</td>
+              <td>60 s</td>
+            </tr>
+            <tr>
+              <td>Fire dampers, sodium fire powder, manual nitrogen release</td>
+              <td>Affected cell</td>
+              <td>30–90 s</td>
+            </tr>
+            <tr>
+              <td>Argon bottle bank changeover</td>
+              <td>Gas yard</td>
+              <td>3 min</td>
+            </tr>
+            <tr>
+              <td>Collect a failed fuel sample</td>
+              <td>Chemistry lab</td>
+              <td>5 min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="104-crew-sizes">10.4 Crew sizes</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Crew</th>
+              <th>Positions</th>
+              <th>What it can handle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Minimum</td>
+              <td>3: SS, RO, field operator; everything else on auto</td>
+              <td>Steady operation only; the first real fault will get away from them</td>
+            </tr>
+            <tr>
+              <td>Standard</td>
+              <td>8: SS, RO, PO, SGO, TO-A, TO-B, EO, field</td>
+              <td>Most scenarios</td>
+            </tr>
+            <tr>
+              <td>Full</td>
+              <td>13: standard plus SSO, FWO, NSO, CHO, second field operator</td>
+              <td>Everything; dispatcher can be a 14th player</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="105-attention-intervals-on-manual">10.5 Attention intervals on manual</h3>
+      <p>This is the check against AFK play. Each row is how long a variable stays in band with nobody touching it.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Drifts out of band in about</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Main steam temperature</td>
+              <td>1–2 min</td>
+              <td>Frequency response, feed temperature noise, once-through sensitivity</td>
+            </tr>
+            <tr>
+              <td>Header pressure and MWe</td>
+              <td>Continuously while FCR-N is active</td>
+              <td>Grid frequency random walk</td>
+            </tr>
+            <tr>
+              <td>P/Q</td>
+              <td>Minutes, during any power change</td>
+              <td>Coupling</td>
+            </tr>
+            <tr>
+              <td>Reheat balance</td>
+              <td>5 min after any split change</td>
+              <td>Coupling</td>
+            </tr>
+            <tr>
+              <td>Cover gas pressure</td>
+              <td>5–10 min</td>
+              <td>Temperature and level changes</td>
+            </tr>
+            <tr>
+              <td>Regulating rod band</td>
+              <td>≈ 20 min</td>
+              <td>Burnup drift at ×360</td>
+            </tr>
+            <tr>
+              <td>Hydrogen background</td>
+              <td>30 min or more</td>
+              <td>Drift and meter noise</td>
+            </tr>
+            <tr>
+              <td>Trace heating</td>
+              <td>Random</td>
+              <td>Zone failures</td>
+            </tr>
+            <tr>
+              <td>Deaerator, hotwell</td>
+              <td>Stable</td>
+              <td>Buffered by design, as intended</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Disturbance sources: feed temperature random walk ±0.5 K with 120 s time constant; CW intake drift ±1 K over grid-hours, plus summer upwelling steps of 5–10 K; grid frequency (§11.2); hydrogen meter noise ±0.003 ppm; thermocouple noise ±1 K.</p>
+
+      <h3 id="106-hybrid-control-rooms">10.6 Hybrid control rooms</h3>
+      <p>The 1988 analog panels stayed when the 2009 modernisation added screens, giving every room a hybrid layout in the style of Temelín.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Element</th>
+              <th>Analog, 1988</th>
+              <th>Digital, 2009</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Controls</td>
+              <td>Rod, pump, breaker and valve switches; trip buttons; synchroscope</td>
+              <td>None: screens never change plant state</td>
+            </tr>
+            <tr>
+              <td>Indication</td>
+              <td>Edgewise meters, chart recorders, mimic lines in system colours, lamp-box annunciators with first-out</td>
+              <td>Plant computer: trends, core map, alarm list, sequence-of-events log</td>
+            </tr>
+            <tr>
+              <td>Protection</td>
+              <td>Trip status lamps</td>
+              <td>Digital protection system displays and test panels</td>
+            </tr>
+            <tr>
+              <td>Each room</td>
+              <td>A large mimic board as the at-a-glance wall</td>
+              <td>One or two operator screens per desk</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Build rule: anything that changes plant state is a physical control on a panel. Screens show, sort and trend.</p>
+
+      <h3 id="107-access-trust-and-griefing">10.7 Access, trust and griefing</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Access</td>
+              <td>Any player can use any control, seated or standing, within reach of the panel (≈ 10 studs) †. Proximity still matters, because the anti-solo design relies on walking between rooms</td>
+            </tr>
+            <tr>
+              <td>Critical controls</td>
+              <td>Manual reactor trip, SSS trip, turbine trips, opening 400 kV and 11 kV breakers, loop drain, SG section dump and plant mode changes need a minimum total playtime (suggested 3 h †)</td>
+            </tr>
+            <tr>
+              <td>Accountability</td>
+              <td>Every control action is logged with player name and time in the sequence-of-events log</td>
+            </tr>
+            <tr>
+              <td>Trips and vote-kick</td>
+              <td>After a player trips the plant, other players can vote-kick them, which bans them from that server</td>
+            </tr>
+            <tr>
+              <td>Proposed safeguard</td>
+              <td>The vote opens only if the server finds no trip condition, P1 alarm or approaching setpoint at the moment of the trip, so a justified trip is never punished. Majority of other players, minimum 3 voters †</td>
+            </tr>
+            <tr>
+              <td>Shifts</td>
+              <td>None. Players stay on any desk for as long as they like. Where this spec says shift, read session; the session report appears at the end of each grid day and on request</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="108-guides">10.8 Guides</h3>
+      <p>Guide boards are dotted around the plant †.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Guide</th>
+              <th>Where</th>
+              <th>Content</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Desk card</td>
+              <td>At every desk</td>
+              <td>What the desk owns, its main controls, normal values, and which desks it has to talk to</td>
+            </tr>
+            <tr>
+              <td>Alarm response card</td>
+              <td>Next to each annunciator panel</td>
+              <td>For each P1 and P2 alarm on that panel: what it means, first actions, who to call</td>
+            </tr>
+            <tr>
+              <td>Field guide</td>
+              <td>At each local-only action point</td>
+              <td>What the action does, how long it takes, what to report back</td>
+            </tr>
+            <tr>
+              <td>Room map</td>
+              <td>At each room entrance</td>
+              <td>Where the other rooms are and how long the walk is</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Guides read their numbers from the same config module as the simulation, so they never go out of date.</p>
+
+      <h2 class="sys-violet" id="11-grid-dispatcher">11. Grid dispatcher</h2>
+
+      <h3 id="111-instruction-types">11.1 Instruction types</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Example</th>
+              <th>Rules</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>mFRR dispatch</td>
+              <td>"Plant to 800 MWe by 14:30"</td>
+              <td>Deadline achievable at 1 %/min on Calm; needs 1.5–2 %/min on Winter Peak</td>
+            </tr>
+            <tr>
+              <td>Reserve contract</td>
+              <td>"FCR-D up 25 MWe per unit from 06:00 to 22:00"</td>
+              <td>Headroom must be in place before the window opens</td>
+            </tr>
+            <tr>
+              <td>aFRR</td>
+              <td>Setpoint signal, ±20 MWe</td>
+              <td>Follow continuously while active</td>
+            </tr>
+            <tr>
+              <td>Emergency instruction</td>
+              <td>"Maximum generation now" or "Reduce 300 MWe within 10 min"</td>
+              <td>Real time; can be refused with a valid code</td>
+            </tr>
+            <tr>
+              <td>Reactive power</td>
+              <td>"Unit A to +150 MVAr"</td>
+              <td>2 min to comply</td>
+            </tr>
+            <tr>
+              <td>Transfer-limit curtailment</td>
+              <td>"SE2 to SE3 limit reached: reduce 200 MWe"</td>
+              <td>Common in spring floods and on windy nights; planned ones are announced a grid-hour ahead</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Valid refusal codes, each checked against the simulation before it's accepted: runback in progress; SG section or loop isolated; LCO in force; reheat load limit reached; bypass above 40%; fatigue review open (§12).</p>
+
+      <h3 id="112-frequency-model">11.2 Frequency model</h3>
+      <p><code>f = 50 + x</code>, with <code>dx = −(x / τ) dt + σ √(2/τ) dW</code> and τ = 90 s.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Profile</th>
+              <th>σ</th>
+              <th>Loss events</th>
+              <th>Instruction rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Calm</td>
+              <td>0.03 Hz</td>
+              <td>1 per 60 min</td>
+              <td>1 per 40 min; never stacked</td>
+            </tr>
+            <tr>
+              <td>Standard</td>
+              <td>0.05 Hz</td>
+              <td>1 per 40 min</td>
+              <td>1 per 25 min; emergency 1 per 2 h</td>
+            </tr>
+            <tr>
+              <td>Winter Peak</td>
+              <td>0.07 Hz</td>
+              <td>1 per 25 min</td>
+              <td>1 per 15 min; instructions arrive mid-fault; reactive requests</td>
+            </tr>
+            <tr>
+              <td>Blackout Recovery</td>
+              <td>±0.5 Hz swings</td>
+              <td>–</td>
+              <td>Islanded restart with block loads of 50–150 MWe</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Loss event shape: nadir −0.2 to −0.45 Hz reached in 8–12 s, recovery time constant 120 s. Expected plant response is the sum of whichever reserve contracts are active (§8.4): FCR-N proportional inside 49.9–50.1 Hz, FCR-D up below 49.9 Hz, FCR-D down above 50.1 Hz.</p>
+
+      <h3 id="113-scoring">11.3 Scoring</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dispatch error</td>
+              <td>Integral of <code>max(0, abs(MW − target) − 10)</code> after the deadline, in MW·min</td>
+            </tr>
+            <tr>
+              <td>Frequency response</td>
+              <td>How closely actual ΔMW tracked expected ΔMW</td>
+            </tr>
+            <tr>
+              <td>Penalties</td>
+              <td>Reactor trip; turbine trip; LCO breach; ramp above limit without approval</td>
+            </tr>
+            <tr>
+              <td>Refusals</td>
+              <td>Valid refusals cost nothing; invalid ones cost the same as a missed instruction</td>
+            </tr>
+            <tr>
+              <td>Hidden until end of shift</td>
+              <td>Fatigue usage added during the shift (§12.1)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-amber" id="12-damage-and-degradation-model">12. Damage and degradation model</h2>
+
+      <h3 id="121-thermal-fatigue">12.1 Thermal fatigue</h3>
+      <p>Each monitored component has a wall temperature that chases its fluid: <code>dT_w/dt = (T_fluid − T_w) / τ_w</code>, with <code>τ_w = L² / (2α)</code> and α ≈ 4 × 10⁻⁶ m²/s for steel. The stress proxy is <code>abs(T_fluid − T_w)</code>. Count half-cycles between turning points of that value, ignore ranges below 10 K, and charge <code>D = 0.5 × (range / ΔT_ref)³ / N_ref</code> per half-cycle.</p>
+      <p>What this does to play: slow, well-coordinated changes create tiny wall differences and cost almost nothing, while trips and sloppy coordination cost a lot. A crew that holds P/Q and the feed-to-sodium ratio tight can ramp faster than a sloppy crew without extra damage. The procedural ramp limit still applies either way.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Fluid temperature</th>
+              <th>Wall</th>
+              <th>τ_w</th>
+              <th>ΔT_ref</th>
+              <th>N_ref †</th>
+              <th>Failure it unlocks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Upper internals above core</td>
+              <td>Mixed core outlet</td>
+              <td>40 mm</td>
+              <td>200 s</td>
+              <td>150 K</td>
+              <td>400</td>
+              <td>Lost thermocouples; striping cracks</td>
+            </tr>
+            <tr>
+              <td>IHX upper tubesheet</td>
+              <td>Hot pool</td>
+              <td>100 mm</td>
+              <td>1,250 s</td>
+              <td>120 K</td>
+              <td>500</td>
+              <td>IHX tube leak (S-21)</td>
+            </tr>
+            <tr>
+              <td>SG evaporator tube bank</td>
+              <td>Feed inlet vs sodium</td>
+              <td>Tube and shell</td>
+              <td>30 s</td>
+              <td>120 K</td>
+              <td>800</td>
+              <td>Micro leak (S-01)</td>
+            </tr>
+            <tr>
+              <td>SG sodium inlet header</td>
+              <td>SG sodium inlet</td>
+              <td>60 mm</td>
+              <td>450 s</td>
+              <td>150 K</td>
+              <td>400</td>
+              <td>Sodium leak at weld</td>
+            </tr>
+            <tr>
+              <td>Secondary hot leg thermowells and tees</td>
+              <td>IHX outlet</td>
+              <td>25 mm</td>
+              <td>80 s</td>
+              <td>150 K</td>
+              <td>600</td>
+              <td>Monju-type leak (S-11)</td>
+            </tr>
+            <tr>
+              <td>Turbine HP and IP rotors</td>
+              <td>Steam vs rotor metal</td>
+              <td>–</td>
+              <td>1,800 s</td>
+              <td>100 K</td>
+              <td>1,000</td>
+              <td>Vibration, derate</td>
+            </tr>
+            <tr>
+              <td>Diagrid</td>
+              <td>Core inlet</td>
+              <td>80 mm</td>
+              <td>800 s</td>
+              <td>80 K</td>
+              <td>600</td>
+              <td>Flow distribution anomaly</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Failure hazard per grid day for a component with usage U: <code>λ = 0.002 × e^(6U)</code> †. That's about 4% per grid day at U = 0.5 and about 80% at U = 1. Thermal striping: adjacent assembly outlets more than 40 K apart, held, add upper-internals damage at 1/5,000 per minute †.</p>
+
+      <h3 id="122-fuel">12.2 Fuel</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Mechanism</th>
+              <th>Model †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cladding creep above 650 °C midwall</td>
+              <td><code>dD/dt = e^((T − 650) / 25) / 100 h</code>; failure at D = 1</td>
+            </tr>
+            <tr>
+              <td>Random failure</td>
+              <td>2 × 10⁻⁵ per assembly per grid day × (burnup / 50 GWd/t)² × overpower multiplier</td>
+            </tr>
+            <tr>
+              <td>Gas leaker</td>
+              <td>Cover gas Xe-133 and krypton rise over grid-hours; DND stays quiet</td>
+            </tr>
+            <tr>
+              <td>Open failure</td>
+              <td>DND rises. Left above 30 %FP for more than 8 grid-hours, fuel-sodium reaction swells the pin and threatens neighbours</td>
+            </tr>
+            <tr>
+              <td>Failed fuel location</td>
+              <td>Reduce to ≤ 30 %FP; scan samples one group of 7 assemblies every 2 min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="123-sodium-systems">12.3 Sodium systems</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Mechanism</th>
+              <th>Model †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cold trap loading</td>
+              <td>Impurity ingress 0.2 kg per grid day at power, 1 kg per fuel handling campaign; capacity 150 kg; trap ΔP proportional to loading²; plugging temperature rises 2 K per 10% loading above 70%</td>
+            </tr>
+            <tr>
+              <td>Trace heating failures</td>
+              <td>1 per 2,000 zone-hours real: 60% open circuit, 30% stuck on, 10% thermocouple failure</td>
+            </tr>
+            <tr>
+              <td>Drained line cooling with heater off</td>
+              <td>DN50 from 200 °C to freezing in ≈ 40 min; DN900 in ≈ 20 h</td>
+            </tr>
+            <tr>
+              <td>Thawing a frozen line</td>
+              <td>Heat from the free end only. Heating the middle first ruptures the pipe, because sodium expands 2.5% on melting</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="124-sg-tube-leak-growth">12.4 SG tube leak growth</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Model †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Micro, below 0.05 g/s</td>
+              <td>Self-wastage doubles the leak every 2–6 grid-hours</td>
+            </tr>
+            <tr>
+              <td>Small, 0.05–10 g/s</td>
+              <td>Jet wastage penetrates a neighbouring tube in 10–30 min at 1 g/s, 1–3 min at 10 g/s. Each new failure adds a leak of the same size, which is the PFR 1987 cascade</td>
+            </tr>
+            <tr>
+              <td>Intermediate and large</td>
+              <td>Protection sequence in §5.2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>What players learn to read: a real leak shows at its section meter first, and the loop outlet meter follows about 10 s later at an eighth of the size. A failing meter steps or spikes on its own. Background drift moves every section together.</p>
+
+      <h2 class="sys-amber" id="13-scenario-library">13. Scenario library</h2>
+
+      <h3 id="131-scenario-director">13.1 Scenario director</h3>
+      <p>The director decides what goes wrong and when. It never cheats: every fault it starts is a real initiating event in the simulation, and everything after that is physics and crew.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Input</th>
+              <th>Used for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Crew</td>
+              <td>Occupied desks and players on site in the last 5 min</td>
+            </tr>
+            <tr>
+              <td>Performance</td>
+              <td>Recent P/Q, steam temperature and dispatch errors; trips; how the last fault went</td>
+            </tr>
+            <tr>
+              <td>Plant state</td>
+              <td>Mode, power, isolated equipment, fatigue usage, active LCOs</td>
+            </tr>
+            <tr>
+              <td>Season and time</td>
+              <td>Season (§1.7), grid clock hour, weather</td>
+            </tr>
+            <tr>
+              <td>Difficulty</td>
+              <td>Calm, Standard, Winter Peak, Blackout Recovery</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Detail †</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Intensity budget</td>
+              <td>Each scenario has a cost: minor 1, moderate 3, major 8. The director earns 1 point per 10 min on Standard, scaled ×0.5 with 1–3 players, ×1 with 4–8, ×1.5 with 9 or more</td>
+            </tr>
+            <tr>
+              <td>Spacing</td>
+              <td>At least 8 min between director-started faults; never a new one while a major fault is unresolved</td>
+            </tr>
+            <tr>
+              <td>Crew fit</td>
+              <td>Only pick faults whose first actions land on occupied desks, or on auto controllers that can cope</td>
+            </tr>
+            <tr>
+              <td>Eligibility</td>
+              <td>Every scenario has prerequisites: season, mode, power, equipment state. Frazil ice needs winter and open water; S-04 needs loop 2 running</td>
+            </tr>
+            <tr>
+              <td>Escalation</td>
+              <td>A mishandled fault can grow into its poor-crew outcome. That growth is physics and costs no budget</td>
+            </tr>
+            <tr>
+              <td>Recovery</td>
+              <td>After a reactor trip, no new faults until the plant is stable in Mode 3 or back above 30%</td>
+            </tr>
+            <tr>
+              <td>Ageing</td>
+              <td>High fatigue usage (§12.1) raises the weight of that component's own failure scenarios</td>
+            </tr>
+            <tr>
+              <td>Admin</td>
+              <td>Private server owners can disable scenarios, force one, or change the budget rate</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Cost classes †: minor S-01, S-06, S-10, S-12, S-13, S-14, S-17, S-23, S-24, S-26; moderate S-03, S-05, S-07, S-08, S-11, S-19, S-20, S-21, S-22, S-25; major S-02, S-04, S-09, S-15, S-16, S-18, S-27, S-28.</p>
+
+      <h3 id="132-scenarios">13.2 Scenarios</h3>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Scenario</th>
+              <th>Real basis</th>
+              <th>First cue</th>
+              <th>Window</th>
+              <th>Good crew</th>
+              <th>Poor crew</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>S-01</td>
+              <td>SG section micro leak</td>
+              <td>PFR 1987, BN-600</td>
+              <td>One section hydrogen meter creeping</td>
+              <td>20–60 min</td>
+              <td>Confirm against loop meter, isolate section, trim reactor 4% and split</td>
+              <td>Cascade to large leak, loop dumped</td>
+            </tr>
+            <tr>
+              <td>S-02</td>
+              <td>Large sodium-water reaction</td>
+              <td>–</td>
+              <td>Pressure spike, rupture discs</td>
+              <td>Automatic</td>
+              <td>Verify isolation, drain and purge; manage RB-1 and turbines</td>
+              <td>Steam temperature trip, P/Q trip</td>
+            </tr>
+            <tr>
+              <td>S-03</td>
+              <td>Loop 3 pump trip</td>
+              <td>–</td>
+              <td>SP3 tripped, inlet rising</td>
+              <td>2 min</td>
+              <td>Close IHX 3 shutters, RB-1, send 60–70% of loop 2 to B</td>
+              <td>Inlet trip, or B tripped at minimum load</td>
+            </tr>
+            <tr>
+              <td>S-04</td>
+              <td>Loop 2 pump trip</td>
+              <td>–</td>
+              <td>SP2 tripped</td>
+              <td>2 min</td>
+              <td>Both turbines to 67% on their own loops; isolate SG2 reheaters</td>
+              <td>Reheat mismatch, unstable turbines</td>
+            </tr>
+            <tr>
+              <td>S-05</td>
+              <td>Turbine B trip</td>
+              <td>–</td>
+              <td>Stop valves shut, bypass open</td>
+              <td>1 min</td>
+              <td>RB-3, shift loop 2 to A, feed crosstie</td>
+              <td>Condenser B overloaded, second trip</td>
+            </tr>
+            <tr>
+              <td>S-06</td>
+              <td>CV-2B stuck</td>
+              <td>–</td>
+              <td>Valve ignores demand</td>
+              <td>5 min</td>
+              <td>Balance with turbine loads; field hydraulic reset</td>
+              <td>Throttling losses, reheat drift</td>
+            </tr>
+            <tr>
+              <td>S-07</td>
+              <td>Primary pump trip with stuck check valve</td>
+              <td>–</td>
+              <td>PP2 trip, flow lower than expected</td>
+              <td>20 s</td>
+              <td>RB-2, then manual trip if P/Q keeps climbing</td>
+              <td>P/Q trip</td>
+            </tr>
+            <tr>
+              <td>S-08</td>
+              <td>Blocked assembly</td>
+              <td>Fermi 1, 1966</td>
+              <td>One thermocouple creeping, neighbours normal</td>
+              <td>10–30 min</td>
+              <td>Power down, locate, shut down</td>
+              <td>Cladding failure, DND trip, core damage flag</td>
+            </tr>
+            <tr>
+              <td>S-09</td>
+              <td>Unexplained negative reactivity trips</td>
+              <td>Phénix 1989–90</td>
+              <td>Fast flux dip, trip</td>
+              <td>–</td>
+              <td>Restart only after checks; look for a pattern</td>
+              <td>Repeated trips, LCO breach</td>
+            </tr>
+            <tr>
+              <td>S-10</td>
+              <td>Gas entrainment</td>
+              <td>–</td>
+              <td>Rod auto hunting; +5–20 pcm blips</td>
+              <td>5–15 min</td>
+              <td>Slow pumps, raise level, check cover gas</td>
+              <td>Fuel damage over time</td>
+            </tr>
+            <tr>
+              <td>S-11</td>
+              <td>Secondary sodium leak and fire</td>
+              <td>Monju 1995</td>
+              <td>Cell aerosol and temperature</td>
+              <td>10–20 min</td>
+              <td>Isolate, drain, nitrogen</td>
+              <td>Large fire, building damage</td>
+            </tr>
+            <tr>
+              <td>S-12</td>
+              <td>Heater fault on a drained line</td>
+              <td>–</td>
+              <td>Zone cold</td>
+              <td>40 min on DN50</td>
+              <td>Field repair, thaw from the free end</td>
+              <td>Frozen line; ruptured pipe after a bad thaw</td>
+            </tr>
+            <tr>
+              <td>S-13</td>
+              <td>Cold trap plugging</td>
+              <td>–</td>
+              <td>Plugging temperature rising</td>
+              <td>Grid-hours</td>
+              <td>Swap or regenerate trap</td>
+              <td>LCO-6 derate</td>
+            </tr>
+            <tr>
+              <td>S-14</td>
+              <td>Condenser seawater leak</td>
+              <td>–</td>
+              <td>Cation conductivity and chloride up</td>
+              <td>30 min</td>
+              <td>Isolate half, polish, derate</td>
+              <td>SG tube corrosion, micro leaks later</td>
+            </tr>
+            <tr>
+              <td>S-15</td>
+              <td>Loss of offsite power</td>
+              <td>–</td>
+              <td>Boards dead</td>
+              <td>15 s</td>
+              <td>EDGs, pony motors, DRACS, relief valves</td>
+              <td>Pool heatup, DRACS dampers forgotten</td>
+            </tr>
+            <tr>
+              <td>S-16</td>
+              <td>Station blackout</td>
+              <td>–</td>
+              <td>EDGs fail too</td>
+              <td>≈ 5 h, ≈ 30 min with ×10 acceleration</td>
+              <td>Field crews open dampers; recover an EDG locally</td>
+              <td>Pool over-temperature</td>
+            </tr>
+            <tr>
+              <td>S-17</td>
+              <td>Cover gas excursion on heatup</td>
+              <td>–</td>
+              <td>Pressure high</td>
+              <td>10 min</td>
+              <td>Vent to decay tanks</td>
+              <td>Trip, roof seal leakage</td>
+            </tr>
+            <tr>
+              <td>S-18</td>
+              <td>Grid frequency collapse</td>
+              <td>–</td>
+              <td>−0.4 Hz and an emergency instruction</td>
+              <td>1 min</td>
+              <td>Respond within limits; refuse the unsafe part</td>
+              <td>Under-frequency trip</td>
+            </tr>
+            <tr>
+              <td>S-19</td>
+              <td>Regulating rod runaway</td>
+              <td>–</td>
+              <td>RR moving without demand, short period</td>
+              <td>30 s</td>
+              <td>Kill drive power, insert shims</td>
+              <td>Overpower trip</td>
+            </tr>
+            <tr>
+              <td>S-20</td>
+              <td>Train B feed loss</td>
+              <td>–</td>
+              <td>MFP-B trips</td>
+              <td>1 min</td>
+              <td>Crosstie, startup pump, runback</td>
+              <td>SG3 overheats, inlet trip</td>
+            </tr>
+            <tr>
+              <td>S-21</td>
+              <td>IHX tube leak</td>
+              <td>–</td>
+              <td>Pool level up, buffer tank down</td>
+              <td>Grid-hours</td>
+              <td>Isolate loop, confirm, plan outage</td>
+              <td>Na-24 in secondary if pressures reverse</td>
+            </tr>
+            <tr>
+              <td>S-22</td>
+              <td>Open fuel failure</td>
+              <td>–</td>
+              <td>DND rising</td>
+              <td>8 grid-hours</td>
+              <td>≤ 30 %FP, locate, shut down and remove</td>
+              <td>DND trip, contamination</td>
+            </tr>
+            <tr>
+              <td>S-23</td>
+              <td>Vessel expansion drift</td>
+              <td>–</td>
+              <td>Slow positive reactivity after a long low-temperature spell</td>
+              <td>15 min</td>
+              <td>Reactor desk notices and trims</td>
+              <td>Outlet creep, thermocouple alarms</td>
+            </tr>
+            <tr>
+              <td>S-24</td>
+              <td>Frazil ice at the intake</td>
+              <td>Nordic intakes in early winter</td>
+              <td>Screen ΔP climbing on a cold, clear, windy night</td>
+              <td>20–60 min</td>
+              <td>Open recirculation gate, go to one CW pump, wash screens</td>
+              <td>Screens block, vacuum lost, turbine trips</td>
+            </tr>
+            <tr>
+              <td>S-25</td>
+              <td>Summer intake fouling</td>
+              <td>Oskarshamn 3, 2013 (jellyfish)</td>
+              <td>Screen ΔP up and CW flow falling after a storm or bloom</td>
+              <td>30 min</td>
+              <td>Wash screens, isolate half a condenser, derate</td>
+              <td>Vacuum trip on one or both units</td>
+            </tr>
+            <tr>
+              <td>S-26</td>
+              <td>Geomagnetic storm</td>
+              <td>Malmö blackout, 2003</td>
+              <td>Aurora night; transformer hot-spot and neutral current alarms</td>
+              <td>Grid-hours</td>
+              <td>Cut MVAr and load on the hot transformer; tell grid control</td>
+              <td>Generator transformer trips</td>
+            </tr>
+            <tr>
+              <td>S-27</td>
+              <td>Switchyard fault with a voltage transient</td>
+              <td>Forsmark 1, 2006</td>
+              <td>Both generator breakers open; two essential divisions dead; some indications frozen</td>
+              <td>20 min</td>
+              <td>Distrust frozen readings, connect EDGs by hand, confirm DRACS on the live divisions</td>
+              <td>Crew acts on false indications</td>
+            </tr>
+            <tr>
+              <td>S-28</td>
+              <td>Grid separation and house-load operation</td>
+              <td>–</td>
+              <td>Both 400 kV lines trip in a winter storm</td>
+              <td>30 s</td>
+              <td>One unit to house load on bypass, trip the other, run back the reactor</td>
+              <td>Both turbines trip; plant falls onto its EDGs</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-slate" id="14-simulation-implementation-in-roblox">14. Simulation implementation in Roblox</h2>
+
+      <h3 id="141-tick-structure">14.1 Tick structure</h3>
+      <p>The server is authoritative, running a fixed-step accumulator on Heartbeat.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Loop</th>
+              <th>Rate</th>
+              <th>Contents</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Fast</td>
+              <td>10 Hz</td>
+              <td>Kinetic amplitude, fuel and cladding, pools, IHXs, SG sections, turbines, pumps, valves, protection logic</td>
+            </tr>
+            <tr>
+              <td>Shape</td>
+              <td>Every 0.5–2 s, time-sliced</td>
+              <td>3D multigroup flux shape and precursors (§14.2)</td>
+            </tr>
+            <tr>
+              <td>Slow</td>
+              <td>1 Hz</td>
+              <td>Trace heating, cold traps, chemistry, fatigue counting, dispatcher, hydrogen</td>
+            </tr>
+            <tr>
+              <td>Replication</td>
+              <td>5 Hz fast gauges; 1 Hz slow gauges and core map</td>
+              <td>UnreliableRemoteEvent for gauges; RemoteEvent for alarms and events</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Pack the 331 core-map temperatures into a buffer as u16 at 0.05 K resolution: 662 bytes per update.</p>
+
+      <h3 id="142-space-time-kinetics-in-real-time">14.2 Space-time kinetics in real time</h3>
+      <p>The improved quasi-static method splits the flux into an amplitude that changes fast and a shape that changes slowly, so each part runs only as often as it needs to (§3.7).</p>
+      <p><strong>Amplitude, every 0.1 s.</strong> Λ is 4 × 10⁻⁷ s, so explicit integration at 10 Hz is hopeless. Use the prompt-jump form with scaled precursors <code>s_i = λ_i Λ C_i</code>, which removes Λ entirely. Reactivity, β_eff and Λ come from the latest shape, weighted by the adjoint flux.</p>
+      <pre><code>-- amplitude, once per 0.1 s tick
+for i = 1, 6 do
+  local e = math.exp(-lambda[i] * dt)
+  s[i] = s[i] * e + beta[i] * n * (1 - e)
+end
+n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
+</code></pre>
+      <p>Initialise at steady state with <code>s[i] = beta[i] * n</code>. The form holds while ρ stays below about 0.9β. Above that, flag a prompt-critical excursion and hand over to a scripted core-damage event rather than integrating through it.</p>
+      <p><strong>Shape, every 0.5–2 s.</strong> One implicit time step of the multigroup diffusion equations over the whole mesh, renormalised so shape and amplitude stay consistent.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Group order</td>
+              <td>Fastest group first, one group at a time. A fast spectrum has no upscattering, so each group sees a source that is already known</td>
+            </tr>
+            <tr>
+              <td>Inner solver</td>
+              <td>Red-black successive over-relaxation, warm-started from the previous shape; 4–8 sweeps per group †</td>
+            </tr>
+            <tr>
+              <td>Outer loop</td>
+              <td>Repeat the group pass until the fission source changes by less than 10⁻⁴, usually 2–3 passes with a warm start</td>
+            </tr>
+            <tr>
+              <td>Precursors</td>
+              <td>Updated per node with the same exponential form as the amplitude</td>
+            </tr>
+            <tr>
+              <td>Time slicing</td>
+              <td>Runs in a coroutine that yields once the frame has used 4 ms †; the amplitude keeps power moving in the meantime</td>
+            </tr>
+            <tr>
+              <td>Cost</td>
+              <td>About 26,000 unknowns; a warm-started shape step is a few hundred thousand node updates. Put <code>--!native</code> at the top of the solver module</td>
+            </tr>
+            <tr>
+              <td>Development check</td>
+              <td>For a uniform perturbation, the 3D amplitude must match the point-kinetics fallback</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="143-thermal-nodes">14.3 Thermal nodes</h3>
+      <p>Update every lumped node with <code>T = T_eq + (T − T_eq) × e^(−dt/τ)</code>, taking T_eq and τ from current flows. It's stable at any time step. Treat the 0.19 s coolant rise through the core as algebraic, and model pipe and pool transport delays as ring buffers with fractional interpolation.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Block</th>
+              <th>Suggested states</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Fuel</td>
+              <td>Every fuel assembly × 10 axial layers, with fuel and cladding temperature per layer feeding its own neutronics node: 301 × 10 × 2 states. Sodium temperature per layer is algebraic</td>
+            </tr>
+            <tr>
+              <td>Pools</td>
+              <td>Hot pool 2; cold pool 1</td>
+            </tr>
+            <tr>
+              <td>IHXs</td>
+              <td>6 × 3</td>
+            </tr>
+            <tr>
+              <td>Steam generators</td>
+              <td>24 sections × 3 modules × 2 nodes</td>
+            </tr>
+            <tr>
+              <td>Secondary transport</td>
+              <td>6 delay lines</td>
+            </tr>
+            <tr>
+              <td>Turbines</td>
+              <td>2 × rotor speed and metal temperature</td>
+            </tr>
+            <tr>
+              <td>Feed trains</td>
+              <td>2 × 5</td>
+            </tr>
+            <tr>
+              <td>Totals</td>
+              <td>≈ 6,300 thermal states, mostly fuel pins; ≈ 150 valves; ≈ 180 heater zones; ≈ 600 alarm points</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="144-keeping-it-multiplayer">14.4 Keeping it multiplayer</h3>
+      <p>Any player within reach of a panel can use its controls, seated or standing; the server checks distance, not seats (§10.7). Critical controls also check playtime. Local-only actions (§10.3) are ProximityPrompts with hold durations. Room phones connect desks, and the dispatcher line rings only at the shift supervisor console.</p>
+
+      <h3 id="145-performance-guardrails">14.5 Performance guardrails</h3>
+      <p>Simulate numbers, not parts; there is no moving fluid geometry anywhere. Build the turbine hall and SG building as modular, streamed instances. Run alarm logic on the server and send clients state changes only.</p>
+
+      <h3 id="146-persistence-and-reset">14.6 Persistence and reset</h3>
+      <p>Plant condition persists per private server (OD-9). Between sessions it keeps the cycle day and burnup, fatigue usage for every component, failed, isolated and drained equipment, cold trap loading, LCO clocks and the sequence-of-events log. Public servers always start fresh.</p>
+      <p>The private server owner can reset from a settings panel. A reset needs typed confirmation, then runs a 60-second countdown announced to everyone on the server, and returns the plant to hot standby at beginning of cycle with every component as new †. Key the save on <code>game.PrivateServerId</code>, check <code>game.PrivateServerOwnerId</code> before allowing a reset, and version the save format so later spec changes can migrate old plants.</p>
+
+      <h3 id="147-modules">14.7 Modules</h3>
+      <p>Keep every system in its own ModuleScript behind the same interface, so failure end states, scenarios and later features plug in without touching the core loop: <code>init(config)</code>, <code>step(dt)</code>, <code>getState()</code>, <code>applyCommand(player, command)</code>, plus a <code>faults</code> table each module registers with the scenario director. Every number in this spec lives in one shared config module that the simulation, guide boards and tests all read.</p>
+
+      <h2 class="sys-ink" id="appendix-a-sodium-properties">Appendix A. Sodium properties</h2>
+      <p>Correlations with T in kelvin:</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>Correlation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Density, kg/m³</td>
+              <td><code>219 + 275.32 (1 − T/2503.7) + 511.58 (1 − T/2503.7)^0.5</code></td>
+            </tr>
+            <tr>
+              <td>Specific heat, kJ/kg·K</td>
+              <td><code>1.6582 − 8.479e-4 T + 4.4541e-7 T² − 2992.6 / T²</code></td>
+            </tr>
+            <tr>
+              <td>Conductivity, W/m·K</td>
+              <td><code>124.67 − 0.11381 T + 5.5226e-5 T² − 1.1842e-8 T³</code></td>
+            </tr>
+            <tr>
+              <td>Viscosity, Pa·s</td>
+              <td><code>exp(−6.4406 − 0.3958 ln T + 556.835 / T)</code></td>
+            </tr>
+            <tr>
+              <td>Vapour pressure, MPa</td>
+              <td><code>exp(11.9463 − 12633.73 / T − 0.4672 ln T)</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>°C</th>
+              <th>Density</th>
+              <th>cp</th>
+              <th>k</th>
+              <th>Viscosity (mPa·s)</th>
+              <th>Vapour pressure (MPa)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>98</td>
+              <td>925.6</td>
+              <td>1.383</td>
+              <td>89.4</td>
+              <td>0.688</td>
+              <td>1.6 × 10⁻¹¹</td>
+            </tr>
+            <tr>
+              <td>200</td>
+              <td>903.0</td>
+              <td>1.343</td>
+              <td>81.9</td>
+              <td>0.452</td>
+              <td>2.2 × 10⁻⁸</td>
+            </tr>
+            <tr>
+              <td>300</td>
+              <td>880.5</td>
+              <td>1.309</td>
+              <td>75.4</td>
+              <td>0.341</td>
+              <td>2.1 × 10⁻⁶</td>
+            </tr>
+            <tr>
+              <td>375</td>
+              <td>863.5</td>
+              <td>1.289</td>
+              <td>70.9</td>
+              <td>0.290</td>
+              <td>2.6 × 10⁻⁵</td>
+            </tr>
+            <tr>
+              <td>450</td>
+              <td>846.2</td>
+              <td>1.272</td>
+              <td>66.8</td>
+              <td>0.254</td>
+              <td>1.8 × 10⁻⁴</td>
+            </tr>
+            <tr>
+              <td>520</td>
+              <td>830.0</td>
+              <td>1.261</td>
+              <td>63.2</td>
+              <td>0.229</td>
+              <td>8.2 × 10⁻⁴</td>
+            </tr>
+            <tr>
+              <td>550</td>
+              <td>822.9</td>
+              <td>1.258</td>
+              <td>61.8</td>
+              <td>0.220</td>
+              <td>1.4 × 10⁻³</td>
+            </tr>
+            <tr>
+              <td>600</td>
+              <td>811.2</td>
+              <td>1.254</td>
+              <td>59.5</td>
+              <td>0.207</td>
+              <td>3.4 × 10⁻³</td>
+            </tr>
+            <tr>
+              <td>700</td>
+              <td>787.3</td>
+              <td>1.252</td>
+              <td>55.3</td>
+              <td>0.186</td>
+              <td>1.4 × 10⁻²</td>
+            </tr>
+            <tr>
+              <td>800</td>
+              <td>763.0</td>
+              <td>1.259</td>
+              <td>51.5</td>
+              <td>0.169</td>
+              <td>4.6 × 10⁻²</td>
+            </tr>
+            <tr>
+              <td>900</td>
+              <td>738.3</td>
+              <td>1.274</td>
+              <td>48.0</td>
+              <td>0.156</td>
+              <td>0.120</td>
+            </tr>
+            <tr>
+              <td>950</td>
+              <td>725.7</td>
+              <td>1.286</td>
+              <td>46.4</td>
+              <td>0.151</td>
+              <td>0.182</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-ink" id="appendix-b-tags-and-glossary">Appendix B. Tags and glossary</h2>
+      <p>Tag format <code>SYS-L-TYPE-NN</code>, for example <code>SG-2-HM-05</code> for loop 2 section 5 hydrogen meter. Use the tag as the Roblox instance name and as the replication key. Write the station as <code>Kallskar</code> in instance names and DataStore keys, and as Kallskär in displayed text.</p>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>System codes</th>
+              <th>Type codes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RX core; PN primary sodium; SN secondary sodium; SG steam generators; MS main steam; TG turbine-generator; CD condensate; FW feedwater; CW cooling water; EL electrical; DG diesels; DR DRACS; NS sodium services; CH chemistry; PR protection</td>
+              <td>P pump; CV control valve; IV isolation valve; NRV check valve; T temperature; PT pressure; F flow; L level; HM hydrogen meter; TC thermocouple; SPD speed; RD rod</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Term</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>aFRR, mFRR</td>
+              <td>Automatic and manual frequency restoration reserves</td>
+            </tr>
+            <tr>
+              <td>BCR</td>
+              <td>Backup control room</td>
+            </tr>
+            <tr>
+              <td>BOC</td>
+              <td>Beginning of cycle</td>
+            </tr>
+            <tr>
+              <td>DND</td>
+              <td>Delayed neutron detector, which sees fuel exposed to sodium</td>
+            </tr>
+            <tr>
+              <td>DRACS</td>
+              <td>Direct reactor auxiliary cooling system</td>
+            </tr>
+            <tr>
+              <td>ECP</td>
+              <td>Estimated critical position</td>
+            </tr>
+            <tr>
+              <td>EFPD</td>
+              <td>Effective full-power day</td>
+            </tr>
+            <tr>
+              <td>FCR-N, FCR-D</td>
+              <td>Frequency containment reserves for normal operation and for disturbances</td>
+            </tr>
+            <tr>
+              <td>K1</td>
+              <td>Kallskär unit 1, the SFR-1000</td>
+            </tr>
+            <tr>
+              <td>IHX</td>
+              <td>Intermediate heat exchanger</td>
+            </tr>
+            <tr>
+              <td>LCO</td>
+              <td>Limiting condition for operation</td>
+            </tr>
+            <tr>
+              <td>P/Q</td>
+              <td>Neutron power divided by primary flow, both in % of rated</td>
+            </tr>
+            <tr>
+              <td>PSS</td>
+              <td>Primary shutdown system: regulating and shim rods</td>
+            </tr>
+            <tr>
+              <td>RB</td>
+              <td>Runback</td>
+            </tr>
+            <tr>
+              <td>RR</td>
+              <td>Regulating rod</td>
+            </tr>
+            <tr>
+              <td>SE2, SE3</td>
+              <td>Swedish electricity bidding zones</td>
+            </tr>
+            <tr>
+              <td>SR</td>
+              <td>Source range (shim rods are tagged SM to avoid a clash)</td>
+            </tr>
+            <tr>
+              <td>SSM</td>
+              <td>Strålsäkerhetsmyndigheten, the Swedish Radiation Safety Authority</td>
+            </tr>
+            <tr>
+              <td>SSR, SSS</td>
+              <td>Secondary shutdown rods and system</td>
+            </tr>
+            <tr>
+              <td>SWR</td>
+              <td>Sodium-water reaction</td>
+            </tr>
+            <tr>
+              <td>WR</td>
+              <td>Wide-range neutron channel</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="sys-ink" id="appendix-c-revision-log">Appendix C. Revision log</h2>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Rev</th>
+              <th>Date</th>
+              <th>Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A</td>
+              <td>15 Sep 2026</td>
+              <td>First full draft. Reactor rated at 2,380 MWt from the computed heat balance (earlier estimate 2,400–2,500). Loop 2 reheater split, splitter losses and the loop-3-loss table added</td>
+            </tr>
+            <tr>
+              <td>A1</td>
+              <td>15 Sep 2026</td>
+              <td>All open decisions closed (§0.3). Station named Kallskär Nuclear Power Station. Wide-range log neutron channels replace IR range switching. DRACS dampers fail as-is. Refuelling as a timed wait. Persistence per private server with owner reset (§14.6)</td>
+            </tr>
+            <tr>
+              <td>A2</td>
+              <td>15 Sep 2026</td>
+              <td>Setting fixed: Kallskär Nuclear Power Plant (K1), Hälsingland coast, Sweden. Site, history, language and seasons added (§1.4–1.7). Grid switched to Nordic rules with FCR-N, FCR-D, aFRR and mFRR (§8.4, §11). Cooling water re-based on the Bothnian Sea (§7.4). Hybrid control rooms, access rules and guides added (§10.6–10.8). Scenario director and S-24 to S-28 added (§13). Modules section added (§14.7)</td>
+            </tr>
+            <tr>
+              <td>A3</td>
+              <td>15 Sep 2026</td>
+              <td>Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7, §14.2). Former lumped values became validation targets; point kinetics kept as fallback</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    try {
+      if (window.matchMedia('(max-width:1000px)').matches) {
+        document.getElementById('tocd').open = false;
+      }
+    } catch (e) {}
+  </script>
+  <script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+</script>
+</body>
+</html>

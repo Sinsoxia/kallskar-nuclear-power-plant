@@ -1,0 +1,930 @@
+DO NOT TAKE THIS AS ABSOLUTE TRUTH, THIS IS WHAT OTHER PEOPLE SAID SO DO YOUR OWN CHECKS AS WELL.
+
+**Entity 1:**
+
+Yo! I read the whole thing and recomputed what I could: IAPWS steam tables, Fink–Leibowitz sodium, the inhour equation, your decay-heat curve. Most of it ties out. The SG section duties match to about 0.1 MW, and the feed-heater temperatures, condenser table, decay-heat table, part-load program, ring counts, rod-worth curve, shutdown margins and transport delays all check. Here's what didn't.
+
+Real errors
+
+Period for +300 pcm (§3.4). With your own β_i, λ_i and Λ, +300 pcm gives a stable period of about 0.47 s, not 2.5 s. A 2.5 s period is about +210 pcm. Your 10 s trip is about 125 pcm and the 30 s rod block about 69 pcm. The RR drive can only ramp about 3 pcm/s, so S-19 is really a ramp taking roughly 40 s to reach the period trip.
+IHX inlet temperature (§4.3). 545 °C in, 375 °C out at 1,782 kg/s carries about 385 MW, not 400. At 550 °C (what §1.2, §2.4 and §9.2 use) it's about 396 MW, and the LMTD comes to 41 K, matching your "≈ 40". The −51 pcm driveline term in §3.2 used the same 170 K. At 175 K it's −52.5.
+Dump tank (§5.1). 400 t of sodium is 443 m³ at 200 °C, which is 98% of your 450 m³ tank. Drained hot (about 420 °C) it's 469 m³ and won't fit. About 500 m³ gives margin.
+DRACS coping time (§4.5). Integrating your decay-heat curve into 2,400 MJ/K, a 200 K rise takes about 6.5 h, not about 5 h. Five hours needs about 1,900 MJ/K. S-16 at ×10 would then be about 39 min rather than 30.
+RR band drift (§10.5). 3.0 pcm/EFPD at ×360 is only 0.75 pcm per real minute. Going from mid-band to the edge takes about 100 min, not about 20. Also, the 400–700 mm band is only about 163 pcm on your S-curve, while §3.3 reserves 250 pcm for "RR band, load following". A 250 pcm band would be about 250–750 mm.
+Bank A vs the 4 pcm/s interlock (§3.4). Six rods × 400 pcm at 1 mm/s peaks at 4.8 pcm/s mid-stroke. Banks B (3.6) and C (2.4) are fine. Either slow bank A to 0.8 mm/s or state that the interlock pauses it mid-stroke.
+Turbine minimum load vs part-load table (§7.1, §9.2).
+Minimum stable load is 150 MWe, but the 10% and 5% rows (86 and 42 MWe) are below that even on one turbine.
+At 20–30% with both turbines running, each unit is under 150 MWe.
+The 430 °C main steam trip would also fire at those rows, since program temperature is 408 and 401 °C. §7.2 only says the alarm tracks program.
+§6.5 treats the 30% minimum as a trip risk, but §7.1 says "take 25 MWe immediately" on sync. Decide whether the minimum is a trip or a "don't dwell" limit.
+
+Things to tighten
+
+Clocks (§0.2): "Physics ×1 real time, always" sits above the ×10 acceleration row.
+Sodium temperature floor: §9.1 says nothing goes below 180 °C, but trace heating only alarms at 150 °C (§5.1).
+Water admission interlock (§6.6): "Feed ≥ sodium − 80 K" is exactly 240 °C at 100%. At 80% and 40% your §7.5 feed is 231 and 210 °C, while SG sodium outlet stays at 320 °C. Say it applies only when admitting water, and which sodium temperature it means.
+Hottest assembly (§2.4): The 1.20 radial peak with the §2.5 formula gives 572 °C in zone I or 595 °C in zone II, not 580–585. Name the ring. Your fuel zones (inner up to ring 7) and flow zones (I is rings 0–5) don't line up.
+Creep law (§12.2): "100 h" doesn't say real or grid hours, which is a 12× difference.
+Cover gas (§4.4): 0.074 MPa only comes out if the gas also cools. The 90 m³ volume change alone gives about 0.094. The conclusion holds either way.
+Rounding: group 1 β_i (8.8 vs 8.6), 3,110 vs 3,112 kg/s, and 10,690 vs 10,694 kg/s.
+
+Implementation
+
+Amplitude update (§14.2): The prompt-jump form is correct. But using the previous step's n in the precursor update makes it slow at high reactivity. At dt = 0.1 s the growth rate is about 11% low at 0.8β and about 21% low at 0.9β. Running the update as 5 substeps of 0.02 s when ρ > 0.5β brings that to a few percent.
+RB-3 (§9.5): 20 %/min from 100% with both turbines lost against 60% bypass capacity leaves roughly 40% of steam with nowhere to go for about 2 minutes. Relief valves will lift. That's fine as a scenario, but not as a normal automatic runback.
+Mermaid diagram (§1.2): The file loads no Mermaid script, so opened as a plain file the diagram shows as raw text. Load it from jsdelivr and set the theme from prefers-color-scheme, or inline it as SVG.
+Appendix A units: The correlation is in Pa·s but the table is in mPa·s. Keep SI in the shared config and convert only for display.
+Assertion suite: Since every number lives in one config module, add tests that recompute the derived values (heat balance, shutdown margin, decay-heat table, part-load table) from the primitives. Most of the errors above are derived numbers drifting, which that would catch.
+Shape solver: Consider running it in an Actor with Parallel Luau, so the 4 ms slice doesn't compete with the main thread.
+
+**Entity 2:**
+
+The internal consistency and thermal-hydraulic balancing in this specification are exceptionally tight. The pool head levels mathematically mapping perfectly to the hot/cold pool surface areas, the primary-to-secondary MWt allocations, and the inclusion of historical fast reactor edge cases (like the Monju thermowell leak and PFR tube cascade) show a rigorous understanding of both the physics and the systems engineering.   
+HTML+ 2
+
+To ensure the technical model translates smoothly into a stable, performant multiplayer environment, here is a review of the edge cases, mathematical discrepancies, and engine-specific structural considerations.
+Roblox Engine & Luau Implementation
+
+    Garbage Collection (GC) on the Shape Loop: Section 3.7 and 14.2 outline a 26,264-node flux shape evaluated every 0.5–2 seconds using red-black successive over-relaxation. While --!native Luau is highly performant, dynamically allocating arrays for this matrix during the time-sliced 4 ms coroutine yields will eventually trigger garbage collection spikes. These spikes manifest as server-wide micro-stutters. You will need to pre-allocate massive 1D arrays (table.create()) for the flux nodes at server start and overwrite the values in place rather than instantiating new tables per pass.   
+    HTML+ 2
+
+    Density-Wave Interference: Section 6.6 mentions a density-wave oscillation (6–10 s period) in the evaporator at low flows. Because your lumped thermal nodes (Section 14.3) are updated at 10 Hz using an explicit Euler or exponential decay method, you must ensure the numerical integration step size does not artificially dampen or constructively interfere with this simulated physical oscillation.   
+    HTML+ 1
+
+    Network Replication Padding: Packing 331 core-map temperatures into 662 bytes as u16 integers at 1 Hz (Section 14.1) is highly optimized. Ensure you are scaling the values properly (e.g., multiplying by 20 to preserve the 0.05 K resolution) before packing, and clamping the upper limits so a core-damage temperature spike doesn't overflow the 16-bit integer and crash the client UI.   
+    HTML
+
+Mathematical & Logic Corrections
+
+    Table 6.5 Splitter Addition: Under the "100%" Loop 2 steam to Turbine B row, Turbine A is listed at 333 MWe and Turbine B at 311 MWe (capped by the reheat limit). The "Plant (MWe)" column lists 645 MWe. However, 333 + 311 = 644. While 6 MWe of thermal energy equivalent is noted as going to the bypass, bypass steam does not generate electrical output, so the total should strictly be 644 MWe.   
+    HTML+ 2
+
+    Vote-Kick Minimums (Section 10.7): The proposed safeguard requires a majority of players with a "minimum 3 voters" to kick a griefer. However, Section 10.4 establishes a "Minimum" crew of 3 players (SS, RO, field). If a server has exactly 3 players, requiring 3 voters means the griefer would have to vote against themselves for the kick to pass. Consider reducing the threshold to "minimum 2 eligible voters" so a fully staffed minimum-crew server can still protect itself.   
+    HTML+ 1
+
+Physics & Transient Dynamics
+
+    Decay Heat Double-Counting (Section 3.6 & 14.2): The spec correctly notes that the fission-power tail from delayed neutrons is handled organically by the kinetics model and should not be added to the decay heat curve. However, the provided decay formula P/P₀ = 0.066 × (t^-0.2 ...) yields 6.35% at 1 second and 3.92% at 10 seconds. If the thermal model applies this formula immediately upon a scram while the kinetics model is still producing delayed neutron heat, the simulated thermal power will artificially spike. The script will need a blending function that phases the empirical decay heat curve in only as the multigroup delayed precursors naturally deplete.   
+    HTML+ 1
+
+    Pump Coastdown Transients (Section 4.2 & 5.1): The primary pumps coast down via 1 / (1 + t/10), while the secondary pumps coast down faster via 1 / (1 + t/5). In a station blackout (Scenario S-16), the secondary loops will lose flow faster than the primary circuit. This design will cause the intermediate heat exchangers (IHX) to transiently dump less heat to the secondary loops than the primary is pushing in, leading to a brief but potentially alarming temperature spike in the primary cold pool before natural circulation equalizes. This is physically realistic, but ensure the structural fatigue counters (Section 12.1) are calibrated so they don't unfairly penalize the crew for this unavoidable transient.   
+    HTML+ 2
+
+    Vessel Expansion Drift (Section 3.2): The +0.15 pcm/K coefficient for the vessel and core support (acting on a 900 s lag from the cold pool) is an excellent, insidious trap for distracted operators (Scenario S-23). Because it physically acts by pulling the control rods out of the core slightly as the vessel expands, ensure the 3D kinetics model explicitly translates this thermal expansion into a fractional coordinate shift for the absorber nodes, rather than just injecting an arbitrary +pcm value.
+
+**Entity 3:**
+
+BRO, this is absurdly detailed 😭. You’ve basically written a fictional nuclear plant design basis, operating manual, simulator architecture document and game-design bible and then casually titled it “spec sheet.”
+
+I went through the actual file rather than just judging the opening pages. Overall, it’s impressively internally coherent for a fictional SFR, but I found a handful of genuine numerical/implementation inconsistencies that are worth fixing before you build the simulator around them.
+
+The big ones
+1. Your reactor is simultaneously 2,380 MWt and 2,388 MWt
+
+This is the cleanest numerical inconsistency.
+
+You specify:
+
+Reactor rating: 2,380 MWt
+3 SGs × 8 sections
+Each section: 99.5 MWt
+Therefore: 24 × 99.5 = 2,388 MWt
+
+The section breakdown itself is internally perfect:
+
+EV 62.6 + SH 21.2 + RH 15.7 = 99.5 MWt
+
+and each loop is therefore:
+
+8 × 99.5 = 796 MWt
+
+with three loops giving 2,388 MWt.
+
+Interestingly, 2,388 MWt looks like the number the rest of the steam cycle was actually designed around. Your turbine efficiency of 41.9% and 1,000 MWe output fit that number extremely neatly:
+
+1000 / 2388 = 41.88%
+
+So I'd probably make 2,388 MWt the canonical rating and change the 2,380 figures, or reduce section duty to:
+
+2380 / 24 = 99.167 MWt
+
+The former is probably less disruptive because so many downstream numbers already work around 99.5 MWt.
+
+2. Average linear heat rate doesn't match the stated reactor power
+
+This one is more significant.
+
+You have:
+
+301 fuel assemblies
+271 pins/assembly
+1.0 m active fuel
+therefore 81,571 m of active fuel
+reactor power = 2,380 MWt
+average linear heat rate = 27.7 kW/m
+
+But:
+
+2,380,000 kW / 81,571 m = 29.18 kW/m
+
+So the average should be roughly 29.2 kW/m, not 27.7.
+
+And if you use the SG-derived 2,388 MWt:
+
+2,388,000 / 81,571 = 29.28 kW/m
+
+There's an interesting knock-on effect here: your stated peaking factors give:
+
+1.20 × 1.04 × 1.22 = 1.524
+
+So:
+
+27.7 × 1.524 = 42.2 kW/m → exactly why your peak is listed as 42.
+29.2 × 1.524 = 44.5 kW/m
+
+That means the spec appears to have been tuned so that 27.7 → 42 kW/m rather than derived from the actual core power.
+
+I'd decide which quantity you want to be authoritative:
+
+Option A — preserve 2,380 MWt:
+Average LHR ≈ 29.2 kW/m, peak ≈ 44.5 kW/m.
+
+Option B — preserve 27.7 and 42 kW/m:
+The implied core thermal power is only about 2,260 MWt.
+
+Obviously B would break much more of the plant, so I'd change the LHR numbers.
+
+3. The core-flow velocity is too high relative to your own geometry
+
+You state:
+
+Mean assembly flow = 32.9 kg/s
+Sodium velocity ≈ 5.4 m/s
+Core transit = 0.19 s
+
+But your own sodium table gives density at 375°C as 863.5 kg/m³.
+
+32.9 kg/s therefore corresponds to:
+
+32.9 / 863.5 ≈ 0.0381 m³/s
+
+Using your 173 mm across-flats wrapper and 271 × 8.5 mm OD pins gives a coolant flow area of roughly 0.0105 m², which gives approximately:
+
+3.6–3.7 m/s, not 5.4 m/s.
+
+That also makes your 0.19 s transit time questionable.
+
+At ~3.65 m/s through 1 m of active height:
+
+1 / 3.65 ≈ 0.274 s
+
+So I'd expect something around 0.27–0.28 s.
+
+This matters because you've explicitly told the simulator to use the 0.19 s transit time in its thermal model. So this isn't merely a cosmetic spec error; it propagates into your thermal response.
+
+4. Your IHX primary-side temperatures don't quite support 400 MWt
+
+Each IHX is specified as:
+
+1,782 kg/s primary
+545 → 375°C
+400 MWt rating
+
+But your plant's hot pool is 550°C.
+
+And 545 → 375°C with your sodium properties gives roughly 388 MW per IHX rather than 400 MW.
+
+If you intended:
+
+550 → 375°C
+
+then the heat transfer comes out much closer to 400 MWt.
+
+So I suspect 545°C is simply an accidental leftover value.
+
+I'd either:
+
+change 545 → 550°C, or
+explicitly add a defined ~5 K hot-pool-to-IHX transport loss and adjust the IHX rating/flow accordingly.
+
+As written, the latter isn't accounted for.
+
+5. The natural-circulation equation has a likely typo
+
+You have:
+
+Q_nc ≈ 3.5% × (P / 1 %FP)^(1/3)
+
+If P is expressed as %FP, then at 100%:
+
+P / 1% = 100
+
+and therefore:
+
+3.5% × 100^(1/3) ≈ 16.3%
+
+So your equation predicts 16% rated flow at 100% power, not 3.5%.
+
+I suspect you meant:
+
+Q_nc ≈ 3.5% × (P / 100%FP)^(1/3)
+
+which gives 3.5% at full power.
+
+That is a tiny typo with potentially hilarious consequences in the simulator if someone implements it literally.
+
+6. Your house-load number is suspiciously low
+
+You specify about 65 MWe house load and therefore ≈935 MWe net from 1,000 MWe gross.
+
+But some of your explicitly listed absorbed motor powers already exceed that at full plant operation:
+
+4 main feed pumps × 9.8 MW = 39.2 MW
+3 primary pump motors × 4.0 MW = 12 MW
+3 secondary pump motors × 2.5 MW = 7.5 MW
+4 CW pumps × 3.7 MW = 14.8 MW
+
+That's:
+
+73.5 MW
+
+before condensate pumps, heaters, sodium services, HVAC, lighting, electrical losses, control systems, etc.
+
+Now, there is a possible escape hatch: some of those numbers are motor ratings rather than actual absorbed power, particularly the pump motors. So I wouldn't call this definitively wrong.
+
+But I'd recommend making the electrical balance explicit:
+
+Rated auxiliary load at 100% = X MW
+Typical absorbed auxiliary load = Y MW
+House-load operating requirement = Z MW
+
+That would eliminate the ambiguity.
+
+A really nice bit: the reactivity bookkeeping mostly works
+
+This section is actually quite satisfying.
+
+Your BOC reactivity budget is:
+
+376 pcm thermal defect
+844 pcm power defect
+480 pcm burnup
+250 pcm operating margin
+300 pcm uncertainty
+
+Total:
+
+2,250 pcm
+
+which is exactly what you state.
+
+And your PSS worth:
+
+RR = 300
+shims = 5,400
+
+= 5,700 pcm
+
+If the most reactive 400-pcm shim is stuck, you've got:
+
+5700 − 400 − 2250 = 3050 pcm
+
+which matches your stated shutdown margin almost suspiciously perfectly.
+
+That part is excellent. Somebody actually did the spreadsheet instead of just sprinkling scary numbers everywhere. 😭
+
+7. T_ref in the Doppler equation needs defining
+
+You give:
+
+ρ = −900 pcm × ln(T_f / T_ref)
+
+but T_ref isn't defined.
+
+And because this is an actual implementation target, it matters.
+
+Interestingly, your stated −680 pcm Doppler contribution at 1,107°C implies a reference temperature of approximately 648 K / 375°C.
+
+So I strongly suspect that's what you intended.
+
+I'd explicitly write:
+
+T_ref = 648 K (375°C)
+
+or whatever value you actually want.
+
+8. The 3D solver's red-black SOR is not appropriate for the mesh you've chosen
+
+This is more of a software/math issue.
+
+You have a hexagonal-Z nodal mesh, one node per hexagonal position.
+
+Then you specify:
+
+Red-black successive over-relaxation
+
+for the spatial solver.
+
+A regular hex-cell lattice has a neighbour graph containing triangles, so it isn't bipartite in the way a square-grid checkerboard is. In other words, a simple two-colour red/black ordering isn't directly applicable.
+
+I'd use something like:
+
+3-colour SOR, or
+a suitable Krylov solver such as CG/GMRES where applicable, or
+a block/line relaxation scheme.
+
+For Roblox, though, 3-colour SOR may actually be perfectly reasonable and keeps your implementation conceptually similar.
+
+This is exactly the sort of thing I'd fix before coding because otherwise Future You is going to spend six hours staring at a flux map wondering why the reactor has decided to become abstract art.
+
+9. Your "4 groups → 6 groups" implementation needs a firmer contract
+
+The spec says:
+
+4 groups initially, raised to 6 once performance allows.
+
+That's fine for development, but you've also defined:
+
+six delayed-neutron groups
+validation targets based on the six-group physics
+cross-section tables
+rod worth
+Doppler
+sodium void worth
+power defect
+
+I'd explicitly define:
+
+Development mode
+
+4 energy groups
+tolerances X/Y/Z
+
+Production mode
+
+6 energy groups
+authoritative physics
+
+Otherwise you're going to get the fun situation where the 4-group model passes one validation test but fails another and nobody knows whether the target or solver is supposed to win.
+
+10. Your core map is internally consistent, thankfully
+
+I specifically checked this because I expected it to be broken. It isn't.
+
+Rings 0–10 contain:
+
+1 + 6(1+2+...+10) = 331 positions
+
+You have 30 rod positions, leaving:
+
+301 fuel assemblies
+
+And your fuel distribution gives:
+
+inner = 145
+outer = 156
+total = 301
+
+which agrees with the headline figure.
+
+Likewise:
+
+301 × 271 = 81,571 pins
+
+which matches the fuel table.
+
+So do not "fix" the core map. It looks weird at first glance but the arithmetic is actually solid.
+
+11. The SG/reheat architecture is surprisingly coherent
+
+Your three-loop → two-turbine arrangement looks bizarre on paper, but the numbers actually hang together.
+
+Each loop:
+
+796 MWt
+8 sections
+99.5 MWt/section
+
+and:
+
+3 × 796 = 2388 MWt
+
+The steam flow:
+
+291.7 × 3 ≈ 875.1 kg/s
+
+and:
+
+437.5 × 2 = 875 kg/s
+
+So your steam mass balance is basically exact.
+
+The loop-2 splitter also has a genuinely good gameplay purpose: you're forcing operators to manage an asymmetric plant rather than simply giving them three identical loops.
+
+I would keep that.
+
+12. One documentation contradiction I'd clean up
+
+The top of the document says:
+
+"Every number here is a starting value that agrees with every other number."
+
+Given the handful of mismatches above, I'd soften that sentence.
+
+Something like:
+
+"Numbers are intended to form a mutually consistent starting plant model; values marked † are tuning values, and small discrepancies may remain where rounded plant-level figures are used."
+
+Because otherwise the spec has accidentally given me a challenge:
+
+"Find the one number that doesn't agree."
+
+And unfortunately I found several. 💀
+
+Things I'd add rather than "fix"
+
+These aren't errors, but they'd make Rev A4 much stronger.
+
+A. Add a formal balance sheet
+
+One page containing:
+
+Thermal
+
+Core: X MWt
+Pump heat: +X
+IHX transfer: X
+SG duty: X
+Turbine output: X
+Condenser rejection: X
+Other losses: X
+
+Mass
+
+Primary flow
+Secondary flow
+Main steam
+Feedwater
+Reheat
+Condensate
+
+Electrical
+
+Gross generation
+Major auxiliaries
+House load
+Net generation
+
+That would make inconsistencies brutally easy to catch.
+
+B. Add a "canonical parameter" rule
+
+For every duplicated quantity, designate one authoritative source.
+
+For example:
+
+Canonical reactor thermal power: §1.1
+All other sections derive rather than redefine it.
+
+That matters a lot once your Roblox config starts growing.
+
+C. Add automated consistency tests
+
+This is probably the biggest thing I'd recommend for your actual simulator.
+
+Have a development-only validation module that checks things like:
+
+assert(abs(SG_total - reactor_power) < tolerance)
+assert(abs(primary_flow - sum(IHX_flows)) < tolerance)
+assert(abs(steam_total - turbine_total) < tolerance)
+assert(fuel_count == 301)
+assert(pin_count == 81571)
+assert(sum(beta_i) ≈ beta_eff)
+assert(sum(bank_worths) == shim_worth)
+
+Then every time you change one number, the game basically goes:
+
+BRO YOU BROKE THE REACTOR AGAIN.
+
+Much better than discovering six months later that SG2 has been secretly creating 8 MW from the void.
+
+My priority list for Rev A4
+Priority	Fix
+🔴 High	Resolve 2,380 vs 2,388 MWt
+🔴 High	Fix 27.7 kW/m average LHR
+🔴 High	Fix 5.4 m/s / 0.19 s core-flow calculation
+🔴 High	Fix/clarify IHX 545°C vs 550°C
+🟠 Medium	Fix natural-circulation equation
+🟠 Medium	Reconcile 65 MW house load with listed auxiliaries
+🟠 Medium	Define T_ref
+🟠 Medium	Replace red-black SOR with a mesh-appropriate scheme
+🟡 Low	Formalise 4-group vs 6-group production targets
+🟡 Low	Clarify which clock takes precedence during low-power/refuelling acceleration
+🟢 Good	Core geometry/counts
+🟢 Good	Reactivity budget
+🟢 Good	SG/steam mass balance
+🟢 Good	Loop-2 splitter concept
+🟢 Good	Roblox state/replication architecture
+
+Overall: this is way closer to a coherent engineering simulation specification than I expected. The biggest issues aren't "your reactor physics makes no sense"; they're mostly a few numbers that clearly came from different iterations of the spreadsheet. The architecture itself is unusually well thought through.
+
+And honestly, the most dangerous sentence in the entire document isn't about sodium voiding.
+
+It's "all nine open decisions from Rev A are closed."
+
+My brother in Christ, you have created Rev A4 before Rev A3 has even emotionally recovered. 😭
+
+**Entity 4:**
+
+Yo! This is an absurdly thorough spec — genuinely one of the most internally consistent game design docs I've read. The heat balance mostly closes, the reactivity budget is coherent, the part-load formulas actually match the table, and the reheat-split table in §6.5 is a beautiful piece of design (a real tradeoff with a non-obvious "right" answer). The hybrid analog/digital control room and the "auto controllers deliberately worse than a crew" section are chef's kiss.
+
+That said, you asked for errors and inconsistencies. I found a few real ones, plus some things worth double-checking. I'll separate definite bugs from "probably fine but verify."
+Definite errors
+
+1. The reactor period at 300 pcm is off by ~5×.
+
+§3.4: "All three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s."
+
+Using the inhour equation with your own six-group data (λ and β from §3.1), ρ = 300 pcm gives:
+text
+
+ρ = Σ βᵢ / (1 + λᵢ T)
+
+Trying T = 0.46 s: 8.8/1.006 + 71.3/1.0145 + 66.6/1.062 + 131.8/1.159 + 61.6/1.630 + 20.2/2.757 ≈ 300.6 pcm ✓
+
+So the asymptotic period is ≈ 0.46 s, not 2.5 s. (2.5 s corresponds to ~210 pcm ≈ $0.58.) The story still works — the 10 s period trip and the flux-rate trip both catch it — but the number as written is wrong. 0.46 s is also more dramatic for S-19, which is probably what you want.
+
+2. The IHX primary-side heat balance doesn't close.
+
+§4.3: "1,782 kg/s each; 545 °C in from hot pool, 375 °C out to cold pool" and "400 MWt each."
+
+Q = 1,782 × 1.27 × (545 − 375) = 384.7 MW, not 400. Six of those is 2,308 MW, which is ~82 MW short of core fission + pump heat (2,380 + 10 = 2,390 MW).
+
+Cleanest fixes, pick one:
+
+    Make IHX primary inlet 550 °C (matching the hot pool), keeping 375 °C outlet: Q = 1,782 × 1.27 × 175 ≈ 396 MW. Six gives 2,376 MW ≈ 2,380. Good enough.
+
+    Or raise primary IHX flow to ~1,855 kg/s.
+
+    Or lower the outlet to ~368 °C.
+
+I'd go with the first — the hot pool is 550 °C, so an IHX inlet at 545 °C implies a 5 K drop somewhere unaccounted for.
+
+3. Cover-gas cooldown pressure is inconsistent with your own volume change.
+
+§4.4: 320 m³ at 100%, 0.120 MPa. "Sodium expansion moves the gas volume by ≈90 m³ between 230 °C and full power. With a fixed gas inventory, cooldown alone would pull pressure down to ≈0.074 MPa."
+
+0.074 MPa is the temperature-only result: 0.120 × (503/823) = 0.0733. If you also include the +90 m³ volume change:
+
+P₂ = 0.120 × (320/410) × (503/823) = 0.057 MPa
+
+That's below your "never below 0.102 MPa" air-ingress limit, which actually strengthens the point. Just reword to something like: "temperature alone pulls it to ≈0.074 MPa; with the free-surface rise it is ≈0.057 MPa" — or drop the number and say "well below the air-ingress floor."
+
+4. The Mermaid diagram won't render.
+
+§1.2 has <pre class="mermaid"> but the page never loads the mermaid library. As shipped, readers see raw flowchart text. Either add <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script> plus an init call, or convert it to a plain ASCII diagram. (Given how long the spec is and how often it's likely printed, ASCII might actually be the better choice — it survives print CSS.)
+Worth double-checking
+
+5. Shim bank withdrawal rate slightly exceeds your own interlock.
+
+§3.4: shim bank speed 1 mm/s; §3.4 interlock: withdrawal reactivity rate ≤ 4 pcm/s.
+
+Bank A = 6 rods × 400 pcm. Using your integral worth formula W(d) = W_total(d − sin(2πd)/2π), peak differential worth per rod is 2 × 400 / 1000 = 0.8 pcm/mm. Six rods at 1 mm/s → 4.8 pcm/s at mid-travel.
+
+Either lower the bank speed to ~0.8 mm/s, raise the interlock to 5 pcm/s, or note that the drive controller limits the commanded speed near mid-travel. The single-rod case (2 mm/s × 0.8 = 1.6 pcm/s) and the RR bank (3 × 0.2 × 5 = 3 pcm/s) both pass fine.
+
+6. Source-range count rate at all-rods-in.
+
+§3.5: "SR count rate ≈ 15/(1 − k) cps, about 250 cps with all rods in."
+
+With your shutdown margin (−3,050 pcm at BOC), k ≈ 0.9695, so 15/(1−0.9695) = 492 cps, not 250. If you want 250 cps, you need k ≈ 0.94, or a different constant (≈7.6 instead of 15). Small thing, but operators who know the math will notice.
+
+7. Doppler reference temperature isn't specified.
+
+§3.2: ρ = −900 pcm × ln(T_f / T_ref). For this to produce −680 pcm at T_fuel = 1,107 °C, T_ref must be ≈ 648 K = 375 °C (core inlet). Worth stating explicitly, since the model needs it and readers will want to know why the number works out.
+
+8. Loop 2 duty vs. plant total.
+
+3 × 796 = 2,388 MWt, but core + primary pump heat = 2,390 MWt. Off by 2 MW. Trivially closable by saying 795.7 MWt per loop, but if anyone adds up the SG section duties (8 × 99.5 = 796) they'll hit the same 2,388. Probably fine — just be aware.
+
+9. Minor wording: "550 ±2 K".
+
+§9.4 rod auto: "Holds core outlet 550 ±2 K". Should be "±2 °C" or just "±2 K" — writing a Celsius setpoint with a Kelvin tolerance reads oddly. Same class of thing appears in a couple of places where a temperature difference is quoted with °C instead of K.
+
+10. Empty <ul> elements in the appendix TOC entries.
+
+The three appendix list items each contain an empty <ul></ul>. Harmless, but easy to remove.
+Suggestions (mostly presentation and game design)
+
+    Add scope="col" to <th>. There are dozens of tables here; it's a one-line-per-table change that makes screen readers much happier.
+
+    Add a "Symbols and units" section near §0.1. You define P/Q in the glossary, but 1/M, ECP, $, β_eff, Λ, DND, and pcm all deserve the same treatment in one place.
+
+    Note why fuel-assembly outlet (559 °C) > mixed core outlet (550 °C). It's because fuel assemblies carry ~92.5% of flow but ~97% of power. A one-line footnote in §2.5 would preempt confusion.
+
+    Consider stating the primary loop ΔT (175 K) in §1.1. It's derivable but not stated, and it's the number people reach for first.
+
+    The reactivity budget table (§3.3) doesn't include the Np-239 +30 pcm. Since you call it out in §3.1 as something to include in ECP, it might belong in the budget too, or at least a footnote.
+
+    Training mode suggestion. Given how punishing S-08, S-16, and S-27 are, a private-server toggle that disables the scenario director entirely would be welcome for new crews.
+
+    Vote-kick: consider a timeout ladder (first offense = server timeout, repeat = ban) rather than a straight ban. Your safeguard against punishing justified trips is good; a softer first step would match it.
+
+    Session handover. With no shifts, a player leaving mid-fault leaves the desk unattended. A "request handover" prompt that freezes the leaving player's controls for 30 s while a replacement sits down would reduce accidental AFK damage.
+
+    Walk times vs. session length. Your walking times (40–150 s) are realistic and create interdependence, which is great — but over a 2–4 h session with a major fault, the back-and-forth could wear. Consider a private-server option to scale walking speed ×1.5 for casual servers.
+
+Things done particularly well (worth keeping)
+
+    The heat balance, reactivity budget, and part-load table all cross-check against each other. That's rare and it shows.
+
+    The loop-3-loss table (§6.5) has a non-obvious optimal answer (60–70% to B) that rewards understanding over guessing. Excellent design.
+
+    §9.4's "deliberately worse than a crew" controllers are the right call for a multiplayer game — they let a solo player run the plant badly, and a full crew run it well.
+
+    §10.5's attention intervals table is a clever, non-punitive way to discourage AFK play.
+
+    The fatigue model rewarding smooth coordinated operation is exactly the right incentive structure for this kind of sim.
+
+    The hybrid analog/digital control room (§10.6) is both a nice period detail and a smart interaction design.
+
+    The sodium property appendix is accurate — I spot-checked density, cp, k, and vapour pressure at 550 °C and 950 °C and they all match the correlations.
+
+Fix the four definite errors and this is genuinely publication-quality as a design spec. The period error is the only one that affects gameplay logic; the rest are consistency nits that a careful reader will trip over.
+
+**Entity 5:**
+
+Overall assessment: This is an exceptionally strong, coherent, and playable design specification. It sits at a level of internal consistency and operational realism that is rare for a game design document—especially one targeting a multi-desk Roblox simulator. The numbers hang together, the topology is cleverly asymmetric for gameplay, the failure modes are grounded in real SFR experience (PFR, Monju, Phénix, BN-600/800, Superphénix, Fermi-1), and the multiplayer desk layout + scenario director create genuine crew dynamics rather than single-player “operator theatre.”
+The document reads as if it was written by someone who has both studied real SFR heat balances and thought carefully about what is fun and what is punishing in a shared virtual control room. That combination is the main strength.
+Strengths
+
+Heat balance and topology. 2 380 MWt → 1 000 MWe gross (42 %) is realistic for a modern SFR steam cycle. The three-loop / two-turbine arrangement with loop 2 split and hard-split reheaters is the best design decision in the document: it turns a routine “loss of one loop” into a non-trivial optimisation problem that rewards plant knowledge (the 60–70 % split table is excellent).
+Physics fidelity without licensing bloat. Kinetics constants, feedback coefficients, void worth, Doppler, and the absence of xenon are all inside published SFR ranges. The decision to make the 3-D multigroup model the primary physics engine (with point kinetics as fallback) is ambitious but correctly motivated.
+Operational realism that creates gameplay. Once-through SG behaviour, density-wave oscillation risk, reheat load limit, FCR products, LCO clocks in grid time, thermal-fatigue counting, and the deliberately mediocre auto controllers are all excellent. They force coordination and punish AFK or sloppy play without requiring constant hand-holding.
+Scenario library and director. Grounded in real events, with clear first cues, time windows, and good/poor-crew outcomes. The intensity budget and crew-fit rules are smart.
+Roblox implementation section. Tick structure, IQS amplitude/shape split, time-slicing, packing of the core-map temperatures, and the module interface are practical and show you have already thought about the hard parts.
+
+Potential inconsistencies / things to double-check
+
+Primary flow and temperature riseTotal primary flow 10 694 kg/s, ΔT 175 K.Using sodium cp ≈ 1.28–1.29 kJ/kg·K at the relevant temperatures gives roughly 2 380–2 400 MWt. Good.Per-assembly mean flow 32.9 kg/s and the orifice factors look consistent with the 301 fuel assemblies + leakageages.
+Secondary side3 × 3 112 kg/s, ΔT 200 K → ~2 390 MWt. Tight match.SG section duties (EV 62.6 / SH 21.2 / RH 15.7) sum correctly.
+Reactivity budgetIsothermal defect + power defect + burnup + margin + uncertainty ≈ 2 250 pcm is internally consistent with the listed coefficients.Whole-core void worth +1 800 pcm with no upper plenum is aggressive (as intended by OD-2) but still within the range of oxide cores without a sodium plenum.
+Rod worths and shutdown marginsPSS rods (RR + shims) give comfortable margin with one stuck; SSS alone is tighter but still usable. The integral worth S-curve is the standard form.
+DRACS capacity vs decay heat4 × 20 MWt at 550 °C. At 1 h after trip from full power you are at ~25 MWt, so three loops are enough with margin. The fail-as-is dampers (OD-6) correctly force field action in S-16.
+Minor numerical nits
+Core equivalent diameter 3.42 m for rings 0–10 with 179 mm pitch is close enough (exact calculation depends on how the outer ring is counted).
+Natural-circulation formula $Q_{nc} \approx 3.5\% \times (P/1\%)^{1/3}$ is a reasonable order-of-magnitude fit for this inventory.
+Condenser choke at ~3 kPa and the one-pump vs two-pump tables are sensible for Bothnian Sea temperatures.
+
+
+No major arithmetic contradictions jumped out. The document’s claim that “every number agrees with every other number” appears to hold for the heat balance and the main reactivity numbers.
+Suggestions (priority order)
+High priority / gameplay & realism
+
+Reheat mismatch is the star feature. Consider adding a small permanent display or trend on the SG desk that shows the expected hot-reheat temperature difference for the current split and turbine loads. Good crews will already do the arithmetic; mediocre crews will learn faster.
+Thermal fatigue visibility. Right now fatigue is mostly hidden until end-of-shift. Consider a subtle “component stress” indicator (or colour on the plant mimic) that becomes visible only after a certain usage threshold, so attentive operators can see the cost of sloppy coordination in real time without turning it into a constant HUD distraction.
+Prompt-critical / severe accident hand-off. The amplitude equation correctly notes that above ~0.9β you should stop integrating and go to a scripted core-damage event. Make the transition criteria and the subsequent “core damage flag” behaviour explicit in the scenario director and in the protection logic so the plant doesn’t try to keep solving the kinetics through an excursion.
+Cover-gas activity and fuel failure. The distinction between gas leaker (cover-gas Xe/Kr rise, quiet DND) and open failure (DND rise) is correct. Make sure the chemistry desk has a clear, time-delayed spectrum display so the crew can actually diagnose which type they have before the 8-grid-hour LCO-12 clock expires.
+
+Medium priority / implementation & polish
+
+Cross-section generation path. You already point at OpenMC + homogenisation. For a Roblox project it is worth deciding early whether you will ship a fixed few-group library tuned to the validation targets or attempt any form of burnup-dependent update at runtime. The latter is expensive.
+Sensor lag and noise. The 3 s thermocouple lag and ±1 K noise are good. Apply the same discipline to hydrogen meters, DND, and wide-range channels so that “noise” is never pure white; give it realistic autocorrelation.
+Local-only action timing. The times listed are realistic. In Roblox, make the ProximityPrompt hold durations match those numbers and require the player to stay within range; otherwise the field-operator role becomes trivial.
+Persistence migration. Version the save format from day one (as you already note). Fatigue, cold-trap loading, and isolated equipment are the state that will hurt most if a later revision breaks the schema.
+
+Lower priority / nice-to-haves
+
+Add a short “known simplifications” subsection (e.g. no axial power shape feedback on the reheaters beyond the existing attemperators, simplified secondary sodium transport as pure delay lines, etc.). This helps future contributors and keeps the scope honest.
+Consider a very light “training mode” that freezes the scenario director and gives the crew a checklist of the classic manoeuvres (loss of loop 3 with correct split, house-load transfer, etc.). Many players will need it before they can enjoy the full difficulty.
+The hybrid analog + digital control-room rule (“screens never change plant state”) is excellent for immersion and for preventing “click everything” play. Keep it absolute.
+
+Roblox-specific feasibility note
+Real-time 3-D multigroup space-time kinetics on a hexagonal-Z mesh of ~26 k unknowns is aggressive but not impossible if:
+
+the shape step is strictly time-sliced and yields after a few ms,
+you use --!native and careful array layout,
+the amplitude step stays on the prompt-jump form,
+and you keep the point-kinetics fallback for low-power or degraded servers.
+
+The rest of the plant (thermal nodes, valves, protection, electrical) is well within normal Roblox server capacity.
+
+Bottom line: This is already one of the most carefully thought-out nuclear plant simulator designs I have seen for a multiplayer game. The physics is credible, the operational asymmetry creates real crew work, and the scenario system has teeth. The main remaining work is implementation discipline (especially the kinetics solver and the fatigue/leak-growth models) and playtesting the desk workload with 3–8 players.
+
+**Entity 6:**
+
+The specification is extraordinarily well-engineered: the heat balance, Doppler logarithmic integrals, flow-zoning ratios, and assembly counts cross-reference cleanly across sections.   
+HTML
+
+Below is an engineering and simulation review highlighting critical physical edge cases, clock discrepancies, Luau execution bottlenecks, and minor spec inconsistencies.
+1. Physics & Thermal-Hydraulic Discrepancies
+
+    Primary Pump Trip Scram Trap (RB-2 vs. Protection Logic)
+
+       
+    HTML
+
+    In §4.2, a tripping primary pump coasts down via Q(t)=Q0​/(1+t/10 s). Within 10 seconds, that pump drops to 50% flow, dragging total primary flow from 3 pumps down to ≈83.3% (and down to ≈67% once the check valve seats).   
+    HTML+ 1
+
+    However, RB-2 runs power down at 60 %/min (1.0 %FP/s) using shim drive-in at 10 mm/s. At 10 mm/s, after 8 seconds the shims have moved only 80 mm (8% insertion). Per your S-curve in §3.4, 8% insertion yields less than 0.5% of total rod worth. Power will still be >98 %FP while flow has fallen to ≈85%, driving P/Q to:
+       
+    HTML+ 2
+    QP​≈0.850.98​≈1.15
+
+
+    Because the protection system in §9.5 mandates an immediate reactor trip at P/Q≥1.12, RB-2 will invariably trip the reactor on over-temperature/under-flow within 6–8 seconds.   
+    HTML+ 1
+
+    Fix: Either add a 5–8 s transient delay filter to the P/Q trip during an initiated runback, program the remaining two primary pumps' VFDs to immediately ramp to 105% on a pump trip, or drop a dedicated fast-setback rod bank instead of driving shims at 10 mm/s.   
+    HTML
+
+    LCO-7 Violation on Secondary Pump Trips
+
+       
+    HTML
+
+    LCO-7 requires secondary IHX pressure to remain ≥0.2 MPa above primary pressure.   
+    HTML
+
+    At 100%, primary static head at the bottom of the IHX is ≈0.20–0.22 MPa (0.12 MPa cover gas + ≈10–12 m of sodium head at 823 kg/m3). When a secondary pump trips (S-03/S-04), the 0.45 MPa dynamic pump head vanishes in ≈5–10 s. Secondary pressure drops to the buffer tank gas cushion (0.30 MPa). Secondary minus primary pressure then falls to:
+       
+    HTML+ 2
+    ΔP≈0.30 MPa−0.22 MPa=0.08 MPa
+
+
+    This immediately trips LCO-7 (<0.2 MPa) on an un-isolated idle loop.   
+    HTML
+
+    Fix: Clarify that the buffer tank sits at an elevated physical datum providing static liquid head, raise the buffer tank gas baseline to ≈0.38–0.40 MPa, or scope LCO-7 to running loops only.   
+    HTML
+
+    Clock Pacing Conflict (×12 vs. ×360)
+
+       
+    HTML
+
+    In §0.2, "Slow processes" run at ×360 (where 1 hour passes in 10 real seconds), and are listed as driving "hydrogen drift" and "fuel failure hazard". But in §12.2 and §12.4, fuel failure progression and tube leak self-wastage are defined in "grid-hours" (×12, where 1 hour is 5 real minutes).   
+    HTML+ 1
+
+    If micro-leak growth (doubling every 2–6 hours per §12.4) ran at ×360, a pinhole leak would blow out into a tube rupture within 30 to 60 real seconds—making scenario S-01's 20–60 minute response window impossible.   
+    HTML
+
+    Fix: In §0.2, explicitly restrict ×360 to bulk equilibrium processes (core burnup, cold-trap capacity loading, Np-239 decay), and formally bind fuel degradation, pin swelling, and tube wastage to the ×12 Grid Clock.   
+    HTML+ 1
+
+    S-16 Blackout Acceleration Contradiction
+
+       
+    HTML
+
+    §13.2 notes S-16 (Station Blackout) lasts "≈ 5 h, ≈ 30 min with ×10 acceleration". However, §0.2 explicitly forbids ×10 acceleration if any P1 or P2 alarms are active. A full blackout will light up multiple P1 alarms (loss of offsite power, breaker trips, bus voltage collapse, reactor scram).   
+    HTML+ 2
+
+    Fix: Add an override clause in §0.2 permitting the Shift Supervisor to engage ×10 acceleration during dead-station blackout conditions once the reactor is confirmed subcritical.   
+    HTML
+
+2. Luau Engine & Numerical Architecture
+
+    Implicit Formulation for the 0.1 s Prompt-Jump Solver
+
+       
+    HTML
+
+    In §14.2, the amplitude solver updates precursors explicitly using previous-step power: s[i] = s[i] * e + beta[i] * n * (1 - e). During a rapid scram, using n(t) instead of n(t+Δt) introduces lag and artificial over-prediction of delayed neutron sources.   
+    HTML+ 1
+
+    You can solve n(t+Δt) fully implicitly with zero matrix inversion. Substituting si​(t+Δt)=si​(t)e−λi​Δt+βi​n(t+Δt)(1−e−λi​Δt) into n=∑si​/(β−ρ) yields:
+    n(t+Δt)=∑i=16​βi​e−λi​Δt−ρ(t+Δt)∑i=16​si​(t)e−λi​Δt​
+    Lua
+
+    -- Unconditionally stable, lag-free implicit prompt jump
+    local sum_s_decay = 0
+    local sum_beta_decay = 0
+    for i = 1, 6 do
+      local e = exp_lambda_dt[i] -- precalculated
+      s[i] = s[i] * e
+      sum_s_decay = sum_s_decay + s[i]
+      sum_beta_decay = sum_beta_decay + beta[i] * e
+    end
+
+    local denom = sum_beta_decay - rho
+    if denom <= 0.05 * BETA then
+      -- Prompt-critical trip / core-damage handover
+      n = triggerPromptDisassembly()
+    else
+      n = sum_s_decay / denom
+      for i = 1, 6 do
+        s[i] = s[i] + beta[i] * n * (1 - exp_lambda_dt[i])
+      end
+    end
+
+    Luau Memory Footprint for the 3D Multigroup Mesh
+
+       
+    HTML
+
+    With 469 radial positions × 14 axial nodes × 4 energy groups = 26,264 flux nodes, allocating nested Luau tables (mesh[r][z][g]) creates over 30,000 heap objects, triggering Luau GC pauses during the time-sliced SOR sweeps.   
+    HTML
+
+    Fix: Store cross sections, precursors, and flux values in flat native Luau buffer instances (buffer.create(26264 * 4) for float32). Buffers are cache-contiguous, SIMD-aligned, completely bypass the garbage collector, and read/write in <10 ns via buffer.readf32 and buffer.writef32.   
+    HTML
+
+    Adjoint Weighting Strategy
+
+       
+    HTML
+
+    Computing dynamic adjoint fluxes ϕ∗(r,z,g) in real time on every shape step is too expensive for a Roblox server budget. Since fast reactors have weak spatial flux distortion compared to thermal systems, you can precalculate a static BOC 3D adjoint flux map ϕ0∗​ offline. Weighting dynamic nodal shapes against static ϕ0∗​ is standard quasi-static practice and preserves high accuracy for ρ(t) and βeff​(t).   
+    HTML+ 1
+
+3. Balance of Plant & Operational Mechanics
+
+    Single Turbine Trip Transient on Splitter (S-05 / §6.3)
+
+       
+    HTML
+
+    When Turbine A trips from 100%, MSIV-A / stop valves close in <0.1 s. Check valve NRV-2A prevents reverse flow from Header A into SG2. However, SG2 continues generating 291.7 kg/s of steam. If CV-2B remains wide open, all 291.7 kg/s will divert into Header B, creating a total steam influx of:
+       
+    HTML+ 2
+    m˙B​=291.7 kg/s (SG3)+291.7 kg/s (SG2)=583.4 kg/s
+
+
+    Turbine B's maximum swallowing capacity is only 437.5 kg/s. Without fast-acting runback or immediate opening of LP/HP bypass on Unit B, Header B will rapidly overpressurize and pop the 15.8 MPa SG safety valves. Clarifying that S-05 requires the SG desk to immediately stroke CV-2A/B or modulate the splitter will emphasize operational coordination.   
+    HTML+ 3
+
+    Minor Data Alignments
+
+       
+    HTML
+
+        Primary mass flow: §1.1 lists 10,690 kg/s, while §4.2 lists 3×3,565=10,694 kg/s (or 10,695 kg/s).   
+        HTML+ 1
+
+        Shim rod tag conflict: In §3.4 and §10.2, shims are designated Bank A/B/C, but Appendix B lists them as SM (to prevent collision with SR Source Range). Update §10.2 to use SM for clarity.   
+        HTML+ 1
+
+**Entity 7:**
+
+Yo! First off, massive respect. This is easily one of the most meticulously detailed, physically grounded, and thoughtfully designed simulation specs I’ve ever seen for a Roblox game. You haven't just built a game; you've essentially written a licensing-grade preliminary safety analysis report (PSAR) mixed with a brilliant multiplayer game design document. 
+The asymmetric Loop 2 splitter, the Nordic grid integration (SE2/SE3 bidding zones, FCR-N/FCR-D), and the "deliberately worse than a crew" auto-controllers are absolute masterstrokes for forcing human cooperation.
+That said, I’ve put on my nuclear engineer / Roblox technical director hat. Here is a review of your spec, including a few physics corrections, Roblox implementation tips, and some minor copyediting.
+1. Physics & Engineering Corrections (The "Gotchas")
+
+    The Phénix 1989–1990 Reference (S-09): 
+        Your spec: "Unexplained negative reactivity trips".
+        Correction: The real-life Phénix incidents in 1989 and 1990 were actually unexplained positive reactivity insertions (power spikes). The cause was thermal stratification in the hot pool (cold sodium from the IHXs cooling the diagrid unevenly), which caused structural deformations that inserted positive reactivity, leading to trips. You should change S-09 to "Unexplained positive reactivity trips / power spikes".
+    Heat Balance Nitpick (Primary Pump Heat vs. SG Duty):
+        Reactor = 2,380 MWt.
+        Primary pump heat = ~10 MWt (Section 4.2).
+        Total heat into primary sodium = 2,390 MWt.
+        Secondary loops remove = 3 × 796 MWt = 2,388 MWt.
+        Note: You are missing 2 MWt. This is likely just rounding (e.g., secondary flow is actually 796.6 MWt per loop) or parasitic heat loss to the guard vessel/environment. Just add a tiny footnote or tweak the SG duty to 796.7 MWt so the math nerds don't sweat it!
+    Decay Heat Formula vs. Table (Section 3.6):
+        Your formula yields 156 MW at t=1s, but your table says 151 MW. This is a ~3% difference, likely due to the specific Pu-239/U-238 fast fission mix vs. standard ANSI/ANS-5.1 curves. It's completely fine for a game, but if you want perfect alignment, tweak the 0.066 coefficient to `0.0639`.
+
+2. Roblox / Luau Implementation Tips (Section 14)
+Your performance guardrails are incredibly smart, especially yielding the 3D shape solver when it hits 4ms. However, Luau has some specific quirks you need to watch out for with 26,000+ nodes:
+
+    Avoid Nested Tables / Objects: For the 26,264 flux unknowns and 6,300 thermal states, do not use nested tables or Roblox Instances. Use flat 1D arrays (table.create(26264, 0)). Accessing flux[i] is exponentially faster and creates zero Garbage Collection (GC) spikes compared to nodes[x][y][z].
+    Replication Payload: Packing 331 temperatures into 662 bytes via string.pack is brilliant. Since you are using UnreliableRemoteEvent, keep in mind Roblox's packet limits. 662 bytes is well under the safe threshold (usually ~1KB per event), but ensure you aren't accidentally serializing it into a dictionary before packing.
+    Memory Management for the Core Map: When updating the core map, reuse the same string.pack buffer or table rather than creating a new one every tick. 
+    Hexagonal Mesh Math: For the Red-Black SOR solver, map your hexagonal coordinates to a flat array index using an offset-coord system (e.g., index = row * width + col + offset). Pre-calculate the neighbor indices for all 469 radial positions into a flat array on init() so the solver loop doesn't have to do hex-math on the fly.
+
+3. Game Design & Multiplayer Mechanics
+
+    The "Vote-Kick" Safeguard (10.7): 
+        Praise: "The vote opens only if the server finds no trip condition... so a justified trip is never punished." This is genius. It completely solves the "troll scrams the reactor and blames it on an alarm" problem.
+    Shift Handovers / Logbooks: 
+        You mentioned there are no shifts (10.7), but the game runs on "grid days". If a player logs off and another takes their desk, they need context. I highly recommend adding a Digital Logbook / Shift Report feature on the Shift Supervisor desk (10.2) where players can type notes, LCO statuses, and isolated equipment states that persist for the session.
+    The Splitter Valve Puzzle (6.4 & 6.5):
+        This is the best gameplay mechanic in the spec. Forcing the SG Desk and Turbine Desks to communicate to balance the reheat temperature vs. turbine load limit is incredible emergent gameplay.
+
+4. Copyediting & Typos (HTML / Text)
+There are a few random spaces that slipped into your text, likely from line-break formatting in your HTML editor:
+
+    1.4 Site: "...sends some back on purpose fo r de-icing" -> for
+    1.4 Site: "...four EDG buildings in separated d ivisions" -> divisions
+    7.6 Feedwater trains: "...HP heater bypas s" -> bypass
+    10.2 Reactor Desk: "...quadrant til t" -> tilt
+    10.2 Primary Desk: "...cover gas pressure and tempe rature" -> temperature
+    12.1 Thermal fatigue: "...plugging temperature rises 2 K per 10% loading ab ove 70%" -> above
+
+5. Minor Inconsistencies / Edge Cases
+
+    Cover Gas Pressure (4.4): Setpoint is 0.120 MPa. Trip is 0.160 MPa. In Section 9.5, the alarm is 0.140 and trip is 0.160. This is consistent, but note that during a Station Blackout (S-16), if the pool heats up and the argon vents to decay tanks, the players need to know how to manually admit argon from the backup panels or field stations if the auto-valves fail.
+    Sodium Freezing (2.4 vs 5.1): Freezing is 97.8 °C. Trace heating alarm is < 150 °C. This is a good safety margin. However, in Scenario S-12 (Heater fault on a drained line), you mention DN50 freezes in 40 mins. Make sure the "Thawing" mechanic explicitly warns players that if they thaw the middle of the pipe, the 2.5% expansion will rupture it (which you did! Great detail).
+
+Final Verdict
+This is S-Tier design. The blend of real-world Nordic grid constraints, accurate SFR physics (like the positive void coefficient and lack of xenon poisoning), and multiplayer friction (walking times, local-only actions, anti-AFK drift) makes this a dream project. 
+Fix the Phénix reactivity sign, clean up those typos, and start coding. If the Luau optimization holds up, you have a masterpiece on your hands.
+
+**Entity 7:**
+
+See the following file: "REACTOR SPEC\3A SPEC REVIEW\Architectural Integrity of a Nuclear Reactor Simulator_ An In-Depth Audit of Physics, Systems, and Human Factors.pdf" created by Qwen3.7-Plus when asked to review the entire spec
+
+**Entity 8:**
+
+See the following file: "REACTOR SPEC\3A SPEC REVIEW\Verifying the Integrity of a Sodium-Cooled Fast Reactor Specification_ An Integrated Analysis Against Global Benchmarks.pdf" created by Qwen3.8-Max when asked to audit the entire spec
+

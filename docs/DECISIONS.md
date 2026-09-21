@@ -179,3 +179,93 @@ node can be added once a cited 15-15Ti heat capacity is in Config; nothing else 
 The Appendix A table gives c_p = 1.286 kJ/(kg·K) at 950 °C; the Appendix A correlation gives 1.28547, which rounds to
 1.285. Every other table entry matches the correlation to half its last digit. The correlation is used;
 `tests/FuelThermalSpec` holds that one entry to a whole last digit.
+
+---
+
+# Findings from the external spec review (Rev A3), audited 2026-09-21
+
+Eight reviewers read Rev A3; their notes are in `REACTOR SPEC/3A SPEC REVIEW/reactor spec review.txt`. Every numeric
+claim was recomputed from the spec's own primitives by `tools/derive/spec_review_check.py`; the claim-by-claim
+verdicts (including the ones where the reviewers were wrong and the spec is right) are in `docs/SPEC_REVIEW_AUDIT.md`.
+F16–F29 are the confirmed ones. All are open questions for Aqua.
+
+## F16 IHX inlet temperature (§4.3) — Open question
+1,782 kg/s from 545 → 375 °C carries **385.2 MWt** (Appendix A enthalpy), so six units remove 2,311 MWt against the
+2,390 MWt the core and pumps put in — a 79 MWt shortfall. With the hot pool's own 550 °C the duty is 396.4 MWt and six
+units give 2,378 MWt. LMTD is 38.0 K at 545 °C and 41.2 K at 550 °C against the stated "≈ 40 K"; UA is 10.1 and
+9.6 MW/K against "≈ 10 MW/K". **Proposal:** change the IHX inlet to 550 °C, or state the 5 K hot-pool-to-IHX loss and
+restate the rating. The 400 MWt per unit is then a rating with ~1 % margin, not the duty.
+
+## F17 DRACS coping time (§4.5) — Open question
+"The pool rises 200 K in ≈ 5 h" comes from the spec's own file-20 calc, which integrates only the first term of the
+§3.6 decay-heat formula. Integrating the formula as written (both terms) over the same 2,412 MJ/K pool (1,250 t sodium
++ 1,500 t steel) gives **6.60 h**. **Proposal:** say ≈ 6.5 h, which also moves S-16 at ×10 from ≈ 30 to ≈ 40 min.
+
+## F18 Shim bank A vs the 4 pcm/s interlock (§3.4) — Open question
+W(d) = W_total(d − sin 2πd/2π) has peak differential worth 2·W_total per stroke. Bank A (6 × 400 pcm) at the 1 mm/s
+bank speed peaks at **4.80 pcm/s**, above the stated 4 pcm/s interlock. Bank B 3.60, bank C 2.40, a single shim rod at
+2 mm/s 1.60, the RR bank at 5 mm/s 3.00 — all inside it. **Proposal:** 0.8 mm/s for bank A, or state that the drive
+controller limits commanded speed near mid-stroke.
+
+## F19 Regulating band worth vs the reactivity budget (§3.3, §3.4) — Open question
+The 400–700 mm band is **163.5 pcm** on the spec's own S-curve, but §3.3 reserves 250 pcm for "RR band, load
+following". A 250–750 mm band is 245.5 pcm. **Proposal:** widen the band to 250–750 mm, or reduce the reservation to
+165 pcm.
+
+## F20 Regulating band drift time (§10.5) — Open question
+3.0 pcm/EFPD at the ×360 slow clock is **0.75 pcm per real minute**. Mid-band to the edge of the 163 pcm band is
+therefore **109 real minutes**, not the ≈ 20 min in §10.5 (164 min if the band is widened per F19). **Proposal:**
+restate §10.5, or raise the burnup drift rate if 20 min is the intended pacing.
+
+## F21 Secondary dump tank size (§5.1) — Open question
+400 t of sodium occupies 443 m³ at the 200 °C idle setpoint (98 % of the 450 m³ tank), 457 m³ at the 320 °C SG outlet
+and **469 m³ at 420 °C**. A hot dump does not fit. **Proposal:** 500 m³, or state that the drain follows a cooldown to
+the trace-heating setpoint.
+
+## F22 Low part-load rows vs the turbine (§9.2, §7.1) — Open question
+The 10 % and 5 % rows are 86 and 42 MWe gross — below the 150 MWe minimum stable load **even on one turbine** — and
+their main steam (408 and 401 °C) is below the 420 °C hot-reheat trip. The 20 % and 30 % rows are below the minimum if
+both turbines are online. **Proposal:** state that below ~25 %FP the plant is on bypass/house load with the turbines
+off, and give the bypass path for those rows.
+
+## F23 Natural-circulation formula (§4.2) — Open question
+Q_nc ≈ 3.5 % × (P / 1 %FP)^⅓ gives **16.25 %** rated flow at 100 %FP. The intended form is (P / 100 %FP)^⅓, which
+gives 3.5 % at full power and 0.75 % at 1 %FP. **Proposal:** fix the denominator.
+
+## F24 House load vs listed auxiliaries (§1.1) — Open question
+Four auxiliary groups alone (4 × 9.8 MW feed pumps, 3 × 3.3 MW primary, 3 × 2.0 MW secondary, 4 × 3.7 MW CW) total
+**69.9 MW of shaft power** (73.5 MW of nameplate) against the ≈ 65 MWe house load, before condensate pumps, heaters,
+sodium services, HVAC and losses. **Proposal:** state rated auxiliary load, typical absorbed load and house-load
+requirement separately.
+
+## F25 Amplitude update in §14.2 — Resolved in code, spec wording open
+The §14.2 snippet uses the previous step's n in the precursor update. Measured growth-rate error at dt = 0.1 s:
+**−3.4 % at 0.5β, −11.4 % at 0.8β, −21.7 % at 0.9β**. A fully implicit form (suggested by one reviewer) errs the other
+way: +3.6 %, +15.3 %, +45.5 %. The linear-n integrator already implemented (D-015) gives +0.0 %, +0.4 %, +2.2 %.
+**Proposal:** replace the snippet in §14.2 with the D-015 form.
+
+## F26 Clock assignments (§0.2 vs §12.2, §12.4, §13.2) — Open question
+§0.2 puts "fuel failure hazard" on the ×360 slow clock, while §12.2 defines random failure per **grid day** and §12.4
+leak doubling per **grid hour** (×12) — a 30× difference that would collapse S-01's 20–60 min response window. §13.2
+also says S-16 takes "≈ 30 min with ×10", but §0.2 bars ×10 whenever P1/P2 alarms are active, which a blackout
+guarantees. §12.2's creep law "per 100 h" does not say real or grid hours (12× either way). **Proposal:** bind all
+degradation models to the grid clock, keep ×360 for burnup, impurity ingress and cold-trap loading only, and add the
+blackout exemption for ×10 once the reactor is confirmed subcritical.
+
+## F27 Secondary-over-primary pressure and the pump-trip transient (§4.3, §5.1, §9.5, LCO-7) — Open question
+§4.3 says the secondary stays ≥ 0.4 MPa above the primary; LCO-7 says ≥ 0.2 MPa. On an idle loop the secondary falls
+to the 0.30 MPa buffer-tank cushion, which is close to the primary pressure at the IHX, so the LCO reads violated
+unless its scope is "running loops" or the buffer tank sits at a stated elevation. Separately, a primary pump trip
+with RB-2 running at 60 %/min peaks at **P/Q = 1.08** against the 1.12 trip while the flap valve is open, but flow
+steps to 2/3 when the valve seats, which would put P/Q at ≈ 1.35 unless the surviving pumps ramp up. **Proposal:**
+reconcile the two pressure limits, and state the check-valve seating condition and the surviving pumps' VFD response.
+
+## F28 Linear-heat-rate basis (§2.4) — Wording
+27.7 kW/m is correct **because 95 % of fission energy is deposited in the pins** (the spec's file-20 calc uses that
+split; the remaining 5 % heats coolant and structure). Two reviewers recomputed 29.2 kW/m by putting all 2,380 MWt in
+the pins. **Proposal:** state the 95 % split in §2.4 next to the linear heat rate.
+
+## F29 Canonical power and section duty (§1.1, §6) — Wording
+24 × 99.5 MWt = 2,388 MWt is the rounded section duty; the exact figure for core plus pump heat is 99.583 MWt per
+section. **Proposal:** name §1.1 as the canonical thermal power, mark the section duty as derived and rounded, and
+soften the "every number agrees with every other number" sentence.
