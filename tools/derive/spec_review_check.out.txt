@@ -126,17 +126,17 @@ KALLSKAR SPEC REVIEW — INDEPENDENT RECOMPUTATION
      E3 is right that the intended form is (P / 100 %FP)^(1/3), i.e. 3.5 % at full power. E5 called it
      'a reasonable order-of-magnitude fit', which only holds for the corrected form.
 
-17. HOUSE LOAD vs LISTED MOTOR RATINGS  (§1.1: ~65 MWe house load)
-  nameplate motor ratings:
-    4 main feed pumps    4 x  9.8 MW =  39.2 MW
-    3 primary pumps      3 x  4.0 MW =  12.0 MW
-    3 secondary pumps    3 x  2.5 MW =   7.5 MW
-    4 CW pumps           4 x  3.7 MW =  14.8 MW
-    total 73.5 MW of nameplate rating alone
-  using SHAFT powers where the spec gives them (primary 3.3, secondary 2.0): 69.9 MW
-  => even on shaft power the four biggest auxiliary groups are 70 MW of the 65 MWe house load,
-     leaving ~5 MW for condensate pumps, heaters, sodium services, HVAC and losses. Too tight: E3 is right
-     that the electrical balance needs to be stated explicitly.
+17. HOUSE LOAD vs LISTED AUXILIARIES  (§1.1: ~65 MWe house load; E3 claims the listed motors already exceed it)
+  feed pump check: 7.15 MW hydraulic per train -> 8.72 MW shaft at 82 % -> 9.09 MW absorbed; the spec's calc says 9.8 MW per train
+  => 9.8 MW is per TRAIN (two pumps), i.e. 4.9 MW per pump. E3 read it as per pump and doubled it.
+    main feed pumps (2 trains)                  19.6 MW
+    primary pumps (3 x 3.3 MW shaft / 0.96)     10.3 MW
+    secondary pumps (3 x 2.0 MW shaft / 0.96)    6.2 MW
+    circulating water (4 x 3.7 MW)              14.8 MW
+    listed major drives total 51.0 MWe, leaving 14.0 MWe of the 65 MWe house load for
+    condensate pumps, heater drains, sodium trace heating and cold traps, HVAC, lighting and transformer losses.
+  => the 65 MWe house load is consistent. E3's arithmetic is refuted; but §7.6's '12 MW motors' cannot belong
+     to a 4.9 MW pump, so that parenthetical needs rewording (F24).
 
 18. AMPLITUDE UPDATE ACCURACY  (§14.2 snippet uses the previous step's n in the precursor update)
   rho = 0.5 beta (180 pcm), exact inhour period 4.0572 s:

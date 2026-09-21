@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A3</title>
+  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A4</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -571,15 +571,15 @@
           </li>
           <li class="n2 sys-ink">
             <a href="#appendix-a-sodium-properties">Appendix A. Sodium properties</a>
-            <ul></ul>
+            
           </li>
           <li class="n2 sys-ink">
             <a href="#appendix-b-tags-and-glossary">Appendix B. Tags and glossary</a>
-            <ul></ul>
+            
           </li>
           <li class="n2 sys-ink">
             <a href="#appendix-c-revision-log">Appendix C. Revision log</a>
-            <ul></ul>
+            
           </li>
         </ul>
       </details>
@@ -613,15 +613,15 @@
       </header>
 
       <h2 class="sys-ink" id="0-how-to-read-this-spec">0. How to read this spec</h2>
-      <p>Every number here is a starting value that agrees with every other number. The heat balance was computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't need to be.</p>
+      <p>Every number here is a starting value meant to agree with every other number. Values marked † are tuning values, and a few plant-level figures are rounded (the steam generator section duty, for one). §1.1 is the canonical thermal power; everything else derives from it. Appendix C lists what Rev A4 corrected. The heat balance was computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't need to be.</p>
 
       <h3 id="01-conventions">0.1 Conventions</h3>
       <div class="tw">
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Convention</th>
+              <th scope="col">Item</th>
+              <th scope="col">Convention</th>
             </tr>
           </thead>
           <tbody>
@@ -658,9 +658,9 @@
         <table>
           <thead>
             <tr>
-              <th>Clock</th>
-              <th>Rate</th>
-              <th>Drives</th>
+              <th scope="col">Clock</th>
+              <th scope="col">Rate</th>
+              <th scope="col">Drives</th>
             </tr>
           </thead>
           <tbody>
@@ -671,7 +671,7 @@
             </tr>
             <tr>
               <td>Low-power acceleration †</td>
-              <td>×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree</td>
+              <td>×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree; also allowed in a station blackout once the reactor is confirmed subcritical</td>
               <td>Heatup, cooldown, long waits in blackout scenarios</td>
             </tr>
             <tr>
@@ -682,7 +682,7 @@
             <tr>
               <td>Slow processes †</td>
               <td>×360 of real time</td>
-              <td>Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures, fuel failure hazard</td>
+              <td>Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures. Fuel and tube degradation (§12.2, §12.4) run on the grid clock, not here</td>
             </tr>
           </tbody>
         </table>
@@ -696,10 +696,10 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Decision</th>
-              <th>Chosen</th>
-              <th>Affects</th>
+              <th scope="col">ID</th>
+              <th scope="col">Decision</th>
+              <th scope="col">Chosen</th>
+              <th scope="col">Affects</th>
             </tr>
           </thead>
           <tbody>
@@ -768,8 +768,8 @@
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -791,7 +791,7 @@
             </tr>
             <tr>
               <td>Net output</td>
-              <td>≈ 935 MWe (house load ≈ 65 MWe)</td>
+              <td>≈ 935 MWe (house load ≈ 65 MWe: main feed pumps 19.6, primary pumps 10.3, secondary pumps 6.2, circulating water 14.8, everything else ≈ 14)</td>
             </tr>
             <tr>
               <td>Gross efficiency</td>
@@ -799,11 +799,11 @@
             </tr>
             <tr>
               <td>Primary circuit</td>
-              <td>1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,690 kg/s</td>
+              <td>1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,694 kg/s</td>
             </tr>
             <tr>
               <td>Secondary circuit</td>
-              <td>3 loops, 3,110 kg/s each, 320 → 520 °C, ≈ 400 t sodium each</td>
+              <td>3 loops, 3,112 kg/s each, 320 → 520 °C, ≈ 400 t sodium each</td>
             </tr>
             <tr>
               <td>Steam generators</td>
@@ -874,8 +874,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Feature</th>
-              <th>Source</th>
+              <th scope="col">Feature</th>
+              <th scope="col">Source</th>
             </tr>
           </thead>
           <tbody>
@@ -922,8 +922,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Choice</th>
+              <th scope="col">Item</th>
+              <th scope="col">Choice</th>
             </tr>
           </thead>
           <tbody>
@@ -973,8 +973,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Year</th>
-              <th>Event</th>
+              <th scope="col">Year</th>
+              <th scope="col">Event</th>
             </tr>
           </thead>
           <tbody>
@@ -1023,8 +1023,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Choice</th>
+              <th scope="col">Item</th>
+              <th scope="col">Choice</th>
             </tr>
           </thead>
           <tbody>
@@ -1070,10 +1070,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Season</th>
-              <th>Grid</th>
-              <th>Sea and weather</th>
-              <th>Plant effects</th>
+              <th scope="col">Season</th>
+              <th scope="col">Grid</th>
+              <th scope="col">Sea and weather</th>
+              <th scope="col">Plant effects</th>
             </tr>
           </thead>
           <tbody>
@@ -1112,8 +1112,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -1155,9 +1155,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Ring</th>
-              <th>Positions</th>
-              <th>Contents</th>
+              <th scope="col">Ring</th>
+              <th scope="col">Positions</th>
+              <th scope="col">Contents</th>
             </tr>
           </thead>
           <tbody>
@@ -1242,8 +1242,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -1292,16 +1292,16 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Quantity</th>
-              <th>At 100%</th>
-              <th>Alarm</th>
-              <th>Limit</th>
+              <th scope="col">Quantity</th>
+              <th scope="col">At 100%</th>
+              <th scope="col">Alarm</th>
+              <th scope="col">Limit</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Average linear heat rate</td>
-              <td>27.7 kW/m</td>
+              <td>27.7 kW/m (95% of fission energy is deposited in the pins; the rest heats coolant and structure)</td>
               <td>–</td>
               <td>–</td>
             </tr>
@@ -1363,10 +1363,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Orifice zone</th>
-              <th>Rings</th>
-              <th>Fuel assemblies</th>
-              <th>Flow factor <em>f</em></th>
+              <th scope="col">Orifice zone</th>
+              <th scope="col">Rings</th>
+              <th scope="col">Fuel assemblies</th>
+              <th scope="col">Flow factor <em>f</em></th>
             </tr>
           </thead>
           <tbody>
@@ -1403,10 +1403,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Group</th>
-              <th>λ (s⁻¹)</th>
-              <th>Relative abundance</th>
-              <th>β_i (pcm)</th>
+              <th scope="col">Group</th>
+              <th scope="col">λ (s⁻¹)</th>
+              <th scope="col">Relative abundance</th>
+              <th scope="col">β_i (pcm)</th>
             </tr>
           </thead>
           <tbody>
@@ -1460,10 +1460,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Feedback</th>
-              <th>Driving temperature</th>
-              <th>Coefficient</th>
-              <th>Lag</th>
+              <th scope="col">Feedback</th>
+              <th scope="col">Driving temperature</th>
+              <th scope="col">Coefficient</th>
+              <th scope="col">Lag</th>
             </tr>
           </thead>
           <tbody>
@@ -1517,8 +1517,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Derived quantity</th>
-              <th>Value</th>
+              <th scope="col">Derived quantity</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -1561,8 +1561,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>pcm</th>
+              <th scope="col">Item</th>
+              <th scope="col">pcm</th>
             </tr>
           </thead>
           <tbody>
@@ -1599,13 +1599,13 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>System</th>
-              <th>Rods</th>
-              <th>Worth each (pcm)</th>
-              <th>Total (pcm)</th>
-              <th>Normal position</th>
-              <th>Drive speed</th>
-              <th>Scram</th>
+              <th scope="col">System</th>
+              <th scope="col">Rods</th>
+              <th scope="col">Worth each (pcm)</th>
+              <th scope="col">Total (pcm)</th>
+              <th scope="col">Normal position</th>
+              <th scope="col">Drive speed</th>
+              <th scope="col">Scram</th>
             </tr>
           </thead>
           <tbody>
@@ -1614,7 +1614,7 @@ flowchart LR
               <td>3</td>
               <td>100</td>
               <td>300</td>
-              <td>400–700 mm band</td>
+              <td>250–750 mm band</td>
               <td>5 mm/s</td>
               <td>Primary shutdown system (PSS), 90% in ≤ 1.2 s</td>
             </tr>
@@ -1624,7 +1624,7 @@ flowchart LR
               <td>400 / 300 / 200</td>
               <td>5,400</td>
               <td>Per ECP</td>
-              <td>2 mm/s single; 1 mm/s bank; 10 mm/s drive-in on runback</td>
+              <td>2 mm/s single; 1 mm/s bank, except bank A at 0.8 mm/s so its mid-stroke differential worth stays inside the 4 pcm/s interlock; 10 mm/s drive-in on runback</td>
               <td>PSS</td>
             </tr>
             <tr>
@@ -1646,16 +1646,16 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Inserted</th>
-              <th>10%</th>
-              <th>20%</th>
-              <th>30%</th>
-              <th>40%</th>
-              <th>50%</th>
-              <th>60%</th>
-              <th>70%</th>
-              <th>80%</th>
-              <th>90%</th>
+              <th scope="col">Inserted</th>
+              <th scope="col">10%</th>
+              <th scope="col">20%</th>
+              <th scope="col">30%</th>
+              <th scope="col">40%</th>
+              <th scope="col">50%</th>
+              <th scope="col">60%</th>
+              <th scope="col">70%</th>
+              <th scope="col">80%</th>
+              <th scope="col">90%</th>
             </tr>
           </thead>
           <tbody>
@@ -1675,17 +1675,17 @@ flowchart LR
         </table>
       </div>
 
-      <p>Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s. The period and overpower trips must catch that (scenario S-19).</p>
+      <p>Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 0.47 s on the §3.1 kinetics data (2.5 s would be about 210 pcm). The period and overpower trips must catch that (scenario S-19).</p>
 
       <h3 id="35-neutron-instrumentation">3.5 Neutron instrumentation</h3>
       <div class="tw">
         <table>
           <thead>
             <tr>
-              <th>Range</th>
-              <th>Detectors</th>
-              <th>Span</th>
-              <th>Channels</th>
+              <th scope="col">Range</th>
+              <th scope="col">Detectors</th>
+              <th scope="col">Span</th>
+              <th scope="col">Channels</th>
             </tr>
           </thead>
           <tbody>
@@ -1731,17 +1731,17 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>After trip</th>
-              <th>1 s</th>
-              <th>10 s</th>
-              <th>1 min</th>
-              <th>10 min</th>
-              <th>30 min</th>
-              <th>1 h</th>
-              <th>4 h</th>
-              <th>1 d</th>
-              <th>3 d</th>
-              <th>7 d</th>
+              <th scope="col">After trip</th>
+              <th scope="col">1 s</th>
+              <th scope="col">10 s</th>
+              <th scope="col">1 min</th>
+              <th scope="col">10 min</th>
+              <th scope="col">30 min</th>
+              <th scope="col">1 h</th>
+              <th scope="col">4 h</th>
+              <th scope="col">1 d</th>
+              <th scope="col">3 d</th>
+              <th scope="col">7 d</th>
             </tr>
           </thead>
           <tbody>
@@ -1789,8 +1789,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Specification</th>
+              <th scope="col">Item</th>
+              <th scope="col">Specification</th>
             </tr>
           </thead>
           <tbody>
@@ -1879,8 +1879,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Detail</th>
+              <th scope="col">Item</th>
+              <th scope="col">Detail</th>
             </tr>
           </thead>
           <tbody>
@@ -1917,9 +1917,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Quantity</th>
-              <th>Target</th>
-              <th>Tolerance</th>
+              <th scope="col">Quantity</th>
+              <th scope="col">Target</th>
+              <th scope="col">Tolerance</th>
             </tr>
           </thead>
           <tbody>
@@ -1974,8 +1974,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2020,8 +2020,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Level relation</th>
-              <th>Formula</th>
+              <th scope="col">Level relation</th>
+              <th scope="col">Formula</th>
             </tr>
           </thead>
           <tbody>
@@ -2050,8 +2050,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2081,11 +2081,11 @@ flowchart LR
             </tr>
             <tr>
               <td>Coastdown</td>
-              <td><code>Q(t) = Q₀ / (1 + t / 10 s)</code>: 50% at 10 s, 25% at 30 s; flywheel J ≈ 5,500 kg·m²</td>
+              <td><code>Q(t) = Q₀ / (1 + t / 10 s)</code>: 50% at 10 s, 25% at 30 s; flywheel J ≈ 5,500 kg·m². The flap check valve seats once the tripped pump's developed head falls below diagrid pressure; the surviving pumps ramp to 105% on a pump trip, which keeps P/Q below the 1.12 trip while RB-2 runs power back</td>
             </tr>
             <tr>
               <td>Natural circulation, no pumps</td>
-              <td><code>Q_nc ≈ 3.5% × (P / 1 %FP)^(1/3)</code> †</td>
+              <td><code>Q_nc ≈ 3.5% × (P / 100 %FP)^(1/3)</code> †</td>
             </tr>
             <tr>
               <td>Start interlocks</td>
@@ -2112,14 +2112,14 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Units</td>
-              <td>6 (1A, 1B, 2A, 2B, 3A, 3B), 400 MWt each</td>
+              <td>6 (1A, 1B, 2A, 2B, 3A, 3B), 396 MWt each at 100% (400 MWt rating)</td>
             </tr>
             <tr>
               <td>Arrangement</td>
@@ -2127,7 +2127,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Primary side</td>
-              <td>1,782 kg/s each; 545 °C in from hot pool, 375 °C out to cold pool</td>
+              <td>1,782 kg/s each; 550 °C in from the hot pool, 375 °C out to cold pool</td>
             </tr>
             <tr>
               <td>Secondary side</td>
@@ -2135,7 +2135,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Thermal</td>
-              <td>LMTD ≈ 40 K; UA ≈ 10 MW/K; ≈ 2,000 m²</td>
+              <td>LMTD ≈ 41 K; UA ≈ 9.6 MW/K; ≈ 2,000 m²</td>
             </tr>
             <tr>
               <td>Inlet shutter (fictional)</td>
@@ -2143,7 +2143,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Pressure rule</td>
-              <td>Secondary side stays ≥ 0.4 MPa above primary, so a tube leak runs secondary into primary</td>
+              <td>Secondary side stays ≥ 0.4 MPa above primary in a running loop, so a tube leak runs secondary into primary; LCO-7's ≥ 0.2 MPa is the operating limit and applies to running loops only</td>
             </tr>
           </tbody>
         </table>
@@ -2154,8 +2154,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2196,8 +2196,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2219,7 +2219,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Coping time</td>
-              <td>With no heat sink at all, the pool rises 200 K in ≈ 5 h after a trip from 100%</td>
+              <td>With no heat sink at all, the pool rises 200 K in ≈ 6.5 h after a trip from 100% (the §3.6 curve integrated into 1,250 t of sodium and 1,500 t of steel)</td>
             </tr>
           </tbody>
         </table>
@@ -2235,8 +2235,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2278,7 +2278,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Dump tank</td>
-              <td>450 m³, gravity drain in 20 min, electrically heated</td>
+              <td>500 m³, gravity drain in 20 min, electrically heated; 400 t occupies 443 m³ at the 200 °C idle setpoint and 469 m³ at 420 °C, so a hot drain needs the larger tank</td>
             </tr>
             <tr>
               <td>Trace heating</td>
@@ -2297,9 +2297,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Leak class</th>
-              <th>Water leak rate</th>
-              <th>Detected by</th>
+              <th scope="col">Leak class</th>
+              <th scope="col">Water leak rate</th>
+              <th scope="col">Detected by</th>
             </tr>
           </thead>
           <tbody>
@@ -2337,8 +2337,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2395,8 +2395,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Value</th>
+              <th scope="col">Item</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2429,8 +2429,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2463,9 +2463,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Turbine</th>
-              <th>Reheater modules</th>
-              <th>Capacity</th>
+              <th scope="col">Turbine</th>
+              <th scope="col">Reheater modules</th>
+              <th scope="col">Capacity</th>
             </tr>
           </thead>
           <tbody>
@@ -2492,13 +2492,13 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Loop 2 steam to B</th>
-              <th>Turbine A (MWe)</th>
-              <th>A hot reheat</th>
-              <th>Turbine B (MWe)</th>
-              <th>B hot reheat</th>
-              <th>B load limit</th>
-              <th>Plant (MWe)</th>
+              <th scope="col">Loop 2 steam to B</th>
+              <th scope="col">Turbine A (MWe)</th>
+              <th scope="col">A hot reheat</th>
+              <th scope="col">Turbine B (MWe)</th>
+              <th scope="col">B hot reheat</th>
+              <th scope="col">B load limit</th>
+              <th scope="col">Plant (MWe)</th>
             </tr>
           </thead>
           <tbody>
@@ -2577,8 +2577,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Value</th>
+              <th scope="col">Item</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2613,8 +2613,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2683,10 +2683,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Normal</th>
-              <th>Alarm</th>
-              <th>Trip</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Normal</th>
+              <th scope="col">Alarm</th>
+              <th scope="col">Trip</th>
             </tr>
           </thead>
           <tbody>
@@ -2763,8 +2763,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2809,10 +2809,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Intake water</th>
-              <th>Both pumps</th>
-              <th>One pump</th>
-              <th>Better</th>
+              <th scope="col">Intake water</th>
+              <th scope="col">Both pumps</th>
+              <th scope="col">One pump</th>
+              <th scope="col">Better</th>
             </tr>
           </thead>
           <tbody>
@@ -2861,9 +2861,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Heater</th>
-              <th>Steam from</th>
-              <th>Feedwater out</th>
+              <th scope="col">Heater</th>
+              <th scope="col">Steam from</th>
+              <th scope="col">Feedwater out</th>
             </tr>
           </thead>
           <tbody>
@@ -2918,14 +2918,14 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Value</th>
+              <th scope="col">Item</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Train A and train B each</td>
-              <td>3 × 50% condensate extraction pumps; condensate polishing plant; 2 × 55% main feed pumps (12 MW motors on VFDs, 9.8 MW absorbed at 100%); 1 × 30% startup feed pump; HP heater bypass</td>
+              <td>3 × 50% condensate extraction pumps; condensate polishing plant; 2 × 55% main feed pumps on VFDs (9.8 MW absorbed per train at 100%, ≈ 4.9 MW per pump; 6 MW motors); 1 × 30% startup feed pump; HP heater bypass</td>
             </tr>
             <tr>
               <td>Capacity</td>
@@ -2962,8 +2962,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Value</th>
+              <th scope="col">Item</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -2996,8 +2996,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Board</th>
-              <th>Loads</th>
+              <th scope="col">Board</th>
+              <th scope="col">Loads</th>
             </tr>
           </thead>
           <tbody>
@@ -3026,8 +3026,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Value</th>
+              <th scope="col">Item</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -3068,8 +3068,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Value</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -3105,9 +3105,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Reserve product</th>
-              <th>What it asks of the plant</th>
-              <th>K1 contract size †</th>
+              <th scope="col">Reserve product</th>
+              <th scope="col">What it asks of the plant</th>
+              <th scope="col">K1 contract size †</th>
             </tr>
           </thead>
           <tbody>
@@ -3147,9 +3147,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Mode</th>
-              <th>Name</th>
-              <th>Conditions</th>
+              <th scope="col">Mode</th>
+              <th scope="col">Name</th>
+              <th scope="col">Conditions</th>
             </tr>
           </thead>
           <tbody>
@@ -3185,19 +3185,19 @@ flowchart LR
       <p>No sodium that is meant to stay liquid goes below 180 °C in any mode.</p>
 
       <h3 id="92-part-load-program">9.2 Part-load program</h3>
-      <p>Core inlet is held at 375 °C throughout. With <code>r = P/Q</code>: core outlet <code>375 + 175r</code>; secondary cold <code>375 − 55r</code>; secondary hot <code>375 + 145r</code>; main steam <code>min(505, secondary hot − 15r)</code>.</p>
+      <p>Core inlet is held at 375 °C throughout. With <code>r = P/Q</code>: core outlet <code>375 + 175r</code>; secondary cold <code>375 − 55r</code>; secondary hot <code>375 + 145r</code>; main steam <code>min(505, secondary hot − 15r)</code>. Below about 25 %FP the turbines are off and steam goes to the bypass: the 20%, 10% and 5% rows are bypass or house-load states, because 178, 86 and 42 MWe are under the 150 MWe minimum stable load (§7.1) and their steam is below the reheat trip temperature.</p>
       <div class="tw">
         <table>
           <thead>
             <tr>
-              <th>Power</th>
-              <th>Primary and secondary flow</th>
-              <th>Core outlet</th>
-              <th>Secondary cold / hot</th>
-              <th>Main steam</th>
-              <th>SG pressure</th>
-              <th>Feed</th>
-              <th>Gross MWe</th>
+              <th scope="col">Power</th>
+              <th scope="col">Primary and secondary flow</th>
+              <th scope="col">Core outlet</th>
+              <th scope="col">Secondary cold / hot</th>
+              <th scope="col">Main steam</th>
+              <th scope="col">SG pressure</th>
+              <th scope="col">Feed</th>
+              <th scope="col">Gross MWe</th>
             </tr>
           </thead>
           <tbody>
@@ -3292,10 +3292,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Variable</th>
-              <th>Owner</th>
-              <th>Main actuator</th>
-              <th>Upset by</th>
+              <th scope="col">Variable</th>
+              <th scope="col">Owner</th>
+              <th scope="col">Main actuator</th>
+              <th scope="col">Upset by</th>
             </tr>
           </thead>
           <tbody>
@@ -3370,16 +3370,16 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Controller</th>
-              <th>Holds</th>
-              <th>Weakness built in</th>
+              <th scope="col">Controller</th>
+              <th scope="col">Holds</th>
+              <th scope="col">Weakness built in</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Rod auto</td>
               <td>Core outlet 550 ±2 K using RR only</td>
-              <td>Never moves shims; stops and alarms when RR leave the 400–700 mm band; reacts after thermocouples move</td>
+              <td>Never moves shims; stops and alarms when RR leave the 250–750 mm band; reacts after thermocouples move</td>
             </tr>
             <tr>
               <td>Primary flow auto</td>
@@ -3451,10 +3451,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Parameter</th>
-              <th>Normal</th>
-              <th>Alarm or first action</th>
-              <th>Trip</th>
+              <th scope="col">Parameter</th>
+              <th scope="col">Normal</th>
+              <th scope="col">Alarm or first action</th>
+              <th scope="col">Trip</th>
             </tr>
           </thead>
           <tbody>
@@ -3575,10 +3575,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Runback</th>
-              <th>Trigger</th>
-              <th>Target</th>
-              <th>Rate</th>
+              <th scope="col">Runback</th>
+              <th scope="col">Trigger</th>
+              <th scope="col">Target</th>
+              <th scope="col">Rate</th>
             </tr>
           </thead>
           <tbody>
@@ -3611,10 +3611,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Limit</th>
-              <th>If exceeded</th>
-              <th>Completion (grid time)</th>
+              <th scope="col">ID</th>
+              <th scope="col">Limit</th>
+              <th scope="col">If exceeded</th>
+              <th scope="col">Completion (grid time)</th>
             </tr>
           </thead>
           <tbody>
@@ -3701,9 +3701,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Room</th>
-              <th>Desks</th>
-              <th>Walk from MCR †</th>
+              <th scope="col">Room</th>
+              <th scope="col">Desks</th>
+              <th scope="col">Walk from MCR †</th>
             </tr>
           </thead>
           <tbody>
@@ -3758,9 +3758,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Desk</th>
-              <th>Controls</th>
-              <th>Indications</th>
+              <th scope="col">Desk</th>
+              <th scope="col">Controls</th>
+              <th scope="col">Indications</th>
             </tr>
           </thead>
           <tbody>
@@ -3828,9 +3828,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Action</th>
-              <th>Where</th>
-              <th>Time on the spot †</th>
+              <th scope="col">Action</th>
+              <th scope="col">Where</th>
+              <th scope="col">Time on the spot †</th>
             </tr>
           </thead>
           <tbody>
@@ -3908,9 +3908,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Crew</th>
-              <th>Positions</th>
-              <th>What it can handle</th>
+              <th scope="col">Crew</th>
+              <th scope="col">Positions</th>
+              <th scope="col">What it can handle</th>
             </tr>
           </thead>
           <tbody>
@@ -3939,9 +3939,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Variable</th>
-              <th>Drifts out of band in about</th>
-              <th>Why</th>
+              <th scope="col">Variable</th>
+              <th scope="col">Drifts out of band in about</th>
+              <th scope="col">Why</th>
             </tr>
           </thead>
           <tbody>
@@ -3972,8 +3972,8 @@ flowchart LR
             </tr>
             <tr>
               <td>Regulating rod band</td>
-              <td>≈ 20 min</td>
-              <td>Burnup drift at ×360</td>
+              <td>≈ 2.5 h</td>
+              <td>Burnup drift at ×360: 0.75 pcm per real minute against a 250 pcm band</td>
             </tr>
             <tr>
               <td>Hydrogen background</td>
@@ -4002,9 +4002,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Element</th>
-              <th>Analog, 1988</th>
-              <th>Digital, 2009</th>
+              <th scope="col">Element</th>
+              <th scope="col">Analog, 1988</th>
+              <th scope="col">Digital, 2009</th>
             </tr>
           </thead>
           <tbody>
@@ -4039,8 +4039,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Rule</th>
-              <th>Detail</th>
+              <th scope="col">Rule</th>
+              <th scope="col">Detail</th>
             </tr>
           </thead>
           <tbody>
@@ -4078,9 +4078,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Guide</th>
-              <th>Where</th>
-              <th>Content</th>
+              <th scope="col">Guide</th>
+              <th scope="col">Where</th>
+              <th scope="col">Content</th>
             </tr>
           </thead>
           <tbody>
@@ -4117,9 +4117,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Type</th>
-              <th>Example</th>
-              <th>Rules</th>
+              <th scope="col">Type</th>
+              <th scope="col">Example</th>
+              <th scope="col">Rules</th>
             </tr>
           </thead>
           <tbody>
@@ -4165,10 +4165,10 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Profile</th>
-              <th>σ</th>
-              <th>Loss events</th>
-              <th>Instruction rate</th>
+              <th scope="col">Profile</th>
+              <th scope="col">σ</th>
+              <th scope="col">Loss events</th>
+              <th scope="col">Instruction rate</th>
             </tr>
           </thead>
           <tbody>
@@ -4207,8 +4207,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Rule</th>
+              <th scope="col">Item</th>
+              <th scope="col">Rule</th>
             </tr>
           </thead>
           <tbody>
@@ -4245,13 +4245,13 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Component</th>
-              <th>Fluid temperature</th>
-              <th>Wall</th>
-              <th>τ_w</th>
-              <th>ΔT_ref</th>
-              <th>N_ref †</th>
-              <th>Failure it unlocks</th>
+              <th scope="col">Component</th>
+              <th scope="col">Fluid temperature</th>
+              <th scope="col">Wall</th>
+              <th scope="col">τ_w</th>
+              <th scope="col">ΔT_ref</th>
+              <th scope="col">N_ref †</th>
+              <th scope="col">Failure it unlocks</th>
             </tr>
           </thead>
           <tbody>
@@ -4329,14 +4329,14 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Mechanism</th>
-              <th>Model †</th>
+              <th scope="col">Mechanism</th>
+              <th scope="col">Model †</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Cladding creep above 650 °C midwall</td>
-              <td><code>dD/dt = e^((T − 650) / 25) / 100 h</code>; failure at D = 1</td>
+              <td><code>dD/dt = e^((T − 650) / 25) / 100 grid hours</code>; failure at D = 1</td>
             </tr>
             <tr>
               <td>Random failure</td>
@@ -4363,8 +4363,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Mechanism</th>
-              <th>Model †</th>
+              <th scope="col">Mechanism</th>
+              <th scope="col">Model †</th>
             </tr>
           </thead>
           <tbody>
@@ -4393,8 +4393,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Stage</th>
-              <th>Model †</th>
+              <th scope="col">Stage</th>
+              <th scope="col">Model †</th>
             </tr>
           </thead>
           <tbody>
@@ -4424,8 +4424,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Input</th>
-              <th>Used for</th>
+              <th scope="col">Input</th>
+              <th scope="col">Used for</th>
             </tr>
           </thead>
           <tbody>
@@ -4457,8 +4457,8 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Rule</th>
-              <th>Detail †</th>
+              <th scope="col">Rule</th>
+              <th scope="col">Detail †</th>
             </tr>
           </thead>
           <tbody>
@@ -4505,13 +4505,13 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Scenario</th>
-              <th>Real basis</th>
-              <th>First cue</th>
-              <th>Window</th>
-              <th>Good crew</th>
-              <th>Poor crew</th>
+              <th scope="col">ID</th>
+              <th scope="col">Scenario</th>
+              <th scope="col">Real basis</th>
+              <th scope="col">First cue</th>
+              <th scope="col">Window</th>
+              <th scope="col">Good crew</th>
+              <th scope="col">Poor crew</th>
             </tr>
           </thead>
           <tbody>
@@ -4655,7 +4655,7 @@ flowchart LR
               <td>Station blackout</td>
               <td>–</td>
               <td>EDGs fail too</td>
-              <td>≈ 5 h, ≈ 30 min with ×10 acceleration</td>
+              <td>≈ 6.5 h, ≈ 40 min with ×10 acceleration</td>
               <td>Field crews open dampers; recover an EDG locally</td>
               <td>Pool over-temperature</td>
             </tr>
@@ -4779,9 +4779,9 @@ flowchart LR
         <table>
           <thead>
             <tr>
-              <th>Loop</th>
-              <th>Rate</th>
-              <th>Contents</th>
+              <th scope="col">Loop</th>
+              <th scope="col">Rate</th>
+              <th scope="col">Contents</th>
             </tr>
           </thead>
           <tbody>
@@ -4814,12 +4814,25 @@ flowchart LR
       <h3 id="142-space-time-kinetics-in-real-time">14.2 Space-time kinetics in real time</h3>
       <p>The improved quasi-static method splits the flux into an amplitude that changes fast and a shape that changes slowly, so each part runs only as often as it needs to (§3.7).</p>
       <p><strong>Amplitude, every 0.1 s.</strong> Λ is 4 × 10⁻⁷ s, so explicit integration at 10 Hz is hopeless. Use the prompt-jump form with scaled precursors <code>s_i = λ_i Λ C_i</code>, which removes Λ entirely. Reactivity, β_eff and Λ come from the latest shape, weighted by the adjoint flux.</p>
-      <pre><code>-- amplitude, once per 0.1 s tick
+      <pre><code>-- amplitude, once per 0.1 s tick: n is taken linear across the step, which keeps the
+-- growth rate right at high reactivity (holding n at its old value runs 11% slow at 0.8 beta
+-- and 22% slow at 0.9 beta; a fully implicit form errs the same amount the other way)
+local num, den = q, BETA - rho
 for i = 1, 6 do
-  local e = math.exp(-lambda[i] * dt)
-  s[i] = s[i] * e + beta[i] * n * (1 - e)
+  local x = lambda[i] * dt
+  local e = math.exp(-x)
+  local w = (1 - e) - (1 - e - x * e) / x
+  num = num + s[i] * e + beta[i] * n * (1 - e - w)
+  den = den - beta[i] * w
 end
-n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
+local n1 = num / den
+for i = 1, 6 do
+  local x = lambda[i] * dt
+  local e = math.exp(-x)
+  local w = (1 - e) - (1 - e - x * e) / x
+  s[i] = s[i] * e + beta[i] * (n * (1 - e - w) + n1 * w)
+end
+n = n1
 </code></pre>
       <p>Initialise at steady state with <code>s[i] = beta[i] * n</code>. The form holds while ρ stays below about 0.9β. Above that, flag a prompt-critical excursion and hand over to a scripted core-damage event rather than integrating through it.</p>
       <p><strong>Shape, every 0.5–2 s.</strong> One implicit time step of the multigroup diffusion equations over the whole mesh, renormalised so shape and amplitude stay consistent.</p>
@@ -4827,8 +4840,8 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>Step</th>
-              <th>Detail</th>
+              <th scope="col">Step</th>
+              <th scope="col">Detail</th>
             </tr>
           </thead>
           <tbody>
@@ -4870,8 +4883,8 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>Block</th>
-              <th>Suggested states</th>
+              <th scope="col">Block</th>
+              <th scope="col">Suggested states</th>
             </tr>
           </thead>
           <tbody>
@@ -4930,8 +4943,8 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>Property</th>
-              <th>Correlation</th>
+              <th scope="col">Property</th>
+              <th scope="col">Correlation</th>
             </tr>
           </thead>
           <tbody>
@@ -4963,12 +4976,12 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>°C</th>
-              <th>Density</th>
-              <th>cp</th>
-              <th>k</th>
-              <th>Viscosity (mPa·s)</th>
-              <th>Vapour pressure (MPa)</th>
+              <th scope="col">°C</th>
+              <th scope="col">Density</th>
+              <th scope="col">cp</th>
+              <th scope="col">k</th>
+              <th scope="col">Viscosity (mPa·s)</th>
+              <th scope="col">Vapour pressure (MPa)</th>
             </tr>
           </thead>
           <tbody>
@@ -5078,8 +5091,8 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>System codes</th>
-              <th>Type codes</th>
+              <th scope="col">System codes</th>
+              <th scope="col">Type codes</th>
             </tr>
           </thead>
           <tbody>
@@ -5095,8 +5108,8 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>Term</th>
-              <th>Meaning</th>
+              <th scope="col">Term</th>
+              <th scope="col">Meaning</th>
             </tr>
           </thead>
           <tbody>
@@ -5193,9 +5206,9 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
         <table>
           <thead>
             <tr>
-              <th>Rev</th>
-              <th>Date</th>
-              <th>Change</th>
+              <th scope="col">Rev</th>
+              <th scope="col">Date</th>
+              <th scope="col">Change</th>
             </tr>
           </thead>
           <tbody>
@@ -5213,6 +5226,19 @@ n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
               <td>A2</td>
               <td>15 Sep 2026</td>
               <td>Setting fixed: Kallskär Nuclear Power Plant (K1), Hälsingland coast, Sweden. Site, history, language and seasons added (§1.4–1.7). Grid switched to Nordic rules with FCR-N, FCR-D, aFRR and mFRR (§8.4, §11). Cooling water re-based on the Bothnian Sea (§7.4). Hybrid control rooms, access rules and guides added (§10.6–10.8). Scenario director and S-24 to S-28 added (§13). Modules section added (§14.7)</td>
+            </tr>
+            <tr>
+              <td>A4</td>
+              <td>21 Sep 2026</td>
+              <td>Corrections from the eight-reviewer audit, each recomputed from the spec's own data
+              (tools/derive/spec_review_check.py). Period for +300 pcm 0.47 s, not 2.5 s (§3.4). IHX inlet 550 °C
+              and 396 MWt duty (§4.3). DRACS coping 6.5 h (§4.5). Shim bank A 0.8 mm/s to respect the 4 pcm/s
+              interlock (§3.4). Regulating band widened to 250–750 mm to match the 250 pcm reserved in §3.3,
+              and the §10.5 drift time corrected to 2.5 h. Secondary dump tank 500 m³ (§5.1).
+              Natural-circulation formula referenced to 100 %FP (§4.2). Part-load rows below 25 %FP marked as
+              bypass or house-load states (§9.2). Degradation models bound to the grid clock and ×10 allowed in a
+              blackout (§0.2, §12.2). Feed-pump power stated per train (§7.6). Amplitude update replaced with the
+              linear-n form (§14.2). Check-valve and surviving-pump behaviour on a pump trip stated (§4.2)</td>
             </tr>
             <tr>
               <td>A3</td>

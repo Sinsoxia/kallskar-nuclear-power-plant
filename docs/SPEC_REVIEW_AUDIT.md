@@ -21,7 +21,8 @@ wrong. **PARTLY** = the concern is real but the reviewer's numbers or reasoning 
 | 7 | §10.5 "RR band drifts out in ~20 min" (E1) | **CONFIRMED** | 0.75 pcm/real-min at ×360 → 109 min to the band edge (164 min for a 250 pcm band) |
 | 8 | 10 % and 5 % part-load rows sit below the turbine minimum (E1) | **CONFIRMED** | 86 and 42 MWe gross vs 150 MWe minimum — below it even on one turbine; main steam 408/401 °C is under the 420 °C reheat trip |
 | 9 | Natural-circulation formula gives 16 % at full power (E3) | **CONFIRMED** | 3.5 % × 100^⅓ = 16.25 %; intended form (P/100 %FP)^⅓ = 3.5 % |
-| 10 | House load 65 MWe vs listed auxiliaries (E3) | **CONFIRMED** | 69.9 MW of shaft power in just four auxiliary groups (73.5 MW of nameplate) |
+| 10 | House load 65 MWe vs listed auxiliaries (E3) | **REFUTED** | §7.6's 9.8 MW is per feed *train* (the spec's calc prints "MFP power/train 9.8 MW"; a hydraulic check gives 9.1 MW/train). Listed major drives then total 51.0 MWe of the 65 MWe house load. E3 read it per pump and doubled it |
+| 10a | (found while checking #10) §7.6 says "2 × 55 % main feed pumps (12 MW motors on VFDs, 9.8 MW absorbed at 100 %)" | **CONFIRMED** | 9.8 MW per train means 4.9 MW per pump, which cannot sit behind a 12 MW motor. The parenthetical needs rewording |
 | 11 | §14.2 amplitude snippet lags at high ρ (E1) | **CONFIRMED** | −11.4 % growth rate at 0.8β, −21.7 % at 0.9β (E1 said 11 % and 21 %) |
 | 12 | ×360 "fuel failure hazard" vs grid-hour degradation models (E6) | **CONFIRMED** | §0.2 lists fuel failure under ×360; §12.2/§12.4 define it per grid day / grid hour (×12) — 30× conflict |
 | 13 | S-16 says "×10 → 30 min" but ×10 is barred with P1/P2 alarms (E6) | **CONFIRMED** | Rules conflict in the text; a blackout raises P1 alarms by definition |
@@ -70,6 +71,10 @@ decision are: the IHX inlet temperature (#2), the shim bank speed vs the interlo
 band width (#6, #7), the low part-load rows (#8), the natural-circulation exponent (#9), and the check-valve/P–Q
 interaction during RB-2 (#15).
 
+**Correction, made while writing this audit:** my first pass accepted E3's reading of the feed-pump power and recorded
+the house load as an error. It is not: 9.8 MW is the per-train figure, so the listed drives come to 51 MWe, not 70.
+The real defect there is the motor rating in §7.6's parenthetical (#10a). The recomputation script and F24 now say so.
+
 ## Reproducing this
 
 ```bash
@@ -77,3 +82,11 @@ python3 tools/derive/spec_review_check.py > tools/derive/spec_review_check.out.t
 ```
 
 Every number in the table above comes from that script, which reads only the spec's own constants.
+
+## Applied
+
+Rev A4 (21 Sep 2026) applies every confirmed item above to `REACTOR SPEC/sfr-1000-spec.html`, `KALLSKAR_ALL_IN_ONE.txt`
+and `kallskar_handoff/*.txt` through `tools/derive/apply_rev_a4.py`, which asserts each replacement and re-verifies the
+result (28/28 checks). The archived copy the reviewers read is left untouched. Config followed: IHX inlet 550 °C with
+396 MWt duty, LMTD 41 K, UA 9.6 MW/K; regulating band 250–750 mm (also in the rod-auto program); shim bank A at
+0.8 mm/s; the natural-circulation reference power. Full test suite after the change: 74 pass, 1 pending.

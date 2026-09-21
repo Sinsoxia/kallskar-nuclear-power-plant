@@ -165,8 +165,8 @@ Feed temperature at part load ≈ 170 + 70 × (P/100)^0.6 °C.
 --------------------
 (Item / Value)
 Train A and train B each           : 3 × 50% condensate extraction pumps; condensate polishing
-                                     plant; 2 × 55% main feed pumps (12 MW motors on VFDs, 9.8 MW
-                                     absorbed at 100%); 1 × 30% startup feed pump; HP heater bypass
+                                     plant; 2 × 55% main feed pumps on VFDs (9.8 MW absorbed per
+                                     train at 100%, ≈ 4.9 MW per pump; 6 MW motors); 1 × 30% startup feed pump; HP heater bypass
 Capacity                           : 2 main pumps 481 kg/s; with the startup pump 612 kg/s
 Normal lineup                      : Train A feeds SG1 and half of SG2 (437.5 kg/s); train B feeds
                                      SG3 and the other half

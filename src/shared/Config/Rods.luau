@@ -9,7 +9,7 @@ return {
 		count = 3,
 		worthEach_pcm = 100,
 		worthTotal_pcm = 300,
-		normalBand_mm = { 400, 700 },
+		normalBand_mm = { 250, 750 }, -- Rev A4: the old 400–700 band was 163 pcm against the 250 pcm §3.3 reserves
 		speed_mmps = 5,
 		scramSystem = "PSS",
 		scram90Percent_s = 1.2,
@@ -25,6 +25,8 @@ return {
 		worthTotal_pcm = 5400,
 		speedSingle_mmps = 2,
 		speedBank_mmps = 1,
+		-- Rev A4: bank A (6 × 400 pcm) peaks at 4.8 pcm/s at 1 mm/s, above the 4 pcm/s interlock
+		speedBankA_mmps = 0.8,
 		speedRunbackDriveIn_mmps = 10,
 		scramSystem = "PSS",
 		scram90Percent_s = 1.2,

@@ -232,11 +232,17 @@ off, and give the bypass path for those rows.
 Q_nc ≈ 3.5 % × (P / 1 %FP)^⅓ gives **16.25 %** rated flow at 100 %FP. The intended form is (P / 100 %FP)^⅓, which
 gives 3.5 % at full power and 0.75 % at 1 %FP. **Proposal:** fix the denominator.
 
-## F24 House load vs listed auxiliaries (§1.1) — Open question
-Four auxiliary groups alone (4 × 9.8 MW feed pumps, 3 × 3.3 MW primary, 3 × 2.0 MW secondary, 4 × 3.7 MW CW) total
-**69.9 MW of shaft power** (73.5 MW of nameplate) against the ≈ 65 MWe house load, before condensate pumps, heaters,
-sodium services, HVAC and losses. **Proposal:** state rated auxiliary load, typical absorbed load and house-load
-requirement separately.
+## F24 Feed-pump motor rating (§7.6) — Open question (the house load itself is fine)
+§7.6 reads "2 × 55 % main feed pumps (12 MW motors on VFDs, 9.8 MW absorbed at 100 %)". The 9.8 MW is the **per-train**
+figure: the spec's own file-20 calc prints "MFP power/train 9.8 MW" from the pump enthalpy rise, and an independent
+hydraulic check (437.5 kg/s, ~14.5 MPa rise, feedwater at ~887 kg/m³, 82 % pump and 96 % motor efficiency) gives
+9.1 MW per train. Each of the two pumps therefore absorbs about **4.9 MW**, which cannot sit behind a 12 MW motor.
+With that reading the listed major drives total **51.0 MWe** (feed 19.6, primary 10.3, secondary 6.2, circulating
+water 14.8), leaving 14 MWe of the 65 MWe house load for condensate pumps, heater drains, sodium trace heating and
+cold traps, HVAC, lighting and transformer losses — so the ≈ 65 MWe house load and ≈ 935 MWe net are consistent.
+One reviewer read 9.8 MW per pump and concluded the house load was too low; that is refuted.
+**Proposal:** reword to "2 × 55 % main feed pumps on VFDs; 9.8 MW absorbed per train at 100 % (≈ 4.9 MW per pump);
+6 MW motors", and state the auxiliary balance in §1.1 so the reading cannot be mistaken again.
 
 ## F25 Amplitude update in §14.2 — Resolved in code, spec wording open
 The §14.2 snippet uses the previous step's n in the precursor update. Measured growth-rate error at dt = 0.1 s:

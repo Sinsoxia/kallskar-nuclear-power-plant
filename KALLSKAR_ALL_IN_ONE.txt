@@ -366,7 +366,9 @@ Source of truth for numbers and rules. † marks a tuning value. Units and clock
 ====================================================================================================
 0. HOW TO READ THIS SPEC
 ====================================================================================================
-Every number here is a starting value that agrees with every other number. The heat balance was
+Every number here is a starting value meant to agree with every other number. Values marked † are tuning
+values, and a few plant-level figures are rounded (the steam generator section duty, for one). §1.1 is the
+canonical thermal power; everything else derives from it. Appendix C lists what Rev A4 corrected. The heat balance was
 computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine
 losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published
 ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't
@@ -390,15 +392,16 @@ Power        : %FP of 2,380 MWt; MWe gross unless marked net
     Rate: ×1 real time, always
     Drives: Kinetics, thermal-hydraulics, pumps, valves, electrical, protection
 * Low-power acceleration †
-    Rate: ×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree
+    Rate: ×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree; also allowed in a
+      station blackout once the reactor is confirmed subcritical
     Drives: Heatup, cooldown, long waits in blackout scenarios
 * Grid clock †
     Rate: ×12 (one grid day = 2 h real)
     Drives: Dispatcher schedule, demand curve, weather and sea, LCO completion times
 * Slow processes †
     Rate: ×360 of real time
-    Drives: Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures, fuel
-      failure hazard
+    Drives: Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures.
+      Fuel and tube degradation (§12.2, §12.4) run on the grid clock, not here
 
 Ramp limits and response windows are real time unless marked grid time.
 
@@ -458,10 +461,11 @@ Reactor            : SFR-1000: pool-type sodium-cooled fast reactor, MOX fuel
 Thermal power      : 2,380 MWt
 Gross output       : 1,000 MWe at the 5.0 kPa rating point (2 × 500 MWe); up to ≈ 1,028 MWe with
                      cold winter seawater
-Net output         : ≈ 935 MWe (house load ≈ 65 MWe)
+Net output         : ≈ 935 MWe (house load ≈ 65 MWe: main feed pumps 19.6, primary pumps 10.3,
+                     secondary pumps 6.2, circulating water 14.8, everything else ≈ 14)
 Gross efficiency   : 42.0%
-Primary circuit    : 1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,690 kg/s
-Secondary circuit  : 3 loops, 3,110 kg/s each, 320 → 520 °C, ≈ 400 t sodium each
+Primary circuit    : 1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,694 kg/s
+Secondary circuit  : 3 loops, 3,112 kg/s each, 320 → 520 °C, ≈ 400 t sodium each
 Steam generators   : 3 × 8 sections (evaporator, superheater, reheater), 99.5 MWt per section
 Steam at SG outlet : 14.0 MPa, 505 °C; reheat 2.6 MPa, 505 °C; feedwater 240 °C
 Main steam flow    : 291.7 kg/s per loop; 437.5 kg/s per turbine
@@ -694,7 +698,7 @@ Refuelling outage       : Timed wait (OD-8), 30 min real †; reactor held in Mo
 
 2.4 Thermal limits
 ------------------
-* Average linear heat rate
+* Average linear heat rate (95% of fission energy is deposited in the pins)
     At 100%: 27.7 kW/m
     Alarm: –
     Limit: –
@@ -870,7 +874,7 @@ Required excess reactivity, 230 °C, all rods out
     Rods: 3
     Worth each (pcm): 100
     Total (pcm): 300
-    Normal position: 400–700 mm band
+    Normal position: 250–750 mm band
     Drive speed: 5 mm/s
     Scram: Primary shutdown system (PSS), 90% in ≤ 1.2 s
 * Shim, banks A/B/C
@@ -878,7 +882,8 @@ Required excess reactivity, 230 °C, all rods out
     Worth each (pcm): 400 / 300 / 200
     Total (pcm): 5,400
     Normal position: Per ECP
-    Drive speed: 2 mm/s single; 1 mm/s bank; 10 mm/s drive-in on runback
+    Drive speed: 2 mm/s single; 1 mm/s bank, except bank A at 0.8 mm/s so its mid-stroke
+                  differential worth stays inside the 4 pcm/s interlock; 10 mm/s drive-in on runback
     Scram: PSS
 * Secondary shutdown (SSR)
     Rods: 9
@@ -906,7 +911,7 @@ Integral rod worth: W(d) = W_total × (d − sin(2πd) / 2π), where d is the in
     90%: 0.994
 
 Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All
-three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s.
+three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 0.47 s on the §3.1 kinetics data (2.5 s would be about 210 pcm).
 The period and overpower trips must catch that (scenario S-19).
 
 
@@ -1115,8 +1120,10 @@ Power                         : 3.3 MW shaft; 4.0 MW motor on a variable-frequen
 Speed range                   : 25–105% on the main motor; ramp ≤ 2 %/s
 Pony motor                    : 250 kW, 10% speed, on essential boards (Divisions 1–3)
 Coastdown                     : Q(t) = Q₀ / (1 + t / 10 s): 50% at 10 s, 25% at 30 s; flywheel J ≈
-                                5,500 kg·m²
-Natural circulation, no pumps : Q_nc ≈ 3.5% × (P / 1 %FP)^(1/3) †
+                                5,500 kg·m². The flap check valve seats once the tripped
+                                pump's developed head falls below diagrid pressure; the surviving pumps ramp to
+                                105% on a pump trip, which keeps P/Q below the 1.12 trip while RB-2 runs power back
+Natural circulation, no pumps : Q_nc ≈ 3.5% × (P / 100 %FP)^(1/3) †
 Start interlocks              : Cover gas ≥ 0.105 MPa; sodium ≥ 180 °C; bearing oil pressure normal
 Cavitation                    : Cover gas below 0.108 MPa with speed above 90%: cavitation alarm and
                                 vibration rise †
@@ -1128,15 +1135,16 @@ Pump heat to sodium           : ≈ 10 MWt total
 4.3 Intermediate heat exchangers, primary side
 ----------------------------------------------
 (Parameter / Value)
-Units                     : 6 (1A, 1B, 2A, 2B, 3A, 3B), 400 MWt each
+Units                     : 6 (1A, 1B, 2A, 2B, 3A, 3B), 396 MWt each at 100% (400 MWt rating)
 Arrangement               : Primary on shell side flowing down; secondary in tubes flowing up
-Primary side              : 1,782 kg/s each; 545 °C in from hot pool, 375 °C out to cold pool
+Primary side              : 1,782 kg/s each; 550 °C in from the hot pool, 375 °C out to cold pool
 Secondary side            : 1,556 kg/s each; 320 → 520 °C
-Thermal                   : LMTD ≈ 40 K; UA ≈ 10 MW/K; ≈ 2,000 m²
+Thermal                   : LMTD ≈ 41 K; UA ≈ 9.6 MW/K; ≈ 2,000 m²
 Inlet shutter (fictional) : Closes in 60 s with 5% leak-by. Used when a loop is out, so hot sodium
                             doesn't bypass straight into the cold pool
-Pressure rule             : Secondary side stays ≥ 0.4 MPa above primary, so a tube leak runs
-                            secondary into primary
+Pressure rule             : Secondary side stays ≥ 0.4 MPa above primary in a running loop, so a
+                            tube leak runs secondary into primary; LCO-7's ≥ 0.2 MPa is the operating
+                            limit and applies to running loops only
 
 
 4.4 Cover gas
@@ -1163,7 +1171,8 @@ Capacity    : 20 MWt per loop at 550 °C hot pool; Q = 20 MW × ((T_hot − 30) 
 Standby     : Dampers 5% open, 0.3 MW loss per loop keeps the loop warm
 Dampers     : 2 per loop, motor-operated from essential boards; fail as-is (OD-6) because the motors
               can't move them without power; local handwheel 90 s each
-Coping time : With no heat sink at all, the pool rises 200 K in ≈ 5 h after a trip from 100%
+Coping time : With no heat sink at all, the pool rises 200 K in ≈ 6.5 h after a trip from 100%
+              (the §3.6 curve integrated into 1,250 t of sodium and 1,500 t of steel)
 
 
 4.6 Primary purification
@@ -1191,7 +1200,8 @@ Pump             : Cold leg, free surface, 0.45 MPa head, 980 rpm, 2.0 MW shaft,
 Pressures        : Buffer tank gas 0.30 MPa; pump discharge 0.75; IHX inlet 0.72; IHX outlet 0.62;
                    SG inlet 0.55; SG outlet 0.32
 Isolation        : Sodium gate valves at IHX secondary inlet and outlet, 180 s stroke
-Dump tank        : 450 m³, gravity drain in 20 min, electrically heated
+Dump tank        : 500 m³, gravity drain in 20 min, electrically heated; 400 t occupies 443 m³ at
+                   the 200 °C idle setpoint and 469 m³ at 420 °C, so a hot drain needs the larger tank
 Trace heating    : 42 zones per loop †; idle setpoint 200 °C; alarm below 150 °C
 Cold trap        : 1 per loop; plugging temperature normal ≤ 140 °C, alarm 160 °C
 
@@ -1537,8 +1547,8 @@ Feed temperature at part load ≈ 170 + 70 × (P/100)^0.6 °C.
 --------------------
 (Item / Value)
 Train A and train B each           : 3 × 50% condensate extraction pumps; condensate polishing
-                                     plant; 2 × 55% main feed pumps (12 MW motors on VFDs, 9.8 MW
-                                     absorbed at 100%); 1 × 30% startup feed pump; HP heater bypass
+                                     plant; 2 × 55% main feed pumps on VFDs (9.8 MW absorbed per
+                                     train at 100%, ≈ 4.9 MW per pump; 6 MW motors); 1 × 30% startup feed pump; HP heater bypass
 Capacity                           : 2 main pumps 481 kg/s; with the startup pump 612 kg/s
 Normal lineup                      : Train A feeds SG1 and half of SG2 (437.5 kg/s); train B feeds
                                      SG3 and the other half
@@ -1664,7 +1674,9 @@ No sodium that is meant to stay liquid goes below 180 °C in any mode.
 9.2 Part-load program
 ---------------------
 Core inlet is held at 375 °C throughout. With r = P/Q: core outlet 375 + 175r; secondary cold 375 −
-55r; secondary hot 375 + 145r; main steam min(505, secondary hot − 15r).
+55r; secondary hot 375 + 145r; main steam min(505, secondary hot − 15r). Below about 25 %FP the turbines are off and steam goes to the
+bypass: the 20%, 10% and 5% rows are bypass or house-load states, because 178, 86 and 42 MWe are under the
+150 MWe minimum stable load (§7.1) and their steam is below the reheat trip temperature.
 
 * 100%
     Primary and secondary flow: 100%
@@ -1788,7 +1800,7 @@ about 1–2 minutes later while the reactor desk trims. It's slower and needs fo
 ---------------------------------------------------------
 * Rod auto
     Holds: Core outlet 550 ±2 K using RR only
-    Weakness built in: Never moves shims; stops and alarms when RR leave the 400–700 mm band; reacts
+    Weakness built in: Never moves shims; stops and alarms when RR leave the 250–750 mm band; reacts
       after thermocouples move
 * Primary flow auto
     Holds: P/Q at 1.00
@@ -2161,8 +2173,8 @@ touching it.
     Drifts out of band in about: 5–10 min
     Why: Temperature and level changes
 * Regulating rod band
-    Drifts out of band in about: ≈ 20 min
-    Why: Burnup drift at ×360
+    Drifts out of band in about: ≈ 2.5 h
+    Why: Burnup drift at ×360: 0.75 pcm per real minute against a 250 pcm band
 * Hydrogen background
     Drifts out of band in about: 30 min or more
     Why: Drift and meter noise
@@ -2395,7 +2407,7 @@ K apart, held, add upper-internals damage at 1/5,000 per minute †.
 ---------
 (Mechanism / Model †)
 Cladding creep above 650 °C midwall
-    dD/dt = e^((T − 650) / 25) / 100 h; failure at D = 1
+    dD/dt = e^((T − 650) / 25) / 100 grid hours; failure at D = 1
 Random failure                     : 2 × 10⁻⁵ per assembly per grid day × (burnup / 50 GWd/t)² ×
                                      overpower multiplier
 Gas leaker                         : Cover gas Xe-133 and krypton rise over grid-hours; DND stays
@@ -2585,7 +2597,7 @@ S-27, S-28.
     Scenario: Station blackout
     Real basis: –
     First cue: EDGs fail too
-    Window: ≈ 5 h, ≈ 30 min with ×10 acceleration
+    Window: ≈ 6.5 h, ≈ 40 min with ×10 acceleration
     Good crew: Field crews open dampers; recover an EDG locally
     Poor crew: Pool over-temperature
 * S-17
@@ -2717,12 +2729,25 @@ Amplitude, every 0.1 s. Λ is 4 × 10⁻⁷ s, so explicit integration at 10 Hz 
 prompt-jump form with scaled precursors s_i = λ_i Λ C_i, which removes Λ entirely. Reactivity, β_eff
 and Λ come from the latest shape, weighted by the adjoint flux.
 
-    -- amplitude, once per 0.1 s tick
+    -- amplitude, once per 0.1 s tick: n is taken linear across the step, which keeps the
+    -- growth rate right at high reactivity (holding n at its old value runs 11% slow at 0.8 beta
+    -- and 22% slow at 0.9 beta; a fully implicit form errs the same amount the other way)
+    local num, den = q, BETA - rho
     for i = 1, 6 do
-      local e = math.exp(-lambda[i] * dt)
-      s[i] = s[i] * e + beta[i] * n * (1 - e)
+      local x = lambda[i] * dt
+      local e = math.exp(-x)
+      local w = (1 - e) - (1 - e - x * e) / x
+      num = num + s[i] * e + beta[i] * n * (1 - e - w)
+      den = den - beta[i] * w
     end
-    n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
+    local n1 = num / den
+    for i = 1, 6 do
+      local x = lambda[i] * dt
+      local e = math.exp(-x)
+      local w = (1 - e) - (1 - e - x * e) / x
+      s[i] = s[i] * e + beta[i] * (n * (1 - e - w) + n1 * w)
+    end
+    n = n1
 
 Initialise at steady state with s[i] = beta[i]  n. The form holds while ρ stays below about 0.9β.
 Above that, flag a prompt-critical excursion and hand over to a scripted core-damage event rather
@@ -2950,6 +2975,18 @@ APPENDIX C. REVISION LOG
     Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
       diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
       §14.2). Former lumped values became validation targets; point kinetics kept as fallback
+* A4
+    Date: 21 Sep 2026
+    Change: Corrections from the eight-reviewer audit, each recomputed from the spec's own data
+      (tools/derive/spec_review_check.py). Period for +300 pcm 0.47 s, not 2.5 s (§3.4). IHX inlet
+      550 °C and 396 MWt duty (§4.3). DRACS coping 6.5 h (§4.5). Shim bank A 0.8 mm/s to respect
+      the 4 pcm/s interlock (§3.4). Regulating band widened to 250–750 mm to match the 250 pcm
+      reserved in §3.3, and the §10.5 drift time corrected to 2.5 h. Secondary dump tank 500 m³
+      (§5.1). Natural-circulation formula referenced to 100 %FP (§4.2). Part-load rows below 25 %FP
+      marked as bypass or house-load states (§9.2). Degradation models bound to the grid clock and
+      ×10 allowed in a blackout (§0.2, §12.2). Feed-pump power stated per train (§7.6). Amplitude
+      update replaced with the linear-n form (§14.2). Check-valve and surviving-pump behaviour on a
+      pump trip stated (§4.2)
 
 
 ####################################################################################################

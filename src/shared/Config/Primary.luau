@@ -60,8 +60,9 @@ return {
 		startInterlocks = { coverGasMin_MPa = 0.105, sodiumMin_C = 180 },
 		pumpHeatToSodium_MWt = 10,
 	}, "§4.2"),
-	-- Q_nc ≈ coefficient × (P / 1 %FP)^(1/3), no pumps running
-	naturalCirculation = tuning({ coefficient_pct = 3.5, exponent = 1 / 3 }, "§4.2"),
+	-- Q_nc ≈ coefficient × (P / referencePower)^(1/3), no pumps running. Rev A4 fixed the reference from 1 %FP to
+	-- 100 %FP: as written the formula gave 16 % rated flow at full power.
+	naturalCirculation = tuning({ coefficient_pct = 3.5, exponent = 1 / 3, referencePower_pctFP = 100 }, "§4.2"),
 	cavitation = tuning({ coverGasBelow_MPa = 0.108, speedAbove_pct = 90 }, "§4.2"),
 	gasEntrainment = tuning({ coldPoolBelowProgram_m = 1.3, speedAbove_pct = 95 }, "§4.2 (scenario S-10)"),
 
@@ -69,15 +70,16 @@ return {
 	ihx = spec({
 		count = 6,
 		names = { "1A", "1B", "2A", "2B", "3A", "3B" },
-		dutyEach_MWt = 400,
+		dutyEach_MWt = 400, -- nameplate rating; Rev A4 states the duty at 100 % separately
+		dutyAt100_MWt = 396,
 		primaryFlowEach_kgps = 1782,
-		primaryInlet_C = 545,
+		primaryInlet_C = 550, -- Rev A4: was 545, which carried only 385 MWt and left the primary 79 MWt short
 		primaryOutlet_C = 375,
 		secondaryFlowEach_kgps = 1556,
 		secondaryInlet_C = 320,
 		secondaryOutlet_C = 520,
-		lmtd_K = 40,
-		ua_MWpK = 10,
+		lmtd_K = 41,
+		ua_MWpK = 9.6,
 		area_m2 = 2000,
 		shutterClose_s = 60,
 		shutterLeakBy_frac = 0.05,

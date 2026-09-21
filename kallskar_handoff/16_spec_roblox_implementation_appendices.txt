@@ -37,12 +37,25 @@ Amplitude, every 0.1 s. Λ is 4 × 10⁻⁷ s, so explicit integration at 10 Hz 
 prompt-jump form with scaled precursors s_i = λ_i Λ C_i, which removes Λ entirely. Reactivity, β_eff
 and Λ come from the latest shape, weighted by the adjoint flux.
 
-    -- amplitude, once per 0.1 s tick
+    -- amplitude, once per 0.1 s tick: n is taken linear across the step, which keeps the
+    -- growth rate right at high reactivity (holding n at its old value runs 11% slow at 0.8 beta
+    -- and 22% slow at 0.9 beta; a fully implicit form errs the same amount the other way)
+    local num, den = q, BETA - rho
     for i = 1, 6 do
-      local e = math.exp(-lambda[i] * dt)
-      s[i] = s[i] * e + beta[i] * n * (1 - e)
+      local x = lambda[i] * dt
+      local e = math.exp(-x)
+      local w = (1 - e) - (1 - e - x * e) / x
+      num = num + s[i] * e + beta[i] * n * (1 - e - w)
+      den = den - beta[i] * w
     end
-    n = (s[1] + s[2] + s[3] + s[4] + s[5] + s[6]) / (BETA - rho)
+    local n1 = num / den
+    for i = 1, 6 do
+      local x = lambda[i] * dt
+      local e = math.exp(-x)
+      local w = (1 - e) - (1 - e - x * e) / x
+      s[i] = s[i] * e + beta[i] * (n * (1 - e - w) + n1 * w)
+    end
+    n = n1
 
 Initialise at steady state with s[i] = beta[i]  n. The form holds while ρ stays below about 0.9β.
 Above that, flag a prompt-critical excursion and hand over to a scripted core-damage event rather
@@ -270,3 +283,15 @@ APPENDIX C. REVISION LOG
     Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
       diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
       §14.2). Former lumped values became validation targets; point kinetics kept as fallback
+* A4
+    Date: 21 Sep 2026
+    Change: Corrections from the eight-reviewer audit, each recomputed from the spec's own data
+      (tools/derive/spec_review_check.py). Period for +300 pcm 0.47 s, not 2.5 s (§3.4). IHX inlet
+      550 °C and 396 MWt duty (§4.3). DRACS coping 6.5 h (§4.5). Shim bank A 0.8 mm/s to respect
+      the 4 pcm/s interlock (§3.4). Regulating band widened to 250–750 mm to match the 250 pcm
+      reserved in §3.3, and the §10.5 drift time corrected to 2.5 h. Secondary dump tank 500 m³
+      (§5.1). Natural-circulation formula referenced to 100 %FP (§4.2). Part-load rows below 25 %FP
+      marked as bypass or house-load states (§9.2). Degradation models bound to the grid clock and
+      ×10 allowed in a blackout (§0.2, §12.2). Feed-pump power stated per train (§7.6). Amplitude
+      update replaced with the linear-n form (§14.2). Check-valve and surviving-pump behaviour on a
+      pump trip stated (§4.2)

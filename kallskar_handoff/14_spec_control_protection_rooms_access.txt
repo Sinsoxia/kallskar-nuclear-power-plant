@@ -31,7 +31,9 @@ No sodium that is meant to stay liquid goes below 180 °C in any mode.
 9.2 Part-load program
 ---------------------
 Core inlet is held at 375 °C throughout. With r = P/Q: core outlet 375 + 175r; secondary cold 375 −
-55r; secondary hot 375 + 145r; main steam min(505, secondary hot − 15r).
+55r; secondary hot 375 + 145r; main steam min(505, secondary hot − 15r). Below about 25 %FP the turbines are off and steam goes to the
+bypass: the 20%, 10% and 5% rows are bypass or house-load states, because 178, 86 and 42 MWe are under the
+150 MWe minimum stable load (§7.1) and their steam is below the reheat trip temperature.
 
 * 100%
     Primary and secondary flow: 100%
@@ -155,7 +157,7 @@ about 1–2 minutes later while the reactor desk trims. It's slower and needs fo
 ---------------------------------------------------------
 * Rod auto
     Holds: Core outlet 550 ±2 K using RR only
-    Weakness built in: Never moves shims; stops and alarms when RR leave the 400–700 mm band; reacts
+    Weakness built in: Never moves shims; stops and alarms when RR leave the 250–750 mm band; reacts
       after thermocouples move
 * Primary flow auto
     Holds: P/Q at 1.00
@@ -528,8 +530,8 @@ touching it.
     Drifts out of band in about: 5–10 min
     Why: Temperature and level changes
 * Regulating rod band
-    Drifts out of band in about: ≈ 20 min
-    Why: Burnup drift at ×360
+    Drifts out of band in about: ≈ 2.5 h
+    Why: Burnup drift at ×360: 0.75 pcm per real minute against a 250 pcm band
 * Hydrogen background
     Drifts out of band in about: 30 min or more
     Why: Drift and meter noise

@@ -87,7 +87,7 @@ Refuelling outage       : Timed wait (OD-8), 30 min real †; reactor held in Mo
 
 2.4 Thermal limits
 ------------------
-* Average linear heat rate
+* Average linear heat rate (95% of fission energy is deposited in the pins)
     At 100%: 27.7 kW/m
     Alarm: –
     Limit: –
@@ -263,7 +263,7 @@ Required excess reactivity, 230 °C, all rods out
     Rods: 3
     Worth each (pcm): 100
     Total (pcm): 300
-    Normal position: 400–700 mm band
+    Normal position: 250–750 mm band
     Drive speed: 5 mm/s
     Scram: Primary shutdown system (PSS), 90% in ≤ 1.2 s
 * Shim, banks A/B/C
@@ -271,7 +271,8 @@ Required excess reactivity, 230 °C, all rods out
     Worth each (pcm): 400 / 300 / 200
     Total (pcm): 5,400
     Normal position: Per ECP
-    Drive speed: 2 mm/s single; 1 mm/s bank; 10 mm/s drive-in on runback
+    Drive speed: 2 mm/s single; 1 mm/s bank, except bank A at 0.8 mm/s so its mid-stroke
+                  differential worth stays inside the 4 pcm/s interlock; 10 mm/s drive-in on runback
     Scram: PSS
 * Secondary shutdown (SSR)
     Rods: 9
@@ -299,7 +300,7 @@ Integral rod worth: W(d) = W_total × (d − sin(2πd) / 2π), where d is the in
     90%: 0.994
 
 Interlocks: withdrawal reactivity rate ≤ 4 pcm/s, and only one rod or one bank moves at a time. All
-three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 2.5 s.
+three RR fully withdrawn from critical is +300 pcm, about $0.83, which gives a period near 0.47 s on the §3.1 kinetics data (2.5 s would be about 210 pcm).
 The period and overpower trips must catch that (scenario S-19).
 
 

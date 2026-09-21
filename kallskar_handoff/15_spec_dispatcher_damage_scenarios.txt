@@ -146,7 +146,7 @@ K apart, held, add upper-internals damage at 1/5,000 per minute †.
 ---------
 (Mechanism / Model †)
 Cladding creep above 650 °C midwall
-    dD/dt = e^((T − 650) / 25) / 100 h; failure at D = 1
+    dD/dt = e^((T − 650) / 25) / 100 grid hours; failure at D = 1
 Random failure                     : 2 × 10⁻⁵ per assembly per grid day × (burnup / 50 GWd/t)² ×
                                      overpower multiplier
 Gas leaker                         : Cover gas Xe-133 and krypton rise over grid-hours; DND stays
@@ -336,7 +336,7 @@ S-27, S-28.
     Scenario: Station blackout
     Real basis: –
     First cue: EDGs fail too
-    Window: ≈ 5 h, ≈ 30 min with ×10 acceleration
+    Window: ≈ 6.5 h, ≈ 40 min with ×10 acceleration
     Good crew: Field crews open dampers; recover an EDG locally
     Poor crew: Pool over-temperature
 * S-17

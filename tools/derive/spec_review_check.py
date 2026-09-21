@@ -289,18 +289,23 @@ print("     E3 is right that the intended form is (P / 100 %FP)^(1/3), i.e. 3.5 
 print("     'a reasonable order-of-magnitude fit', which only holds for the corrected form.")
 
 # ---------------------------------------------------------------- 17. house load (E3 #6)
-print("\n17. HOUSE LOAD vs LISTED MOTOR RATINGS  (§1.1: ~65 MWe house load)")
-motors = [("4 main feed pumps", 4, 9.8), ("3 primary pumps", 3, 4.0), ("3 secondary pumps", 3, 2.5), ("4 CW pumps", 4, 3.7)]
-total_rating = sum(n * p for _, n, p in motors)
-print("  nameplate motor ratings:")
-for name, n, p in motors:
-    print(f"    {name:20} {n} x {p:4.1f} MW = {n * p:5.1f} MW")
-print(f"    total {total_rating:.1f} MW of nameplate rating alone")
-shaft = 4 * 9.8 + 3 * 3.3 + 3 * 2.0 + 4 * 3.7
-print(f"  using SHAFT powers where the spec gives them (primary 3.3, secondary 2.0): {shaft:.1f} MW")
-print(f"  => even on shaft power the four biggest auxiliary groups are {shaft:.0f} MW of the {65:.0f} MWe house load,")
-print("     leaving ~5 MW for condensate pumps, heaters, sodium services, HVAC and losses. Too tight: E3 is right")
-print("     that the electrical balance needs to be stated explicitly.")
+print("\n17. HOUSE LOAD vs LISTED AUXILIARIES  (§1.1: ~65 MWe house load; E3 claims the listed motors already exceed it)")
+# §7.6 gives '2 x 55% main feed pumps (12 MW motors on VFDs, 9.8 MW absorbed at 100%)' PER TRAIN, and the spec's own
+# file-20 calc prints 'MFP power/train 9.8 MW' from the pump enthalpy rise. So 9.8 MW is the TRAIN figure.
+m_train, dp, rho_fw = 437.5, 14.5e6, 887.0  # one train at 100 %, ~14.5 MPa rise, feedwater before the HP heaters
+hyd = m_train * dp / rho_fw / 1e6
+print(f"  feed pump check: {hyd:.2f} MW hydraulic per train -> {hyd / 0.82:.2f} MW shaft at 82 % -> "
+      f"{hyd / 0.82 / 0.96:.2f} MW absorbed; the spec's calc says 9.8 MW per train")
+print(f"  => 9.8 MW is per TRAIN (two pumps), i.e. {9.8 / 2:.1f} MW per pump. E3 read it as per pump and doubled it.")
+groups = [("main feed pumps (2 trains)", 2 * 9.8), ("primary pumps (3 x 3.3 MW shaft / 0.96)", 3 * 3.3 / 0.96),
+          ("secondary pumps (3 x 2.0 MW shaft / 0.96)", 3 * 2.0 / 0.96), ("circulating water (4 x 3.7 MW)", 4 * 3.7)]
+total = sum(p for _, p in groups)
+for name, p in groups:
+    print(f"    {name:42} {p:5.1f} MW")
+print(f"    listed major drives total {total:.1f} MWe, leaving {65 - total:.1f} MWe of the 65 MWe house load for")
+print("    condensate pumps, heater drains, sodium trace heating and cold traps, HVAC, lighting and transformer losses.")
+print("  => the 65 MWe house load is consistent. E3's arithmetic is refuted; but §7.6's '12 MW motors' cannot belong")
+print(f"     to a {9.8 / 2:.1f} MW pump, so that parenthetical needs rewording (F24).")
 
 # ---------------------------------------------------------------- 18. amplitude update lag (E1, E6)
 print("\n18. AMPLITUDE UPDATE ACCURACY  (§14.2 snippet uses the previous step's n in the precursor update)")

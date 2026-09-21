@@ -6,7 +6,9 @@ Source of truth for numbers and rules. † marks a tuning value. Units and clock
 ====================================================================================================
 0. HOW TO READ THIS SPEC
 ====================================================================================================
-Every number here is a starting value that agrees with every other number. The heat balance was
+Every number here is a starting value meant to agree with every other number. Values marked † are tuning
+values, and a few plant-level figures are rounded (the steam generator section duty, for one). §1.1 is the
+canonical thermal power; everything else derives from it. Appendix C lists what Rev A4 corrected. The heat balance was
 computed with IAPWS-IF97 steam tables and the Fink–Leibowitz sodium correlations, with turbine
 losses set so efficiency lands between BN-600 and BN-800. Physics values sit inside the published
 ranges for BN-600, BN-800, Superphénix, PFR and EFR. It is not a licensing-grade design and doesn't
@@ -30,15 +32,16 @@ Power        : %FP of 2,380 MWt; MWe gross unless marked net
     Rate: ×1 real time, always
     Drives: Kinetics, thermal-hydraulics, pumps, valves, electrical, protection
 * Low-power acceleration †
-    Rate: ×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree
+    Rate: ×10, Modes 3–5 only, no P1/P2 alarms, all manned desks agree; also allowed in a
+      station blackout once the reactor is confirmed subcritical
     Drives: Heatup, cooldown, long waits in blackout scenarios
 * Grid clock †
     Rate: ×12 (one grid day = 2 h real)
     Drives: Dispatcher schedule, demand curve, weather and sea, LCO completion times
 * Slow processes †
     Rate: ×360 of real time
-    Drives: Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures, fuel
-      failure hazard
+    Drives: Burnup, impurity ingress, cold trap loading, hydrogen drift, heater failures.
+      Fuel and tube degradation (§12.2, §12.4) run on the grid clock, not here
 
 Ramp limits and response windows are real time unless marked grid time.
 
@@ -98,10 +101,11 @@ Reactor            : SFR-1000: pool-type sodium-cooled fast reactor, MOX fuel
 Thermal power      : 2,380 MWt
 Gross output       : 1,000 MWe at the 5.0 kPa rating point (2 × 500 MWe); up to ≈ 1,028 MWe with
                      cold winter seawater
-Net output         : ≈ 935 MWe (house load ≈ 65 MWe)
+Net output         : ≈ 935 MWe (house load ≈ 65 MWe: main feed pumps 19.6, primary pumps 10.3,
+                     secondary pumps 6.2, circulating water 14.8, everything else ≈ 14)
 Gross efficiency   : 42.0%
-Primary circuit    : 1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,690 kg/s
-Secondary circuit  : 3 loops, 3,110 kg/s each, 320 → 520 °C, ≈ 400 t sodium each
+Primary circuit    : 1,250 t sodium, 3 pumps, 6 IHXs, core 375 → 550 °C, 10,694 kg/s
+Secondary circuit  : 3 loops, 3,112 kg/s each, 320 → 520 °C, ≈ 400 t sodium each
 Steam generators   : 3 × 8 sections (evaporator, superheater, reheater), 99.5 MWt per section
 Steam at SG outlet : 14.0 MPa, 505 °C; reheat 2.6 MPa, 505 °C; feedwater 240 °C
 Main steam flow    : 291.7 kg/s per loop; 437.5 kg/s per turbine

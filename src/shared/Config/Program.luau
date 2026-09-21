@@ -53,7 +53,7 @@ return {
 	-- §9.4 automatic controllers relevant to M1 (deliberately worse than a crew)
 	rodAuto = spec({
 		holdBand_K = 2,
-		regulatingBand_mm = { 400, 700 },
+		regulatingBand_mm = { 250, 750 }, -- Rev A4, matches Rods.regulating.normalBand_mm
 		usesShims = false,
 		stopsAndAlarmsOutsideBand = true,
 		actsOnThermocouples = true,
