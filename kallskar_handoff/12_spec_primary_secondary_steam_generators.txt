@@ -67,7 +67,9 @@ Inlet shutter (fictional) : Closes in 60 s with 5% leak-by. Used when a loop is 
                             doesn't bypass straight into the cold pool
 Pressure rule             : Secondary side stays ≥ 0.4 MPa above primary in a running loop, so a
                             tube leak runs secondary into primary; LCO-7's ≥ 0.2 MPa is the operating
-                            limit and applies to running loops only
+                            limit and applies to running and hot-standby loops; an idle or isolated loop is
+                            either drained or held at a pressure and elevation that still keeps the secondary
+                            above the primary
 
 
 4.4 Cover gas

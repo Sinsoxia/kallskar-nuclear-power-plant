@@ -7,9 +7,9 @@ R_gap (pellet surface → midwall)   = 5.8657 K per kW/m   [fixed by the 1,380 K
   equivalent conductance at the pellet surface: 7454 W/m²K (gap plus inner half wall)
 core-average fuel temperature: 4-point 1380.00 K, 16-point 1380.00 K
 
-Checks against spec figures that were NOT used to fix anything:
-  hot-pin centreline at 42 kW/m: 2141 °C   (spec §2.4 ≈ 1,950 °C; difference +191 K)
-  hot-pin centreline at 60 kW/m peak (142 %FP): 2781 °C   (spec: melting ≈ 2,700 °C above ≈ 60 kW/m; difference +81 K)
+Figures the spec now takes from this script (Rev A5, D-018) — they confirm agreement, not correctness:
+  hot-pin centreline at 42 kW/m: 2141 °C   (spec §2.4 ≈ 2140 °C; difference +1 K)
+  hot-pin centreline at 57 kW/m peak (135 %FP): 2688 °C   (spec: melting ≈ 2,700 °C above ≈ 57 kW/m; difference -12 K)
   peak linear heat rate at which the centreline reaches 2,700 °C: 57.4 kW/m
   fuel time constant at the average midplane (T_f 1375 K, C_f 133.9 J/m/K): incremental 3.57 s, secant 3.07 s   (spec §3.2 Doppler lag 4 s)
 

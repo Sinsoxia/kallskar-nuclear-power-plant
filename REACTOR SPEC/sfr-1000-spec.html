@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A4</title>
+  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A5</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1309,11 +1309,11 @@ flowchart LR
               <td>Peak linear heat rate (1.20 radial × 1.04 pin × 1.22 axial)</td>
               <td>42 kW/m</td>
               <td>44</td>
-              <td>45 steady; centreline melting above ≈ 60</td>
+              <td>45 steady; centreline melting above ≈ 57</td>
             </tr>
             <tr>
               <td>Fuel centreline, hot pin</td>
-              <td>≈ 1,950 °C</td>
+              <td>≈ 2,140 °C</td>
               <td>–</td>
               <td>MOX melts ≈ 2,700 °C</td>
             </tr>
@@ -2143,7 +2143,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Pressure rule</td>
-              <td>Secondary side stays ≥ 0.4 MPa above primary in a running loop, so a tube leak runs secondary into primary; LCO-7's ≥ 0.2 MPa is the operating limit and applies to running loops only</td>
+              <td>Secondary side stays ≥ 0.4 MPa above primary in a running loop, so a tube leak runs secondary into primary; LCO-7's ≥ 0.2 MPa is the operating limit and applies to running and hot-standby loops; an idle or isolated loop is either drained or held at a pressure and elevation that still keeps the secondary above the primary</td>
             </tr>
           </tbody>
         </table>
@@ -3504,7 +3504,7 @@ flowchart LR
               <td>Core inlet</td>
               <td>375 °C</td>
               <td>390 high, 360 low</td>
-              <td>405 high, 345 low</td>
+              <td>405 high, 345 low; the low trip is inhibited in Modes 4 and 5, in Mode 3 with every PSS rod fully inserted, and in Mode 2 below 350 °C during heatup; it is armed in Mode 1 and above 5 %FP, and every inhibit is annunciated</td>
             </tr>
             <tr>
               <td>Hot pool level vs program</td>
@@ -3972,7 +3972,7 @@ flowchart LR
             </tr>
             <tr>
               <td>Regulating rod band</td>
-              <td>≈ 2.5 h</td>
+              <td>≈ 2.7 h</td>
               <td>Burnup drift at ×360: 0.75 pcm per real minute against a 250 pcm band</td>
             </tr>
             <tr>
@@ -4322,7 +4322,7 @@ flowchart LR
         </table>
       </div>
 
-      <p>Failure hazard per grid day for a component with usage U: <code>λ = 0.002 × e^(6U)</code> †. That's about 4% per grid day at U = 0.5 and about 80% at U = 1. Thermal striping: adjacent assembly outlets more than 40 K apart, held, add upper-internals damage at 1/5,000 per minute †.</p>
+      <p>Failure hazard per grid day for a component with usage U: <code>λ = 0.002 × e^(6U)</code> †. That is a rate, not a probability: at U = 0.5 it is 0.04 per grid day, so about 4 % of components fail in a grid day; at U = 1 it is 0.807 per grid day, which is about 55 %. Thermal striping: adjacent assembly outlets more than 40 K apart, held, add upper-internals damage at 1/5,000 per minute †.</p>
 
       <h3 id="122-fuel">12.2 Fuel</h3>
       <div class="tw">
@@ -5226,6 +5226,15 @@ n = n1
               <td>A2</td>
               <td>15 Sep 2026</td>
               <td>Setting fixed: Kallskär Nuclear Power Plant (K1), Hälsingland coast, Sweden. Site, history, language and seasons added (§1.4–1.7). Grid switched to Nordic rules with FCR-N, FCR-D, aFRR and mFRR (§8.4, §11). Cooling water re-based on the Bothnian Sea (§7.4). Hybrid control rooms, access rules and guides added (§10.6–10.8). Scenario director and S-24 to S-28 added (§13). Modules section added (§14.7)</td>
+            </tr>
+            <tr>
+              <td>A5</td>
+              <td>21 Sep 2026</td>
+              <td>Refinements from the resolved decision log (docs/FINAL_DECISIONS_REV_A5.md), which accepted every
+              proposed decision. The hot-pin centreline (2,140 °C) and melting linear heat rate (≈ 57 kW/m) now carry
+              the constant-gap pin model's own figures, so they are derived outputs rather than independent checks
+              (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5 core-inlet-low trip states its
+              mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20). LCO-7 gains the idle-loop case (F27)</td>
             </tr>
             <tr>
               <td>A4</td>

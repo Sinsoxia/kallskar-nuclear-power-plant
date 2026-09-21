@@ -96,9 +96,9 @@ return {
 		linearHeatRatePeak_kWpm = 42,
 		linearHeatRatePeakAlarm_kWpm = 44,
 		linearHeatRatePeakLimit_kWpm = 45,
-		centrelineMeltingAbove_kWpm = 60,
+		centrelineMeltingAbove_kWpm = 57, -- Rev A5 (D-018): the pin model's own figure
 		peaking = { radial = 1.20, pin = 1.04, axial = 1.22 },
-		hotPinCentreline_C = 1950,
+		hotPinCentreline_C = 2140, -- Rev A5 (D-018): the pin model's own figure, no longer an independent check
 		moxMelting_C = 2700,
 		cladMidwallHotSpot_C = 620,
 		cladMidwallAlarm_C = 650,

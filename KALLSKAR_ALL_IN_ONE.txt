@@ -705,9 +705,9 @@ Refuelling outage       : Timed wait (OD-8), 30 min real †; reactor held in Mo
 * Peak linear heat rate (1.20 radial × 1.04 pin × 1.22 axial)
     At 100%: 42 kW/m
     Alarm: 44
-    Limit: 45 steady; centreline melting above ≈ 60
+    Limit: 45 steady; centreline melting above ≈ 57
 * Fuel centreline, hot pin
-    At 100%: ≈ 1,950 °C
+    At 100%: ≈ 2,140 °C
     Alarm: –
     Limit: MOX melts ≈ 2,700 °C
 * Cladding midwall, hot spot
@@ -1144,7 +1144,9 @@ Inlet shutter (fictional) : Closes in 60 s with 5% leak-by. Used when a loop is 
                             doesn't bypass straight into the cold pool
 Pressure rule             : Secondary side stays ≥ 0.4 MPa above primary in a running loop, so a
                             tube leak runs secondary into primary; LCO-7's ≥ 0.2 MPa is the operating
-                            limit and applies to running loops only
+                            limit and applies to running and hot-standby loops; an idle or isolated loop is
+                            either drained or held at a pressure and elevation that still keeps the secondary
+                            above the primary
 
 
 4.4 Cover gas
@@ -1876,7 +1878,9 @@ Primary shutdown system (PSS) logic is 2-out-of-3 on independent channels.
 * Core inlet
     Normal: 375 °C
     Alarm or first action: 390 high, 360 low
-    Trip: 405 high, 345 low
+    Trip: 405 high, 345 low; the low trip is inhibited in Modes 4 and 5, in Mode 3 with every
+      PSS rod fully inserted, and in Mode 2 below 350 °C during heatup; it is armed in Mode 1 and
+      above 5 %FP, and every inhibit is annunciated
 * Hot pool level vs program
     Normal: 0 m
     Alarm or first action: ±0.25 m
@@ -2173,7 +2177,7 @@ touching it.
     Drifts out of band in about: 5–10 min
     Why: Temperature and level changes
 * Regulating rod band
-    Drifts out of band in about: ≈ 2.5 h
+    Drifts out of band in about: ≈ 2.7 h
     Why: Burnup drift at ×360: 0.75 pcm per real minute against a 250 pcm band
 * Hydrogen background
     Drifts out of band in about: 30 min or more
@@ -2398,8 +2402,9 @@ ramp limit still applies either way.
     N_ref †: 600
     Failure it unlocks: Flow distribution anomaly
 
-Failure hazard per grid day for a component with usage U: λ = 0.002 × e^(6U) †. That's about 4% per
-grid day at U = 0.5 and about 80% at U = 1. Thermal striping: adjacent assembly outlets more than 40
+Failure hazard per grid day for a component with usage U: λ = 0.002 × e^(6U) †. That is a rate, not a probability: at
+U = 0.5 it is 0.04 per grid day, so about 4 % of components fail in a grid day; at U = 1 it is 0.807 per
+grid day, which is about 55 %. Thermal striping: adjacent assembly outlets more than 40
 K apart, held, add upper-internals damage at 1/5,000 per minute †.
 
 
@@ -2975,6 +2980,14 @@ APPENDIX C. REVISION LOG
     Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
       diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
       §14.2). Former lumped values became validation targets; point kinetics kept as fallback
+* A5
+    Date: 21 Sep 2026
+    Change: Refinements from the resolved decision log (docs/FINAL_DECISIONS_REV_A5.md), which accepted
+      every proposed decision. The hot-pin centreline (2,140 °C) and melting linear heat rate (≈ 57
+      kW/m) now carry the constant-gap pin model's own figures, so they are derived outputs rather than
+      independent checks (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5
+      core-inlet-low trip states its mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20).
+      LCO-7 gains the idle-loop case (F27)
 * A4
     Date: 21 Sep 2026
     Change: Corrections from the eight-reviewer audit, each recomputed from the spec's own data

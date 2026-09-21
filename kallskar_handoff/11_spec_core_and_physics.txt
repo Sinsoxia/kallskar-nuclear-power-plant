@@ -94,9 +94,9 @@ Refuelling outage       : Timed wait (OD-8), 30 min real †; reactor held in Mo
 * Peak linear heat rate (1.20 radial × 1.04 pin × 1.22 axial)
     At 100%: 42 kW/m
     Alarm: 44
-    Limit: 45 steady; centreline melting above ≈ 60
+    Limit: 45 steady; centreline melting above ≈ 57
 * Fuel centreline, hot pin
-    At 100%: ≈ 1,950 °C
+    At 100%: ≈ 2,140 °C
     Alarm: –
     Limit: MOX melts ≈ 2,700 °C
 * Cladding midwall, hot spot

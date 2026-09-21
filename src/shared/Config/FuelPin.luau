@@ -66,7 +66,7 @@ return {
 	targets = spec({
 		coreAverageFuel_K = 1380,
 		cladHotSpot_K = 893.15,
-		hotPinCentre_K = 2223.15,
+		hotPinCentre_K = 2413.15,
 		averageLinearHeat_Wpm = 27700,
 	}, "§2.4, §3.2"),
 }

@@ -25,8 +25,21 @@ return {
 		seismic = { alarm_g = 0.04, trip_g = 0.08 },
 		manualButtons = { mainControlRoom = 2, backupControlRoom = 1 },
 	}, "§9.5 protection table"),
-	-- Core-inlet-low trip bypassed in these modes when every PSS rod is fully inserted
-	coreInletLowBypassModes = decision({ 3, 4, 5 }, "D-004"),
+	--[[
+		Core-inlet-low trip gating, refined when D-004 was accepted (Rev A5, §9.5):
+		  Modes 4 and 5        inhibited outright
+		  Mode 3               inhibited when every PSS rod is fully inserted
+		  Mode 2               inhibited below 350 °C during heatup
+		  Mode 1, above 5 %FP  armed
+		Every inhibit is annunciated, so the crew can see the trip is unavailable.
+	]]
+	coreInletLowInhibit = decision({
+		modesAlways = { 4, 5 },
+		modeWithPssRodsIn = 3,
+		mode2BelowTemp_C = 350,
+		armedAbove_pctFP = 5,
+		annunciated = true,
+	}, "D-004"),
 
 	sss = spec({
 		powerRange_pctFP = 118,

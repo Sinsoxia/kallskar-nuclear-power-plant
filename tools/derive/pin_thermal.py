@@ -8,8 +8,11 @@ Inputs
   spec §2.3   pellet OD 7.28 mm, hole 2.0 mm, 95 % TD; Pu 18 % inner / 23 % outer; 145 inner + 156 outer assemblies;
               discharge ≈ 51 GWd/tHM with a quarter of the core replaced per outage
   spec §2.4   average 27.7 kW/m; peak 42 kW/m = 1.20 radial × 1.04 pin × 1.22 axial; assembly outlet 559 °C average,
-              580–585 °C hottest; cladding midwall hot spot ≈ 620 °C; hot-pin centreline ≈ 1,950 °C;
-              centreline melting above ≈ 60 kW/m; MOX melts ≈ 2,700 °C
+              580–585 °C hottest; cladding midwall hot spot ≈ 620 °C; MOX melts ≈ 2,700 °C.
+              NOTE (Rev A5, D-018 accepted): §2.4's hot-pin centreline (2,140 °C) and melting linear heat rate
+              (≈ 57 kW/m) are now this script's own results, so they are no longer independent checks on it. The
+              checks that remain independent are the 620 °C cladding hot spot (which fixes R_cna, one equation one
+              unknown) and the §3.2 Doppler lag of 4 s, which nothing calibrates.
   spec §3.2   fuel average ≈ 1,107 °C at 100 % (file 20: 1,380 K); Doppler lag 4 s; core inlet 375 °C (file 20)
   Carbajo, Yoder, Popov, Ivanov, ORNL/TM-2000/351 (2001) ("Carbajo" below):
               eq. 6.1, 6.3–6.7 thermal conductivity of irradiated MOX (Duriez lattice + Ronchi polaron, Lucuta factors)
@@ -31,8 +34,9 @@ Method
        R_gap  pellet surface → cladding midwall (helium gap + inner half wall): the core-average fuel temperature must
               be the §3.2 value, 1,380 K. The §3.2 power defect (Doppler −680 pcm) is computed from that value, so
               the thermal model has to reproduce it.
-     Checks (not fitted): hot-pin centreline ≈ 1,950 °C at 42 kW/m; centreline reaches ≈ 2,700 °C near 60 kW/m;
-     fuel time constant against the §3.2 Doppler lag of 4 s.
+     Check (not fitted, and not fed back into the spec): the fuel time constant against the §3.2 Doppler lag of 4 s.
+     The centreline and melting figures are printed too, but since Rev A5 adopted them they only confirm the spec
+     still matches this script — they cannot falsify it.
   4. Burnup: cycle-average burnup of the spec's equilibrium core, 51/2 = 25.5 GWd/tHM (a quarter replaced per
      outage, so the core spans 0–51 GWd/tHM at a uniform rate), converted with Carbajo's 1 at.% = 9.375 MWd/kgHM.
      O/M = 2.00 (the spec writes (U,Pu)O₂). Porosity 5 % (95 % TD).
@@ -66,9 +70,9 @@ T_OUT_AVG = 559.0 + 273.15
 T_OUT_HOT = 582.5 + 273.15
 T_CLAD_HOTSPOT = 620.0 + 273.15
 T_FUEL_AVG = 1380.0
-T_CENTRE_HOT = 1950.0 + 273.15
+T_CENTRE_HOT = 2140.0 + 273.15  # Rev A5 (D-018): now the model's own figure, not an independent check
 T_MELT = 2700.0 + 273.15
-LHR_MELT = 60e3
+LHR_MELT = 57e3  # Rev A5 (D-018): the spec now carries the model's melting point
 DOPPLER_LAG = 4.0
 DISCHARGE_GWD = 51.0
 GWD_PER_ATPCT = 9.375
@@ -269,15 +273,15 @@ def main():
     T_avg16 = channel(exact, LHR_AVG, T_OUT_AVG, R_cna, R_gap, "fuel")
     print(f"core-average fuel temperature: 4-point {T_avg4:.2f} K, 16-point {T_avg16:.2f} K")
 
-    print("\nChecks against spec figures that were NOT used to fix anything:")
+    print("\nFigures the spec now takes from this script (Rev A5, D-018) — they confirm agreement, not correctness:")
     centre_hot = channel(pellet, lhr_hot, T_OUT_HOT, R_cna, R_gap, "centre")
-    print(f"  hot-pin centreline at 42 kW/m: {centre_hot - 273.15:.0f} °C   (spec §2.4 ≈ 1,950 °C; "
-          f"difference {centre_hot - T_CENTRE_HOT:+.0f} K)")
-    # overpower: scale power (and the sodium rise with it, flow unchanged) until the hottest pin peaks at 60 kW/m
+    print(f"  hot-pin centreline at {lhr_hot * PEAK_AXIAL / 1e3:.0f} kW/m: {centre_hot - 273.15:.0f} °C   "
+          f"(spec §2.4 ≈ {T_CENTRE_HOT - 273.15:.0f} °C; difference {centre_hot - T_CENTRE_HOT:+.0f} K)")
+    # overpower: scale power (and the sodium rise with it, flow unchanged) until the hottest pin peaks at the §2.4 figure
     scale = LHR_MELT / (lhr_hot * PEAK_AXIAL)
     centre_60 = channel(pellet, lhr_hot * scale, outlet_at_scale(T_OUT_HOT, scale), R_cna, R_gap, "centre")
-    print(f"  hot-pin centreline at 60 kW/m peak ({scale * 100:.0f} %FP): {centre_60 - 273.15:.0f} °C   "
-          f"(spec: melting ≈ 2,700 °C above ≈ 60 kW/m; difference {centre_60 - T_MELT:+.0f} K)")
+    print(f"  hot-pin centreline at {LHR_MELT / 1e3:.0f} kW/m peak ({scale * 100:.0f} %FP): {centre_60 - 273.15:.0f} °C   "
+          f"(spec: melting ≈ 2,700 °C above ≈ {LHR_MELT / 1e3:.0f} kW/m; difference {centre_60 - T_MELT:+.0f} K)")
     lhr_melt = brentq(lambda s: channel(pellet, lhr_hot * s, outlet_at_scale(T_OUT_HOT, s), R_cna, R_gap, "centre") - T_MELT, 0.5, 3.0)
     print(f"  peak linear heat rate at which the centreline reaches 2,700 °C: {lhr_hot * PEAK_AXIAL * lhr_melt / 1e3:.1f} kW/m")
 

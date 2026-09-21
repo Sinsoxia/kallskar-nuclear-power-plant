@@ -137,8 +137,9 @@ ramp limit still applies either way.
     N_ref †: 600
     Failure it unlocks: Flow distribution anomaly
 
-Failure hazard per grid day for a component with usage U: λ = 0.002 × e^(6U) †. That's about 4% per
-grid day at U = 0.5 and about 80% at U = 1. Thermal striping: adjacent assembly outlets more than 40
+Failure hazard per grid day for a component with usage U: λ = 0.002 × e^(6U) †. That is a rate, not a probability: at
+U = 0.5 it is 0.04 per grid day, so about 4 % of components fail in a grid day; at U = 1 it is 0.807 per
+grid day, which is about 55 %. Thermal striping: adjacent assembly outlets more than 40
 K apart, held, add upper-internals damage at 1/5,000 per minute †.
 
 

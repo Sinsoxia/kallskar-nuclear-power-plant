@@ -233,7 +233,9 @@ Primary shutdown system (PSS) logic is 2-out-of-3 on independent channels.
 * Core inlet
     Normal: 375 °C
     Alarm or first action: 390 high, 360 low
-    Trip: 405 high, 345 low
+    Trip: 405 high, 345 low; the low trip is inhibited in Modes 4 and 5, in Mode 3 with every
+      PSS rod fully inserted, and in Mode 2 below 350 °C during heatup; it is armed in Mode 1 and
+      above 5 %FP, and every inhibit is annunciated
 * Hot pool level vs program
     Normal: 0 m
     Alarm or first action: ±0.25 m
@@ -530,7 +532,7 @@ touching it.
     Drifts out of band in about: 5–10 min
     Why: Temperature and level changes
 * Regulating rod band
-    Drifts out of band in about: ≈ 2.5 h
+    Drifts out of band in about: ≈ 2.7 h
     Why: Burnup drift at ×360: 0.75 pcm per real minute against a 250 pcm band
 * Hydrogen background
     Drifts out of band in about: 30 min or more
