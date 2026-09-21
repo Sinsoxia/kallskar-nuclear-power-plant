@@ -275,3 +275,10 @@ the pins. **Proposal:** state the 95 % split in §2.4 next to the linear heat ra
 24 × 99.5 MWt = 2,388 MWt is the rounded section duty; the exact figure for core plus pump heat is 99.583 MWt per
 section. **Proposal:** name §1.1 as the canonical thermal power, mark the section duty as derived and rounded, and
 soften the "every number agrees with every other number" sentence.
+
+## F30 Per-pump rated flow is a rounded third of the total (§4.2) — Resolved in code, spec wording open
+§4.2 gives 3,565 kg/s per primary pump and 10,694 kg/s total, but 3 × 3,565 = 10,695. The total is the figure the
+§1.1 heat balance produces (file 20: `mp = Pth/dh` → 10,694, `mp/3` → 3,564.67), so the per-pump number is the rounded
+one. `PrimaryPumps` derives the per-pump rating as total/3 and keeps the loop total exactly on the heat balance;
+§4.2's 3,565 is then correct to its own rounding. **Proposal:** print the per-pump figure as ≈ 3,565 kg/s, or state
+3,564.7.

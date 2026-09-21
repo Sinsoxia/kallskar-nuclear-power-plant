@@ -9,6 +9,7 @@
 
 local TOPICS = table.freeze({
 	Trip = true, -- { system, reason, firstOut }
+	EquipmentTrip = true, -- { system, equipment, reason, running } — a pump, fan or drive stopping, not a reactor trip
 	Runback = true, -- { id = "RB-1".."RB-3", target_pctFP, rate_pctpmin, reason }
 	Alarm = true, -- { tag, priority = 1|2|3, state = "in"|"out"|"ack", text }
 	ModeChange = true, -- { from, to }
