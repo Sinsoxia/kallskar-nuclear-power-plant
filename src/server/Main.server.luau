@@ -32,6 +32,23 @@ local isPrivate = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
 
 -- Plant ----------------------------------------------------------------------------------------------------------
 local channels = Channels.new()
+
+--[[
+	Inputs that belong to systems this milestone does not build. Declaring them here is what lets the Registry
+	insist that every other read has a real writer: anything missing is a wiring error, not a shrug. Each sits at
+	the value that keeps the plant quiet until something drives it — Mode 3 because that is where D-024 boots the
+	rods, and no earthquake, no lost boards, a turbine bypass available and a hot pool on programme.
+]]
+for name, initial in {
+	["program.mode"] = 3,
+	["site.seismic_g"] = 0,
+	["electrical.boards11kV"] = 3,
+	["turbine.bypassAvailable"] = true,
+	["pools.levelDeviation_m"] = 0,
+} do
+	channels:declareExternal(name, initial)
+end
+
 local registry = Registry.new(channels)
 for _, class in SystemClasses do
 	registry:add(System.new(class))

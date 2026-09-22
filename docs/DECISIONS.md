@@ -466,3 +466,40 @@ Measured, at 60 %FP: **1.003** at LCO-10's 1 %/min, **1.008** at its approved 3 
 30 %/min — against §9.5's 1.05 rod block and 1.12 trip. So the weakness is invisible inside the operating limit
 and bites immediately outside it, which makes LCO-10 the thing that keeps flow auto usable rather than a
 formality. Worth knowing before someone "fixes" the filter.
+
+## D-030 The startup source, sized by the instrument that has to see it — Proposed
+Point kinetics needs an external source term or a shut-down core reads exactly zero power, which is both wrong and
+useless: subcritical multiplication is what an approach to critical is flown on (§3.5). §3.5 gives no source
+strength. **Decision:** size it so that a shut-down plant — every PSS rod in, at the §3.2 reference temperature —
+sits at exactly the bottom of §3.5's wide-range span, 10⁻⁸ %FP. Subcritical multiplication then carries the
+indication up the scale on its own as rods come out, and the source range reads §3.5's own 15/(1−k) throughout.
+**Why that anchor:** both numbers in it are the spec's — the span bottom and the shutdown reactivity — and it
+encodes a real design property: an instrument that reads zero in Mode 3 tells the crew nothing, so the source and
+the instrument are specified against each other. **Alternative rejected:** a neutron source strength in n/s, which
+would need a detector efficiency the spec does not give to connect to anything observable.
+
+## D-031 Core is a facade, and it runs point kinetics until the cross sections exist — Proposed
+The plan makes 3D multigroup IQS the plant physics and point kinetics "the spec-required fallback and the test
+oracle". The cross sections come from Track X and do not exist yet. **Decision:** put a facade at `Systems/Core`
+that publishes the `core.*` channels and runs the fallback inside, so the plant is operable now and the 3D path
+replaces the innards later without a single channel changing.
+
+Two consequences, both stated rather than discovered later:
+- **Reactivity is absolute.** The oracle balances itself at whatever state it starts in, which is right for an
+  oracle and wrong for a plant that boots deeply subcritical. The facade sets the external term from §3.3's
+  budget instead: ρ = excess − rod worth + feedback, with the excess at the §3.2 reference being
+  2,250 − 376 = 1,874 pcm. At the Mode 3 boot state that is −3,826 pcm, k = 0.963, and the source range reads
+  407 cps — none of which is told to it.
+- **The power shape is a placeholder with a known error.** Radially it is §2.5's flow zoning read backwards
+  (zone factors exist to level the outlets, so an assembly's share of power is its flow factor), which gives a
+  radial peak of **1.12** where §3.7's validation target is **1.20**. Axially it is the chopped cosine whose
+  peak-to-average is §2.4's 1.22, the same shape `tools/derive/pin_thermal.py` used. The radial gap is a property
+  of the fallback, and it closes when the 3D flux arrives.
+
+## F32 §9.5's rod block is for a BANK move, and the word matters — Resolved in code
+§9.5 lists "RR out of band during a bank move" among the rod withdrawal blocks. Implemented as "RR out of band
+while anything is selected", it bricks the plant: D-024 boots the rods fully inserted at 0 mm, which is outside
+the 250–750 mm band, so the block fires on the operator's first withdrawal — the very move that would clear it.
+Every unit test passed, because each set up a plant whose regulating rods were already in band; only running all
+nine systems together showed it. `RodDrives` now publishes `rods.selectionKind` so Protection can tell a bank
+move from a single rod, which is what the spec actually says.

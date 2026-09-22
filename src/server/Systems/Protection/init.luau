@@ -68,7 +68,12 @@ local Protection = System.extend({
 		"turbine.bypassAvailable",
 		"pools.levelDeviation_m",
 	},
-	readsLagged = { "rods.allPssInserted", "rods.regulatingInBand", "rods.selection" },
+	readsLagged = {
+		"rods.allPssInserted",
+		"rods.regulatingInBand",
+		"rods.selection",
+		"rods.selectionKind",
+	},
 	writes = {
 		"protection.scram",
 		"protection.rodWithdrawalBlock",
@@ -533,8 +538,15 @@ function Protection.step(self: any, dt: number)
 	end
 
 	-- §9.5's other rod withdrawal blocks, which are conditions rather than measured signals
-	if self.port:read("rods.regulatingInBand") == false and self.port:read("rods.selection") ~= "" then
-		blocked = true -- the regulating rods are out of band during a bank move
+	--[[
+		§9.5: "RR out of band during a BANK move". The bank part is load-bearing. Blocking whenever anything is
+		selected would block the operator's own regulating-rod move — and since the rods boot fully inserted, at
+		0 mm, they start outside the 250–750 mm band, so the block would prevent the one move that clears it. The
+		plant could never be started. The rule is about moving a bank while the regulating rods have no authority
+		left to trim with.
+	]]
+	if self.port:read("rods.regulatingInBand") == false and self.port:read("rods.selectionKind") == "bank" then
+		blocked = true
 	end
 	local balance = self.port:read("core.reactivityBalance_pcm")
 	if balance and math.abs(balance) > self.cfg.rodBlocks.reactivityBalanceBeyond_pcm then

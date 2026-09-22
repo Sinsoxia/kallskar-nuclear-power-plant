@@ -65,6 +65,7 @@ local RodDrives = System.extend({
 		"rods.allPssInserted",
 		"rods.regulatingInBand",
 		"rods.selection",
+		"rods.selectionKind",
 	},
 })
 
@@ -230,6 +231,8 @@ function RodDrives.publish(self: any)
 	port:write("rods.allPssInserted", allPssIn)
 	port:write("rods.regulatingInBand", inBand)
 	port:write("rods.selection", if self.selection then self.selection.id else "")
+	-- §9.5 distinguishes a bank move from a single rod, so the kind has to travel with the id
+	port:write("rods.selectionKind", if self.selection then self.selection.kind else "")
 	self.worth_pcm = worth
 end
 

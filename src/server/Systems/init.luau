@@ -7,8 +7,16 @@
 	called; Main calls it again after an owner reset.
 ]]
 local classes: { any } = {
-	-- M1 reactor slice systems are added here as they are built (Core, FuelThermal, Pools, PrimaryPumps, IHX,
-	-- RodDrives, Protection, AutoControls, DecayHeat).
+	require(script.Core),
+	require(script.FuelThermal),
+	require(script.Pools),
+	require(script.PrimaryPumps),
+	require(script.IHX),
+	require(script.RodDrives),
+	require(script.Detectors),
+	require(script.Protection),
+	require(script.AutoControls),
+	-- DecayHeat joins here next
 }
 
 return classes
