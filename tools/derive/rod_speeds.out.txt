@@ -34,6 +34,8 @@ Shutdown margins against the §3.3 budget
   ok   SSS alone and SSS-one-stuck imply the same excess 1870.0000 vs 1870.000 pcm    (tol 1)
        -> both put the excess at 375 C at 1870 pcm, against 2250 at 230 C
        -> a 380 pcm swing over 145 K is 2.62 pcm/K, against §3.3's 2.41 pcm/K
+  ok   implied swing against §3.3's budget line        380.0000 vs  376.000 pcm    (tol 10)
   ok   implied isothermal coefficient                    2.6207 vs    2.410 pcm/K  (tol 0.25)
+       -> §3.3's own budget line is 376 pcm, which is 2.59 pcm/K; the margins agree with the budget to 1.1%
 
-23/23 checks pass
+24/24 checks pass

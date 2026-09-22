@@ -377,3 +377,33 @@ running, so the whole plant starts as a coherent hot standby.
 3D solve, so picking them now would be a guess — and worse, it would hand players a running reactor they did not
 start. Taking the plant from hot standby to power is the game. **Alternative if it proves tedious:** a scenario
 preset that fast-forwards a startup, which belongs to the scenario director rather than to these systems.
+
+## D-025 Neutron instrument noise, and the filters that follow from it — Proposed
+The spec gives noise figures for thermocouples (§2.5: ±1 K, 3 s lag) but none for the neutron channels, while §9.5
+votes 2-of-3 and 2-of-4 on them — which only means anything if the channels are independently noisy.
+
+**Two of these numbers are choices; the rest are consequences.**
+
+*Not choices.* The source range and the delayed-neutron detectors are pulse-counting channels, so their noise is
+Poisson: σ/R = 1/√(Rτ), with no free parameter at all. At §3.5's own reference of 250 cps that is 4.5 % on a 2 s
+ratemeter, and at 15 cps — the bare unmultiplied source — it is 18 %. `tests/DetectorsSpec.luau` measures 4.51 %
+against the predicted 4.48 %. An approach to critical is jittery at the start and settles as the count rate climbs
+because of arithmetic, not because anyone tuned it.
+
+*Choices.* The wide range (Campbell-mode mean-square voltage) and power range (DC ionisation chamber current) are
+analogue, so they need a fractional precision: **2 %** and **0.5 %**, representative of those instrument classes.
+
+*Consequences.* Given those, the three filter time constants are the shortest that keep noise **5σ short of the
+§9.5 setpoint it could otherwise fake** (`tools/derive/detectors.py`):
+  - flux rate: **0.5 s** (needs ≥ 0.35 s). Unfiltered, 0.5 % noise differentiated over one 0.1 s tick is 7 %FP/s
+    against a 10 %FP/s trip — the plant would trip on nothing.
+  - period: **5 s** (needs ≥ 4.24 s against the 30 s rod block).
+  - ratemeter: **2 s**, which gives the 1/M plot 4.5 % precision at the §3.5 reference rate.
+Plus a decade of hysteresis under §3.5's 10⁻³ %FP source-range cut-off, so the HV cannot chatter at the threshold.
+
+**Two consequences worth stating rather than discovering later.** First, with a 5 s filter the period channel is
+the *slow* protection: a 0.47 s excursion e-folds faster than the filter settles, so §9.5's overpower and
+flux-rate trips are what catch it — which is presumably why §9.5 carries all three. Second, σ of the apparent
+period is 177 s, so a *sample* of it drifts lower the longer a session runs (3σ is 59 s, 4.5σ is 39 s, against a
+30 s rod block). **Protection must require the period rod block to persist rather than act on a single sample.**
+That is a note for the Protection system, not a reason to lengthen the filter, which would blunt the real trips.

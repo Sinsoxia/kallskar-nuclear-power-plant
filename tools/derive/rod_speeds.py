@@ -19,6 +19,7 @@ ACTIVE_MM = 1000.0          # §2.1: active fuel height
 INTERLOCK_PCMPS = 4.0       # §3.4
 EXCESS_BOC_PCM = 2250.0     # §3.3 reactivity budget, 230 C beginning of cycle
 ISOTHERMAL_PCMPK = 2.41     # §3.3
+ISOTHERMAL_SWING_PCM = 376.0  # §3.3 budget line: the 230 -> 375 C isothermal swing, stated outright
 
 # §3.4 table: (label, rods moving together, worth each pcm, stated speed mm/s)
 DRIVES = [
@@ -98,7 +99,12 @@ implied_coeff = swing / (375.0 - 230.0)
 print(f"       -> a {swing:.0f} pcm swing over 145 K is {implied_coeff:.2f} pcm/K, "
       f"against §3.3's {ISOTHERMAL_PCMPK:.2f} pcm/K")
 # the margins are quoted to three figures, so +-25 pcm each; that is +-0.2 pcm/K on the implied coefficient
+# §3.3's budget states this swing outright, and that is the sharper comparison: the coefficient is an average
+# over a range the budget line need not match exactly.
+check("implied swing against §3.3's budget line", swing, ISOTHERMAL_SWING_PCM, 10, "pcm")
 check("implied isothermal coefficient", implied_coeff, ISOTHERMAL_PCMPK, 0.25, "pcm/K")
+print(f"       -> §3.3's own budget line is {ISOTHERMAL_SWING_PCM:.0f} pcm, which is {ISOTHERMAL_SWING_PCM / 145:.2f} "
+      f"pcm/K; the margins agree with the budget to {abs(swing - ISOTHERMAL_SWING_PCM) / ISOTHERMAL_SWING_PCM:.1%}")
 
 print(f"\n{sum(checks)}/{len(checks)} checks pass")
 raise SystemExit(0 if all(checks) else 1)
