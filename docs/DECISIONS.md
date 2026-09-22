@@ -407,3 +407,26 @@ flux-rate trips are what catch it — which is presumably why §9.5 carries all 
 period is 177 s, so a *sample* of it drifts lower the longer a session runs (3σ is 59 s, 4.5σ is 39 s, against a
 30 s rod block). **Protection must require the period rod block to persist rather than act on a single sample.**
 That is a note for the Protection system, not a reason to lengthen the filter, which would blunt the real trips.
+
+## D-026 Where the protection system votes, and where it cannot yet — Proposed
+§9.5's header says the PSS is 2-out-of-3 on independent channels, and every row of its table is written as though
+three instruments exist. For the neutron channels they do: §3.5 gives three source range, three wide range, four
+power range quadrants and six DNDs, so those vote — 2-of-4 on the power range (D-005, finding F5) and 2-of-3
+elsewhere. The process signals are a different matter. M1 has one mixed core outlet temperature, one core inlet,
+one cover gas pressure. **Decision:** every monitor declares its own vote, and a signal the plant has one of
+declares **1-of-1** rather than pretending to be triplicated. Triplicating the process thermocouples is a later
+refinement, and because the vote is per row it will be a config change rather than a rewrite.
+
+**Three related rules, each of which a test caught rather than a review:**
+- **An alarm is per channel, a trip is a vote.** One quadrant reading 117 %FP is what the annunciator exists for;
+  an alarm that waited for two channels would hide the first instrument to fail. Only the trip takes the
+  coincidence. Rod blocks follow the alarm, being mild and reversible — D-025's persistence, not the vote, is
+  what keeps instrument noise out of them.
+- **Counts are inclusive.** §9.5 says "1 lost: RB-2" and "2 lost: trip", so reaching the count is the condition.
+  Comparing strictly meant one pump lost never started RB-2 at all.
+- **Adjacency is not modelled.** §9.5 wants +45 K on two *adjacent* assembly thermocouples; adjacency needs the
+  mesh neighbour map, so for now any two count. That trips a little more readily rather than a little less.
+
+**The 25 %FP low setpoint** bypasses itself above the 10 %FP permissive and re-arms below it, because §9.5 calls
+it a permissive rather than an operator action. A plant that required a deliberate bypass during every startup is
+the other defensible reading; this one follows the spec's wording.

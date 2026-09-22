@@ -49,7 +49,7 @@ local RodDrives = System.extend({
 	name = "RodDrives",
 	lane = "fast",
 	reads = {},
-	readsLagged = { "protection.rodWithdrawalBlock" },
+	readsLagged = { "protection.rodWithdrawalBlock", "protection.scram", "protection.rodRunback" },
 	writes = {
 		"rods.position_mm",
 		"rods.insertedFraction",
@@ -148,6 +148,7 @@ function RodDrives.init(self: any, ctx: any)
 	self.selection = nil
 	self.scrammed = {}
 	self.runback = false
+	self.commandedRunback = false
 	self.rate_pcmps = 0
 	self:publish()
 end
@@ -244,6 +245,18 @@ end
 function RodDrives.step(self: any, dt: number)
 	local blocked = self.port:read("protection.rodWithdrawalBlock") == true
 	local rate = 0
+
+	-- Protection decides, these drives execute. `scram` is idempotent, so holding the channel at "PSS" simply
+	-- keeps the rods in rather than re-firing anything.
+	local demanded = self.port:read("protection.scram")
+	if demanded and demanded ~= "none" then
+		self:scram(demanded, "protection")
+	end
+	local runbackDemand = self.port:read("protection.rodRunback") == true
+	if runbackDemand and not self.runback then
+		self:stopSelection("runback drive-in")
+	end
+	self.runback = self.commandedRunback == true or runbackDemand
 
 	-- A scram owns the drives outright: no selection, no block, no interlock — the rods are falling.
 	for _, system in { "PSS", "SSR" } do
@@ -390,6 +403,7 @@ RodDrives.commands = {
 		if on and not self.runback then
 			self:stopSelection("runback drive-in", actor)
 		end
+		self.commandedRunback = on
 		self.runback = on
 		if self.log then
 			self.log:record("rod.runback", actor, "shim banks", if on then "drive in" else "released", "set")
