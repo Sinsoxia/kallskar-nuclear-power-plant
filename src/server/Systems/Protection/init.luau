@@ -52,7 +52,7 @@ local Protection = System.extend({
 		"detectors.period_s",
 		"detectors.fluxRate_pctFPps",
 		"detectors.dnd_cps",
-		"pools.mixedCoreOutlet_K",
+		"pools.mixedCoreOutletMeasured_K",
 		"pools.coreInlet_K",
 		"pools.coverGas_MPa",
 		"fuel.assemblyOutlet_K",
@@ -198,7 +198,7 @@ local function buildMonitors(cfg: any): { any }
 		{
 			id = "CORE-OUT", label = "Core outlet, mixed", system = "PSS", sense = "above",
 			signal = function(self)
-				return single((self.port:read("pools.mixedCoreOutlet_K") or 0) - KELVIN)
+				return single((self.port:read("pools.mixedCoreOutletMeasured_K") or 0) - KELVIN)
 			end,
 			vote = 1, alarm = pss.coreOutletMixed.alarm_C, trip = pss.coreOutletMixed.trip_C,
 		},
@@ -350,7 +350,7 @@ local function buildMonitors(cfg: any): { any }
 		{
 			id = "SSS-OUT", label = "SSS core outlet", system = "SSS", sense = "above",
 			signal = function(self)
-				return single((self.port:read("pools.mixedCoreOutlet_K") or 0) - KELVIN)
+				return single((self.port:read("pools.mixedCoreOutletMeasured_K") or 0) - KELVIN)
 			end,
 			vote = 1, trip = sss.coreOutlet_C,
 		},

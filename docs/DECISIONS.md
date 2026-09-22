@@ -430,3 +430,39 @@ refinement, and because the vote is per row it will be a config change rather th
 **The 25 %FP low setpoint** bypasses itself above the 10 %FP permissive and re-arms below it, because §9.5 calls
 it a permissive rather than an operator action. A plant that required a deliberate bypass during every startup is
 the other defensible reading; this one follows the spec's wording.
+
+## D-027 The core outlet thermocouple, and who is allowed to read the sodium — Proposed
+§2.5 gives the core outlet instruments **±1 K of noise and a 3 s lag**, and nothing had implemented them: every
+system read the true sodium temperature. That matters more than it sounds. §9.4's rod auto is supposed to be
+limited by "reacts after thermocouples move", and a controller acting on an instantaneous, noiseless signal is
+simply not the controller §9.4 describes — its characteristic hunting comes entirely from that lag.
+
+**Decision:** `Pools` publishes `pools.mixedCoreOutletMeasured_K`, the same sodium seen through a §2.5
+thermocouple, and **everything outside Pools reads the instrument rather than the sodium**. Protection's
+core-outlet trip and the SSS's diverse one now act on the measurement, which is what a protection channel
+actually has, and it gives that trip a real 3 s sensor lag.
+**The small assumption, stated:** §2.5 quotes those characteristics for the *assembly outlet* thermocouples. The
+mixed core outlet is the same class of instrument in the hot pool, so it carries the same figures.
+**Still ideal:** the 301 assembly outlet thermocouples themselves, which Protection's ASSY-DEV row votes on. Same
+treatment, not yet applied.
+
+## D-028 Rod auto sequences one rod, and holds it — Proposed
+D-006 has rod auto move one regulating rod at a time, and finding F6 is why: ganging all three crosses the
+250–750 mm band in about 33 minutes rather than 100. That leaves the question of *which* rod, which the first
+implementation answered every tick — take the most-inserted when withdrawing, the most-withdrawn when inserting,
+so the three stay together. A test caught what that actually does: as soon as the chosen rod moves ahead of the
+others it stops being the most-inserted, so the controller hops to the next one, every tick.
+**Decision:** hold the selected rod until it reaches the band limit or the direction reverses, and apply the
+keep-them-together rule when choosing a **new** rod. That is what a rod sequencer does, and it keeps the three
+within roughly one band-crossing of each other without thrashing between them.
+
+## D-029 §9.4's flow auto is safe inside LCO-10 and not outside it — Proposed
+§9.4 gives primary flow auto a 10 s filter on power and says P/Q swings ±5 % on fast changes. Testing that
+against an instantaneous power step is meaningless: the step drives P/Q to P_new/P_old and trips the plant, but
+rods move at no more than 4 pcm/s (§3.4), so **power cannot step**. The rate limit on the rods is what keeps this
+deliberately weak controller survivable, and the flow lags power by τ × rate, so the excursion is (P + τ·rate)/P.
+
+Measured, at 60 %FP: **1.003** at LCO-10's 1 %/min, **1.008** at its approved 3 %/min, **1.067** at RB-1's
+30 %/min — against §9.5's 1.05 rod block and 1.12 trip. So the weakness is invisible inside the operating limit
+and bites immediately outside it, which makes LCO-10 the thing that keeps flow auto usable rather than a
+formality. Worth knowing before someone "fixes" the filter.

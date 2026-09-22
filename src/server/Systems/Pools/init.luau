@@ -81,6 +81,7 @@ local Pools = System.extend({
 		"pools.hotPool_K",
 		"pools.coldPool_K",
 		"pools.mixedCoreOutlet_K",
+		"pools.mixedCoreOutletMeasured_K",
 		"pools.ihxOutlet_K",
 		"pools.coverGas_MPa",
 		"pools.coverGasVolume_m3",
@@ -197,6 +198,17 @@ function Pools.init(self: any, ctx: any)
 	for i = 1, self.bufferN do
 		self.buffer[i] = T0
 	end
+	--[[
+		The mixed core outlet thermocouple. §2.5 gives the assembly outlet instruments ±1 K of noise and a 3 s
+		lag; this is the same class of thermocouple in the hot pool, so it carries the same characteristics.
+		Nothing outside this system should read the sodium temperature directly — Protection trips on the
+		instrument, and §9.4's rod auto is deliberately limited by it ("reacts after thermocouples move").
+	]]
+	self.tcLag_s = cfg.Core.flow.thermocoupleLag_s
+	self.tcNoise_K = cfg.Core.flow.thermocoupleNoise_K
+	self.tcRng = Random.new(20005)
+	self.measuredOutlet_K = T0
+
 	self.gas_mol = gas.setpoint_MPa * 1e6 * self:gasVolume(T0, T0) / (self.R * self:gasTemperature(T0))
 	self.controlTau = primary.coverGasControl.correctionTau_s
 	-- The valves' authority follows from the band and τ (D-020): full open moves this many mol/s.
@@ -278,6 +290,7 @@ function Pools.publish(self: any)
 	port:write("pools.hotPool_K", self.hot[2])
 	port:write("pools.coldPool_K", self.cold)
 	port:write("pools.mixedCoreOutlet_K", self.mixedOutlet)
+	port:write("pools.mixedCoreOutletMeasured_K", self.reading_K or self.mixedOutlet)
 	port:write("pools.ihxOutlet_K", self.ihxOutlet)
 	port:write("pools.coverGas_MPa", self.pressure_MPa)
 	port:write("pools.coverGasVolume_m3", vGas)
@@ -323,7 +336,12 @@ function Pools.step(self: any, dt: number)
 	-- 5. the pumps add their shaft power to the flow on its way to the diagrid (§4.2)
 	self.coreInlet = afterHeat(self.cold, flow, pumpHeat)
 
-	-- 6. cover gas: the space the sodium vacated, and the make-up/vent controller (§4.4, D-020)
+	-- 6. the thermocouple follows the sodium, late and imprecisely (§2.5)
+	local drift = 1 - math.exp(-dt / self.tcLag_s)
+	self.measuredOutlet_K += (mixed - self.measuredOutlet_K) * drift
+	self.reading_K = self.measuredOutlet_K + self.tcNoise_K * (self.tcRng:NextNumber() * 2 - 1)
+
+	-- 7. cover gas: the space the sodium vacated, and the make-up/vent controller (§4.4, D-020)
 	local hotMean = self:hotMean()
 	self:controlGas(dt, self:gasVolume(hotMean, self.cold), self:gasTemperature(hotMean))
 	self:publish()

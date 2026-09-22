@@ -49,7 +49,13 @@ local RodDrives = System.extend({
 	name = "RodDrives",
 	lane = "fast",
 	reads = {},
-	readsLagged = { "protection.rodWithdrawalBlock", "protection.scram", "protection.rodRunback" },
+	readsLagged = {
+		"protection.rodWithdrawalBlock",
+		"protection.scram",
+		"protection.rodRunback",
+		"auto.rodSelected",
+		"auto.rodDemand_mm",
+	},
 	writes = {
 		"rods.position_mm",
 		"rods.insertedFraction",
@@ -149,6 +155,7 @@ function RodDrives.init(self: any, ctx: any)
 	self.scrammed = {}
 	self.runback = false
 	self.commandedRunback = false
+	self.autoSelection = nil
 	self.rate_pcmps = 0
 	self:publish()
 end
@@ -257,6 +264,32 @@ function RodDrives.step(self: any, dt: number)
 		self:stopSelection("runback drive-in")
 	end
 	self.runback = self.commandedRunback == true or runbackDemand
+
+	--[[
+		§9.4's rod auto asks the same way an operator does. Routing it through `request` rather than letting it
+		write positions means the 4 pcm/s interlock, the one-rod-at-a-time rule and §9.5's withdrawal block all
+		apply to the automatic controller without a line of code to make that true. `autoSelection` remembers
+		which movement was the auto's, so releasing it stops that rod and leaves an operator's alone.
+	]]
+	local autoRod = self.port:read("auto.rodSelected")
+	if autoRod ~= nil and autoRod ~= "" then
+		local target = self.port:read("auto.rodDemand_mm") or 0
+		if self.selection == nil then
+			if self:request("rod", autoRod, target, nil).ok then
+				self.autoSelection = autoRod
+			end
+		elseif self.autoSelection == autoRod and self.selection.id == autoRod then
+			local i = self:indexOf(autoRod)
+			if i then
+				self.drives[i].demand_mm = target
+			end
+		end
+	elseif self.autoSelection ~= nil then
+		if self.selection and self.selection.id == self.autoSelection then
+			self:stopSelection()
+		end
+		self.autoSelection = nil
+	end
 
 	-- A scram owns the drives outright: no selection, no block, no interlock — the rods are falling.
 	for _, system in { "PSS", "SSR" } do

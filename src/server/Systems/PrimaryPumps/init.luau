@@ -35,6 +35,7 @@ local PrimaryPumps = System.extend({
 	name = "PrimaryPumps",
 	lane = "fast",
 	reads = { "core.power_pctFP", "pools.coverGas_MPa", "pools.coldPool_K" },
+	readsLagged = { "auto.flowOn", "auto.pumpSpeedDemand_pct" },
 	writes = {
 		"primary.coreFlow_kgps",
 		"primary.flowFraction",
@@ -117,6 +118,23 @@ function PrimaryPumps.publish(self: any)
 end
 
 function PrimaryPumps.step(self: any, dt: number)
+	--[[
+		§9.4's primary flow auto sets one speed demand for every running pump and, as that section states,
+		ignores a pump trip: it does not raise the survivors to make up the flow a stopped pump is no longer
+		delivering. The 25–105 % range and the 2 %/s ramp below still apply to it.
+	]]
+	if self.port:read("auto.flowOn") == true then
+		local demand = self.port:read("auto.pumpSpeedDemand_pct")
+		if demand ~= nil then
+			local clamped = math.clamp(demand, self.minSpeed, self.maxSpeed)
+			for _, pump in self.pumps do
+				if not pump.tripped then
+					pump.demand_pct = clamped
+				end
+			end
+		end
+	end
+
 	local maxStep = self.cfg.maxRamp_pctps * dt
 	for _, pump in self.pumps do
 		if pump.tripped then
