@@ -354,3 +354,26 @@ would, so the primary outlet approaches the secondary inlet sooner than reality.
 and a station blackout, which is the wrong direction to be optimistic in. Revisit when the secondary and steam
 generator milestone brings tube geometry; until then the error sits in a regime where the pool time constants
 (28 minutes at the natural-circulation floor, D-021) dominate the response anyway.
+
+## D-023 Scram inserts at a constant rate — Proposed
+§3.4 gives one point on the scram curve for each system: 90 % inserted in ≤ 1.2 s (PSS) and ≤ 2.0 s (SSR). One
+point does not define a curve. **Decision:** insert at a constant rate sized to hit exactly that point —
+0.9 × 1,100 mm ÷ 1.2 s = **825 mm/s** for the PSS and **495 mm/s** for the SSR, so full travel takes 1.33 s and
+2.22 s. A rod already part-way in arrives sooner, at the same rate.
+**Why not something more shaped:** a real scram accelerates under gravity and then decelerates into a dashpot over
+the last part of the stroke, which is why the specification quotes 90 % rather than 100 %. Reproducing that needs
+the dashpot's entry point and damping constant, neither of which the spec gives, so any S-curve would be invented.
+The constant rate is exact where the spec constrains it and honest about being a straight line where it does not.
+**Consequence:** the model reaches full insertion slightly sooner than a dashpot-equipped drive would, by a margin
+of order 0.1 s, against delayed-neutron time constants of seconds. Worth revisiting only if a scenario turns on the
+last 10 % of rod travel.
+
+## D-024 The plant boots in Mode 3, hot standby — Proposed
+Something has to decide where the rods are when a server starts. **Decision:** every PSS rod fully inserted, the
+nine SSRs parked at 1,100 mm and latched, which is §3.4's stated normal position for them and §9.1's Mode 3.
+`FuelThermal` and `Pools` already boot isothermal at the §3.2 reference temperature of 375 °C with the pumps
+running, so the whole plant starts as a coherent hot standby.
+**Why not critical at power:** the shim positions that hold a critical core depend on burnup, temperature and the
+3D solve, so picking them now would be a guess — and worse, it would hand players a running reactor they did not
+start. Taking the plant from hot standby to power is the game. **Alternative if it proves tedious:** a scenario
+preset that fast-forwards a startup, which belongs to the scenario director rather than to these systems.
