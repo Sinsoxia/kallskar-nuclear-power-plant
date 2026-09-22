@@ -32,3 +32,6 @@ Thumbs.db
 desktop.ini
 .vscode/*
 !.vscode/settings.json
+
+# The website lives outside this repo for now (Aqua's call, 2026-09-22). Remove this line to bring it in.
+kallskar-website-main/
