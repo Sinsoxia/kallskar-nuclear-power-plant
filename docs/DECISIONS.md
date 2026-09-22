@@ -294,3 +294,47 @@ soften the "every number agrees with every other number" sentence.
 one. `PrimaryPumps` derives the per-pump rating as total/3 and keeps the loop total exactly on the heat balance;
 §4.2's 3,565 is then correct to its own rounding. **Proposal:** print the per-pump figure as ≈ 3,565 kg/s, or state
 3,564.7.
+
+## F31 §4.1's level rises are pre-Rev-A4 (hot pool 545 °C) — Resolved in code; not in the Rev A5 list
+(found while building `Pools`, after the decision log was written)
+§4.1 states the mean sodium level rises **+0.26 m** from the 375 °C isothermal state to 100 %, and **+0.64 m** from
+230 °C. Recomputing both from the Appendix A density correlation and the §4.1 inventory (620 t hot, 560 t cold, 70 t
+core and diagrid, 140 m² of free surface) reproduces them **only with the hot pool at ≈ 546 °C**. That is the
+pre-Rev-A4 IHX primary inlet of 545 °C, which Rev A4 replaced with **550 °C** because 545 carried only 385 MWt per
+unit and left the primary 79 MWt short. At 550 °C the same calculation gives **0.266 m and 0.645 m**. The 90 m³ cover
+gas swing survives the change (89.2 → 90.3 m³) because it is quoted to the nearest 10 m³.
+`Pools` computes levels from the density correlation and the live pool temperatures, so it produces the Rev A5-
+consistent figures; `tools/derive/pool_gas.py` checks both against §4.1 with a tolerance that spans the two hot-pool
+temperatures, and prints the 545 °C values alongside. **Proposal:** restate §4.1 as +0.27 m and +0.65 m, or state the
+hot-pool temperature the figures assume.
+
+## D-020 Cover gas make-up and vent controller — Proposed
+§4.4 gives the argon setpoint (0.120 MPa), the automatic band (0.115–0.125), the alarms (0.105 / 0.140), the trip
+(0.160) and the floor the pumps need (0.102 MPa), but no valve capacity or control law: it says only that argon is
+admitted on cooldown and vented to the decay tanks on heatup. **Decision:** whenever pressure leaves the auto band,
+the controller moves the inventory back toward the setpoint as a first-order lag with **τ = 60 s**, and that same
+authority is the manual valves' full-open rate.
+**Why 60 s:** it is not a free parameter once the band is fixed. At the band edge the correction rate is
+(n_set − n_edge)/τ ≈ **5.6 mol/s** (`tools/derive/pool_gas.py`). The duty it has to cover runs from **0.18 mol/s**,
+which holds the setpoint while the pool changes at LCO-11's 1.5 K/min limit (a ×31 margin), up to **3.8 mol/s**, which
+is the entire 90 m³ swing inside ten minutes — about as fast as the pools can physically move after a trip. A τ much
+larger than 60 s would let a trip push the pressure out of the band; much smaller and the valves would chase
+measurement noise. **Alternative rejected:** a fixed mol/s valve rating, which would have been a guess.
+
+## D-021 Where the 70 t of core and diagrid sodium lives — Proposed
+§4.1 splits the 1,250 t of primary sodium into 620 t hot pool, 560 t cold pool and **70 t in the core and diagrid**,
+and prescribes mixing nodes for the two pools only. `FuelThermal` treats the coolant in the assemblies algebraically
+(§14.3 allows it: the 0.19 s core transit is far shorter than any node's time constant), so no node carries that 70 t
+directly. **Decision:** keep the spec's node structure as written, and use the 70 t only where it belongs — in the
+sodium *volume*, which sets the levels and the cover gas space.
+**What the model's heat capacity then is,** which the energy-conservation test in `tests/PoolsSpec.luau` measures
+rather than assumes: the model is parameterised by *time constants*, so its inventory is their sum times the flow —
+40 + 18 s of hot pool, 52 s of cold pool and the **8 s transport line between the IHX outlets and the pump inlets**,
+which is 118 s, or **1,262 t at rated flow**. That is **0.95 % above §4.1's 1,250 t**, not 5.6 % below it as a count
+of the pool nodes alone would suggest: the transport line (86 t) stands in for the core and diagrid sodium (70 t).
+Note that using §4.1's rounded 58 s and 52 s rather than its masses is itself worth 1,176 t against 1,180 t.
+**Why accept it:** folding the 70 t into the pool nodes instead would change §4.1's prescribed 58 s and 52 s mixing
+times to 61 s and 55 s — overriding spec-given model parameters to chase a 1.2 % inventory difference. Note that the
+transport line's contribution scales with flow (86 t at rated, 3 t at the natural-circulation floor), so on a station
+blackout the model's inventory falls back to the 1,180 t of pools; the §4.5 coping calculation has its own
+2,400 MJ/K "with internals" figure and does not use this model.

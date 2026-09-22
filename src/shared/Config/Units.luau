@@ -9,6 +9,7 @@ return {
 	kelvinOffset_K = cited(273.15, "SI: T[K] = T[°C] + 273.15"),
 	secondsPerDay_s = cited(86400, "SI day"),
 	secondsPerHour_s = cited(3600, "SI hour"),
+	molarGasConstant_JpmolK = cited(8.314462618, "SI exact since the 2019 redefinition: R = N_A k_B"),
 	pcmPerUnit = spec(1e5, "§0.1: pcm = 1e-5 Δk/k"),
 	dollar_pcm = spec(360, "§0.1: $1 = 360 pcm"),
 	rodTravel_mm = spec(1100, "§0.1: rod position 0–1,100 mm withdrawn from fully inserted"),

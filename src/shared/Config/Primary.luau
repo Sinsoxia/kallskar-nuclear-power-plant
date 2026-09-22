@@ -1,7 +1,7 @@
 --!strict
 -- Primary system: vessel, pools, pumps, IHX primary side, cover gas, DRACS, purification. Spec §4.1–§4.6.
 local P = require(script.Parent.Provenance)
-local spec, tuning = P.spec, P.tuning
+local spec, tuning, engineering, decision = P.spec, P.tuning, P.engineering, P.decision
 
 return {
 	-- §4.1 vessel and pools
@@ -96,9 +96,15 @@ return {
 		trip_MPa = 0.160,
 		neverBelow_MPa = 0.102,
 		volumeSwing230To100_m3 = 90,
+		volumeSwingFrom_C = 230, -- the isothermal state §4.4 measures the 90 m³ swing and the 0.074 MPa from
 		fixedInventoryCooldown_MPa = 0.074,
 	}, "§4.4"),
 	coverGasTemperature_C = spec({ atPower = 300, cold = 180 }, "file 20 POOL/cover gas line"),
+	-- Make-up and vent valves: first-order correction back to the setpoint whenever pressure leaves the auto band.
+	coverGasControl = decision({ correctionTau_s = 60 }, "D-020"),
+	-- Ring buffer length for the IHX→pump transport delay, which grows as 1/flow. 600 s covers flow down to 1.3 %
+	-- of rated; below that the pool mixing times are already tens of minutes and the pipe delay stops mattering.
+	poolTransportTracked_s = engineering(600, "ring buffer length; the delay is clamped to it at very low flow"),
 	decayTanks = tuning({ count = 3, volumeEach_m3 = 50, holdUp_h = 72 }, "§4.4"),
 
 	-- §4.5 DRACS (not simulated in M1; values here for guide boards and later milestones)
