@@ -338,3 +338,19 @@ times to 61 s and 55 s — overriding spec-given model parameters to chase a 1.2
 transport line's contribution scales with flow (86 t at rated, 3 t at the natural-circulation floor), so on a station
 blackout the model's inventory falls back to the 1,180 t of pools; the §4.5 coping calculation has its own
 2,400 MJ/K "with internals" figure and does not use this model.
+
+## D-022 IHX UA is held constant; the film coefficients' flow dependence is not modelled — Proposed
+§4.3 gives one UA, 9.6 MW/K over about 2,000 m², so U ≈ 4,800 W/m²K — a sensible sodium-to-sodium overall
+coefficient. **Decision:** the `IHX` system uses that UA at every flow, and gets its duty from ε-NTU, so the duty,
+both outlet temperatures and the LMTD all follow from the live temperatures and flows rather than from §4.3's
+396 MWt. `tools/derive/ihx.py` shows that reproduces every stated figure at the design point.
+**What is not modelled:** in reality the two film coefficients fall with flow, so UA falls too. For liquid metals
+that dependence is much weaker than for water — the tube-side Nusselt number is Nu = 4.82 + 0.0185·Pe^0.827
+(Skupinski), whose conduction floor of 4.82 survives when the convective term collapses — but it is not zero.
+Splitting the 4,800 W/m²K between shell film, tube wall and tube film needs tube count, diameter and wall
+thickness, which §4.3 does not give, so any flow exponent here would be invented rather than derived.
+**Consequence, stated rather than hidden:** at low flow the model transfers slightly more heat than the plant
+would, so the primary outlet approaches the secondary inlet sooner than reality. That flatters natural circulation
+and a station blackout, which is the wrong direction to be optimistic in. Revisit when the secondary and steam
+generator milestone brings tube geometry; until then the error sits in a regime where the pool time constants
+(28 minutes at the natural-circulation floor, D-021) dominate the response anyway.
