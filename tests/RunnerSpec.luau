@@ -42,4 +42,28 @@ return {
 			check.near(nan, 1, 1)
 		end), "near: a NaN result still fails")
 	end,
+
+	["rel with an infinite expectation passes only that same infinity"] = function(t)
+		local check = Runner.makeT({})
+		local inf = math.huge
+		-- |expected| × relTol is itself infinite, so without a rule of its own any number was "within" it
+		t.ok(fails(function()
+			check.rel(1, inf, 1e-6)
+		end), "rel: a finite result against +inf")
+		t.ok(fails(function()
+			check.rel(-inf, inf, 1e-6)
+		end), "rel: -inf against +inf")
+		t.ok(fails(function()
+			check.rel(0, -inf, 1e-6)
+		end), "rel: a finite result against -inf")
+		t.ok(fails(function()
+			check.rel(0 / 0, inf, 1e-6)
+		end), "rel: NaN against +inf")
+		t.ok(not fails(function()
+			check.rel(inf, inf, 1e-6)
+		end), "rel: +inf against +inf")
+		t.ok(not fails(function()
+			check.rel(-inf, -inf, 0)
+		end), "rel: -inf against -inf")
+	end,
 }

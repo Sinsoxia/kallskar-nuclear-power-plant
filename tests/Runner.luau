@@ -66,8 +66,17 @@ local function makeT(logs: { string }): T
 		end
 	end
 	function t.rel(actual: number, expected: number, relTol: number, msg: string?)
-		local tol = math.abs(expected) * relTol
-		if type(actual) ~= "number" or actual ~= actual or unusable(expected, tol) or math.abs(actual - expected) > tol then
+		-- an infinite expectation would make |expected| × relTol infinite too, and every number would be inside it:
+		-- only that same infinity matches
+		local infinite = expected == math.huge or expected == -math.huge
+		local tol = if infinite then 0 else math.abs(expected) * relTol
+		if
+			type(actual) ~= "number"
+			or actual ~= actual
+			or unusable(expected, tol)
+			or not (relTol >= 0)
+			or (if infinite then actual ~= expected else math.abs(actual - expected) > tol)
+		then
 			error(`{msg or "outside relative tolerance"}: got {fmt(actual)}, expected {fmt(expected)} ± {relTol * 100}%`, 2)
 		end
 	end
