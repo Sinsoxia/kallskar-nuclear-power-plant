@@ -383,6 +383,17 @@ return {
 		t.eq(ch:get("protection.firstOut"), "ASSY-DEV", "two is")
 	end,
 
+	["assembly outlets are compared with their median, so the majority is never the deviation (§9.5)"] = function(t)
+		local sys, ch = make()
+		local normal = 832
+		local step = PSS.assemblyOutletDeviation.trip_K + 5
+		-- three of five read the same, two read cooler: the three are what the core is doing, not a blockage
+		ch:setExternal("fuel.assemblyOutlet_K", { normal, normal, normal + step, normal + step, normal + step })
+		run(sys, 1)
+		t.eq(ch:get("protection.scram"), "none", "the majority reading is the expected outlet")
+		t.ok(not sys:getState().monitors["ASSY-DEV"].alarm, "and nothing deviates above it")
+	end,
+
 	["every §9.5 trip row exists, and the ones M1 cannot drive yet sit at safe values"] = function(t)
 		local sys, ch = make()
 		run(sys, 1)

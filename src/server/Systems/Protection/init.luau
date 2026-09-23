@@ -228,7 +228,7 @@ local function buildMonitors(cfg: any): { any }
 				end
 				table.move(outlets, 1, n, 1, sorted)
 				table.sort(sorted)
-				local expected = sorted[#sorted // 2]
+				local expected = sorted[(#sorted + 1) // 2] -- the median; the lower middle of an even count
 				local deviations = self.assyDeviations
 				for i, v in outlets do
 					deviations[i] = v - expected
