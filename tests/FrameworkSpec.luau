@@ -782,4 +782,123 @@ return {
 		end
 		t.eq(resets, 1, "cancelled reset never fires")
 	end,
+
+	["an autosave is one write at a time, however many frames the write takes (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		-- SetAsync yields, and Heartbeat keeps firing while it does, each frame calling tick on a thread of its own
+		local store: any = { data = {}, inFlight = 0, most = 0, writes = 0 }
+		function store.get(self: any, key: string)
+			return true, self.data[key]
+		end
+		function store.set(self: any, key: string, value: any)
+			self.inFlight += 1
+			self.most = math.max(self.most, self.inFlight)
+			self.writes += 1
+			task.wait()
+			self.data[key] = value
+			self.inFlight -= 1
+			return true, nil
+		end
+		function store.remove(self: any, key: string)
+			self.data[key] = nil
+			return true, nil
+		end
+		local pers = Persistence.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			clock = p.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/slow",
+			ownerUserId = 7,
+		})
+		local frame = Config.Engineering.serverFrame_s
+		pers.sinceSave = Config.Engineering.saveInterval_s
+		for _ = 1, 10 do
+			task.spawn(pers.tick, pers, frame)
+		end
+		t.eq(store.writes, 1, "the frames that ran during the write started no more writes of the key")
+		local frames = 0
+		while store.inFlight > 0 and frames < 100 do
+			task.wait()
+			frames += 1
+		end
+		t.eq(store.most, 1, "never two writes of the key at once")
+		t.ok(store.data["plant/slow"] ~= nil, "and the one write landed")
+	end,
+
+	["a save in flight lands before an owner reset removes the plant, never after (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local store: any = { data = {}, inFlight = 0 }
+		function store.get(self: any, key: string)
+			return true, self.data[key]
+		end
+		function store.set(self: any, key: string, value: any)
+			self.inFlight += 1
+			task.wait()
+			self.data[key] = value
+			self.inFlight -= 1
+			return true, nil
+		end
+		function store.remove(self: any, key: string)
+			self.data[key] = nil
+			return true, nil
+		end
+		local pers = Persistence.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			clock = p.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/r2",
+			ownerUserId = 7,
+		})
+		local owner = { kind = "player", name = "Owner", userId = 7 }
+		local frame = Config.Engineering.serverFrame_s
+		local reset = false
+		p.bus:subscribe("PlantReset", function()
+			reset = true
+		end)
+		t.ok(pers:requestReset(owner, Config.Engineering.resetConfirmationPhrase).ok)
+		pers.sinceSave = Config.Engineering.saveInterval_s
+		task.spawn(pers.tick, pers, frame) -- the autosave starts writing the plant as it stands
+		t.eq(store.inFlight, 1, "a write is in flight")
+		-- the countdown runs out on the very next frame, which is not itself an autosave frame
+		pers.reset.remaining = 0
+		pers.sinceSave = 0
+		task.spawn(pers.tick, pers, frame)
+		local frames = 0
+		while (not reset or store.inFlight > 0) and frames < 100 do
+			task.wait()
+			frames += 1
+		end
+		t.eq(store.data["plant/r2"], nil, "the reset removed the plant after that write, so the old plant is gone")
+	end,
+
+	["a DataStore call is retried with backoff, and nothing waits after the last try"] = function(t)
+		local calls, waits = 0, {}
+		local backend = setmetatable({
+			ds = {
+				GetAsync = function()
+					calls += 1
+					error("DataStore outage")
+				end,
+			},
+			retries = 2,
+			wait = function(s: number)
+				table.insert(waits, s)
+			end,
+		}, Persistence.DataStoreBackend) :: any
+		local ok = backend:get("plant/x")
+		t.eq(ok, false, "the outage is reported")
+		t.eq(calls, 2, "after every try")
+		t.eq(#waits, 1, "with a backoff between the tries and none after the last")
+		t.eq(waits[1], 2, "2 s before the second try")
+	end,
 }

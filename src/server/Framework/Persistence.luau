@@ -12,6 +12,8 @@
 	  (Engineering.resetConfirmationPhrase), then counts down Access.reset.countdown_s, announcing on the Bus; at zero
 	  it clears the save and publishes PlantReset (Main rebuilds the plant).
 	Stores are pluggable: MemoryStore for Studio/tests, DataStoreBackend for live private servers.
+	- One write at a time. A DataStore write yields, and Heartbeat keeps calling tick() meanwhile, so the autosave runs
+	  on its own thread and every write (autosave, shutdown save, the reset's remove) waits for the one in flight.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Types = require(ReplicatedStorage:WaitForChild("Kallskar"):WaitForChild("Types"))
@@ -74,7 +76,7 @@ DataStoreBackend.__index = DataStoreBackend
 
 function DataStoreBackend.new(storeName: string)
 	local DataStoreService = game:GetService("DataStoreService")
-	return setmetatable({ ds = DataStoreService:GetDataStore(storeName), retries = 3 }, DataStoreBackend)
+	return setmetatable({ ds = DataStoreService:GetDataStore(storeName), retries = 3, wait = task.wait }, DataStoreBackend)
 end
 
 local function withRetry(self: any, fn: () -> any): (boolean, any)
@@ -85,7 +87,9 @@ local function withRetry(self: any, fn: () -> any): (boolean, any)
 			return true, result
 		end
 		lastErr = result
-		task.wait(2 ^ attempt)
+		if attempt < self.retries then -- back off between tries; after the last one there is nothing to wait for
+			self.wait(2 ^ attempt)
+		end
 	end
 	return false, lastErr
 end
@@ -143,6 +147,7 @@ function Persistence.new(opts: {
 	self.phrase = opts.config.Engineering.resetConfirmationPhrase
 	self.countdownLength = opts.config.Access.reset.countdown_s
 	self.sinceSave = 0
+	self.saving = false -- a write is in flight (see save)
 	self.reset = nil :: { remaining: number, requestedBy: string, lastAnnounced: number }?
 	return self
 end
@@ -195,12 +200,25 @@ function Persistence.save(self: any): (boolean, string?)
 	if not self:enabled() then
 		return false, "persistence disabled on this server"
 	end
+	--[[
+		One write at a time, in the order they were asked for. A second write started while the first yields could
+		land first and then be overwritten by the older snapshot, or land after an owner reset has removed the plant.
+	]]
+	while self.saving do
+		task.wait()
+	end
+	self.saving = true
 	local okSnap, data = pcall(self.snapshot, self)
 	if not okSnap then
+		self.saving = false
 		self.log:record("save", nil, self.key, tostring(data), "error")
 		return false, tostring(data)
 	end
-	local ok, err = self.store:set(self.key, data)
+	local okCall, ok, err = pcall(self.store.set, self.store, self.key, data)
+	self.saving = false
+	if not okCall then
+		ok, err = false, ok
+	end
 	self.sinceSave = 0
 	if not ok then
 		self.log:record("save", nil, self.key, tostring(err), "error")
@@ -268,10 +286,12 @@ function Persistence.cancelReset(self: any, actor: Actor): CommandResult
 end
 
 function Persistence.tick(self: any, dt: number)
-	if self:enabled() then
+	if self:enabled() and not self.saving then
 		self.sinceSave += dt
 		if self.sinceSave >= self.saveInterval then
-			self:save()
+			-- on a thread of its own: the write yields, and this frame's caller must not wait for it
+			self.sinceSave = 0
+			task.spawn(self.save, self)
 		end
 	end
 	local r = self.reset
@@ -286,7 +306,13 @@ function Persistence.tick(self: any, dt: number)
 		end
 		if r.remaining <= 0 then
 			self.reset = nil
+			-- a save in flight holds the plant as it was: let it land first, and let no other write land after
+			while self.saving do
+				task.wait()
+			end
+			self.saving = true
 			self.store:remove(self.key)
+			self.saving = false
 			self.log:record("plant.reset", nil, nil, `requested by {r.requestedBy}`, "ok")
 			if self.bus then
 				self.bus:publish("PlantReset", { requestedBy = r.requestedBy })
