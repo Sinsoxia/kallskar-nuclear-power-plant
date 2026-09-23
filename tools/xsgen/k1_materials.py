@@ -94,13 +94,15 @@ def spec_geometry() -> dict:
 
 
 def temperatures() -> dict:
-    """Reference temperatures (K) from Config: §2.4 mixed core outlet, §9.2 core inlet, file 20 fuel average."""
+    """Reference temperatures (K) from Config: §9.2 core inlet, §2.4 fuel-assembly outlet, file 20 fuel average."""
     t_in = luau_number("Program", "coreInlet_C") + 273.15
-    t_out = luau_number("Core", "mixedCoreOutlet_C") + 273.15
+    t_out = luau_number("Core", "assemblyOutletAverage_C") + 273.15
     return {
         "coreInlet": t_in,
-        "coreOutlet": t_out,
-        "coolantMean": 0.5 * (t_in + t_out),                         # D-039
+        "fuelAssemblyOutlet": t_out,
+        # D-039: the sodium in the fuel assemblies, 375 → 559 °C. §3.2's power defect implies it: its sodium term,
+        # +0.40 pcm/K × (T − 648 K) = +37 pcm, needs T ≈ 740.5 K, and (375 + 559)/2 °C is 740.15 K
+        "coolantMean": 0.5 * (t_in + t_out),
         "fuelAverage": luau_number("Feedback", "fullPowerFuelAverage_K"),
         "hotZeroPower": luau_number("Feedback", "referenceTemperature_K"),
         "refuelling": 230.0 + 273.15,                                 # §3.3 "Required excess reactivity, 230 °C"
@@ -119,7 +121,7 @@ def wire_length_factor(g: dict) -> float:
 
 
 def smeared_clad_od(g: dict) -> float:
-    """Cladding OD with the wire's volume added to it (NEA/NSC/R(2015)9 §2.1.1.3's convention; D-040)."""
+    """Cladding OD with the wire's volume added to it (NEA/NSC/R(2015)9 Table 2.4 note a, the MOX-3600 fuel pin; D-040)."""
     wire = math.pi / 4 * g["wireD"] ** 2 * wire_length_factor(g)
     return math.sqrt(g["cladOD"] ** 2 + 4 * wire / math.pi)
 

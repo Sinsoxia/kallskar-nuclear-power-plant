@@ -4,17 +4,22 @@ Kallskar xsgen: burnup-dependent K1 fuel, by assembly-level depletion (plan step
 One fuel assembly per zone (inner 18 %, outer 23 % Pu), built by k1_model exactly as in the core, with explicit
 pins. It is reflective on its hexagonal cell and axially, so it stands for an infinite lattice of itself, the
 standard lattice approach. It runs at the full-power temperatures (D-039) and is depleted with the ENDF/B-VIII.1
-fast chain at the core's specific power.
+chain at the core's specific power.
 
   specific power  rated thermal / heavy metal: Config.Units.ratedThermal_MWt over k1_model's fresh inventory (the
-                  --check figure, 29.11 t); fission-q normalisation, whose recoverable energy per fission already
-                  includes the decay energy that is part of the rated heat
+                  --check figure, 29.11 t)
+  normalisation   energy deposition (D-043): the flux is scaled so that the lattice's total heating-local tally
+                  equals that power. OpenMC's heating-local counts fission as fragments + prompt and delayed photons +
+                  delayed betas, deposited locally, and adds every capture's photon energy, the same heat a thermal
+                  rating counts. fission-q would leave the capture energy out and burn a few percent too fast
+  fission yields  the chain's 500 keV sets (FAST_YIELD_EV), ENDF/B's fast-reactor yields. The chain also carries
+                  thermal sets for U-235 and Pu-239/240/241, and OpenMC's default would pick those
   steps           the equilibrium four-batch core's burnups land on step boundaries: 0, 160, 320 and 480 EFPD at
                   BOC and 640 EFPD at discharge (§2.3: 160 EFPD cycles, a quarter of the core per outage).
                   Steps are at most 80 EFPD (6.5 GWd/t) with the CECM predictor-corrector: a fast MOX spectrum has
-                  no xenon, samarium or gadolinium swings to resolve. That is checked, not assumed: the "coarse"
-                  scheme doubles the steps, and CECM's error falls as Δt², so |fine − coarse| / 3 estimates the
-                  fine scheme's error (--export reports it)
+                  no xenon, samarium or gadolinium swings to resolve. That is checked, not assumed: every "coarse"
+                  step is exactly two "fine" steps, and CECM's error falls as Δt², so (fine − coarse) / 3 is the
+                  Richardson correction to the fine result (--export reports it with its own σ)
   output          depletion_results.h5 under xs-runs/k1_deplete/<zone>/; --export writes the compositions at those
                   five points to tools/xsgen/results/k1_depletion.json, keeping nuclides above 1e-10 atoms/(b·cm),
                   the cut-off NEA/NSC/R(2015)9 uses for its own tables
@@ -39,10 +44,12 @@ import k1_model  # noqa: E402
 
 RESULTS = paths.RESULTS / "k1_depletion.json"
 CYCLE_EFPD = 160.0  # §2.3 (Config.Core.fuel.cycleLength_EFPD, asserted below)
-SCHEMES = {  # EFPD, one list per 160 EFPD cycle; the first steps are short while Np-239 and Pu-239 settle
-    "fine": ([5.0, 15.0, 60.0, 80.0], [80.0, 80.0], [80.0, 80.0], [80.0, 80.0]),
-    "coarse": ([5.0, 15.0, 140.0], [160.0], [160.0], [160.0]),
+SCHEMES = {  # EFPD, one list per 160 EFPD cycle; the first steps are short while Np-239 and Pu-239 settle.
+    # Each coarse step is two fine steps, so the fine grid nests in the coarse one (Richardson needs that).
+    "fine": ([5.0, 5.0, 15.0, 15.0, 60.0, 60.0], [80.0, 80.0], [80.0, 80.0], [80.0, 80.0]),
+    "coarse": ([10.0, 30.0, 120.0], [160.0], [160.0], [160.0]),
 }
+FAST_YIELD_EV = 5.0e5  # the chain's fast (500 keV) fission-yield sets, D-043
 STEP_CHECK_NUCLIDES = ("U235", "U238", "Pu238", "Pu239", "Pu240", "Pu241", "Pu242", "Am241", "Am243", "Cm244")
 BATCH_POINTS_EFPD = (*k1_model.BOC_BATCH_EFPD, k1_model.DISCHARGE_EFPD)  # the points the BOC core reads
 KEEP_ABOVE = 1e-10  # atoms/(b·cm), NEA/NSC/R(2015)9 §2.1.1.4.1
@@ -84,7 +91,7 @@ def assembly_model(zone: str):
     settings.source = openmc.IndependentSource(
         space=openmc.stats.Box((-half, -half, SLAB_CM[0]), (half, half, SLAB_CM[1])),
         constraints={"fissionable": True})
-    used = [m for m in parts["assemblyMaterials"] if m is not parts["fuel"]["outer" if zone == "inner" else "inner"]]
+    used = [fuel] + parts["structureMaterials"]
     return openmc.model.Model(geometry=openmc.Geometry(root), materials=openmc.Materials(used), settings=settings)
 
 
@@ -110,7 +117,9 @@ def deplete(zone, particles, batches, inactive, scheme="fine"):
     cwd = paths.run_dir(f"{run_subdir(scheme)}/{zone}")
     import os
     os.chdir(cwd)
-    op = openmc.deplete.CoupledOperator(model, chain_file=str(paths.CHAIN_FAST), normalization_mode="fission-q")
+    op = openmc.deplete.CoupledOperator(model, chain_file=str(paths.CHAIN_FAST),
+                                        normalization_mode="energy-deposition",
+                                        fission_yield_mode="constant", fission_yield_opts={"energy": FAST_YIELD_EV})
     integrator = openmc.deplete.CECMIntegrator(op, steps, power_density=power, timestep_units="d")
     integrator.integrate()
     print("results:", cwd / "depletion_results.h5")
@@ -156,15 +165,16 @@ def export(smoke=False):
         if coarse:
             check = []
             for (t, k, ks, dens), (_, kc, kcs, dc) in zip(pts, coarse):
+                # Richardson: exact ≈ fine + (fine − coarse)/3 for a second-order method and a step ratio of 2
                 rel = {n: (dens.get(n, 0.0) - dc.get(n, 0.0)) / dens[n] / 3 for n in STEP_CHECK_NUCLIDES if n in dens}
                 worst = max(rel, key=lambda n: abs(rel[n])) if rel else None
                 dk = 1e5 * (k - kc) / 3
-                sig = 1e5 * math.hypot(ks, kcs)
-                check.append({"EFPD": t, "fineErrorEstimate_kinf_pcm": dk, "combinedSigma_pcm": sig,
-                              "fineErrorEstimate_rel": rel})
+                sig = 1e5 * math.hypot(ks, kcs) / 3
+                check.append({"EFPD": t, "richardsonCorrection_kinf_pcm": dk, "richardsonCorrectionSigma_pcm": sig,
+                              "richardsonCorrection_rel": rel})
                 if worst:
-                    print(f"  step check {t:5.0f} EFPD: k∞ (fine − coarse)/3 = {dk:+.0f} pcm (σ of the difference "
-                          f"{sig:.0f}); largest nuclide estimate {worst} {100 * rel[worst]:+.2f} %")
+                    print(f"  step check {t:5.0f} EFPD: correction to the fine k∞ {dk:+.0f} ± {sig:.0f} pcm; "
+                          f"largest nuclide correction {worst} {100 * rel[worst]:+.2f} %")
             zone_out["stepCheck"] = check
         out["zones"][zone] = zone_out
     if smoke:

@@ -30,14 +30,20 @@ its density at the operating temperature. Nuclear data are evaluated at the oper
 
 | State | Fuel | Coolant and structure | Used for |
 |---|---|---|---|
-| Full power (nominal) | 1,380 K (file 20, `Feedback.fullPowerFuelAverage_K`) | 735.65 K, the mean of the 375 °C inlet and 550 °C outlet | the reference cross sections |
+| Full power (nominal) | 1,380 K (file 20, `Feedback.fullPowerFuelAverage_K`) | 740.15 K, the mean of the 375 °C inlet and §2.4's 559 °C fuel-assembly outlet (the temperature §3.2's +37 pcm sodium term implies) | the reference cross sections |
 | Hot zero power | 648 K | 648 K | the feedback reference (`Feedback.referenceTemperature_K`) |
 | Refuelling | 503.15 K | 503.15 K | §3.3's excess reactivity at 230 °C |
 
 The spec supports this reading. As fabricated, the pellets hold **29.11 tHM** against §2.3's "≈ 29". If the
 dimensions were instead the hot ones at 1,380 K, the pellets would hold 28.1 t, because Carbajo's expansion gives
-+3.5 % in volume. Thermal expansion is
-therefore not in the cross sections. §3.7's expansion feedbacks carry it, relative to this reference state.
++3.5 % in volume. Thermal expansion is therefore not in the cross sections. §3.7's expansion feedbacks carry it, relative to this reference state.
+
+Four cited materials are the exception, entering at their benchmark's operating-state densities because that is how
+the sources give them:
+- EM10: the wrapper, the lower-reflector slugs, the rod structure and the follower duct.
+- The NEA B₄C of both rod systems.
+- MOX-1000's HT-9 and natural B₄C: rings 11–14 and 16.
+How far each sits from room temperature is not quantified, since no cited expansion data for them is at hand (D-039).
 
 ## Fuel: fresh (U,Pu)O₂ (D-012, D-038)
 
@@ -50,11 +56,21 @@ therefore not in the cross sections. §3.7's expansion feedbacks carry it, relat
 | Density | 95 % of TD(273 K) = 10,970 + 490·y kg/m³, y = PuO₂ mole fraction (±1 %) | §2.3; Carbajo §3.3 |
 | Result | inner 10.505 g/cm³ (y = 0.1790), outer 10.528 g/cm³ (y = 0.2288) | `k1_materials.fresh_mox` |
 
-The model has no americium, minor actinides or fission products, because fresh fuel has none. They come from
-D-012's depletion to the equilibrium four-batch core. Am-241 from Pu-241 decay during storage before loading is
-also left out; that is the "as-fabricated" reading taken literally.
+Both vectors are **irradiated**, not a fabrication feed. Table 2.11 is the equilibrium core's batch-averaged
+composition at BOC, and its own axial profile shows which way irradiation moves each vector:
+- **Uranium:** U-235 is burnt down (0.159 % of the uranium at the midplane, 0.178–0.189 % at the core ends) and U-236
+  builds up (0.026 % against 0.019–0.022 %).
+- **Plutonium:** goes the other way, because U-238 breeds Pu-239 in a fast spectrum. The more irradiated midplane
+  has 53.8 % Pu-239 against 52.1–52.3 % at the ends, with Pu-238/240/241/242 all lower. A feed was therefore
+  probably poorer still.
+The report gives no feed vector, so these stand in for one (D-012, D-038). The Pu side dominates, so the fresh
+model fuel is, if anything, slightly **more** reactive than a real feed of the same Pu content.
 
-## Cladding and wire: 15-15Ti (DIN 1.4970 / AIM1) (D-040)
+The model's fresh fuel holds U and Pu only. The Am, Cm, Np and fission products in the same NEA column are left
+out, and D-012's depletion to the equilibrium four-batch core generates its own. Am-241 from Pu-241 decay during
+storage before loading is not modelled.
+
+## Cladding and wire: 15-15Ti (DIN 1.4970) (D-040)
 
 Spec §2.3 says "15-15Ti austenitic steel, OD 8.50 mm, wall 0.56 mm" and gives no composition.
 
@@ -81,26 +97,31 @@ complete, including the boron and nitrogen that the specification ranges leave o
 | Fe | balance (65.63) | balance |
 
 Cross-check: IAEA TECDOC-1978 §2.1 reports an independent 15-15Ti (1.4970) heat from SCK·CEN: 15.95 Cr, 15.40 Ni,
-1.20 Mo, 1.49 Mn, 0.52 Si, 0.44 Ti, 0.1 C, balance Fe. Element by element that agrees with the TASTE tube within
-normal heat-to-heat variation. Both sit inside the 1.4970 ranges except Si, which runs high in both: 0.52–0.57
-against a 0.3–0.5 specification, but inside SCK·CEN's own 0.5–0.7 requirement.
+1.20 Mo, 1.49 Mn, 0.52 Si, 0.44 Ti, 0.1 C, balance Fe.
+- **TASTE tube:** inside the classical 1.4970 ranges except Si (0.57 against 0.3–0.5).
+- **IAEA heat:** outside the 1.4970 ranges in Si (0.52) and in Mn (1.49 against 1.6–2.0). It is inside
+  SCK·CEN's Si and Mn requirements (0.5–0.7 and 1.0–2.0) but above its Cr requirement (15.95 against 14.5–15.5).
+The two heats differ by 0.89 wt % Cr and 0.37 wt % Mn. So the cross-check shows the TASTE analysis is a plausible
+15-15Ti, not that heats agree closely.
 
 Boron matters only because of ¹⁰B. At 31 ppm total boron, natural abundance gives about 6 ppm ¹⁰B in the cladding.
-In a fast spectrum its absorption cross section is a few tenths of a barn, not the thermal 3,840 b, so the effect is
-small. It is still in the model rather than assumed away.
+Its (n,α) cross section follows 1/v, σ ≈ 3,840 b × √(0.0253 eV / E): 6 b at 10 keV and 1.9 b at 100 keV, so a few
+barns in a fast spectrum. The effect is small next to the steel's own capture, but it is in the model rather than
+assumed away.
 
 **Density: 7,888 kg/m³ ± 1 %** (`tools/derive/cladding_density.py`, 3/3 checks). Neither source gives one, so it
 is derived from a measured austenitic steel of certified composition, NIST SRM 1155a (316L). Pichler et al. 2020
 measured that steel at (7,904 ± 25) kg/m³ at room temperature. The two steels are taken to have the same density of
 face-centred-cubic lattice sites, and the ratio of their masses per site gives the density. C, N, B and O sit in
-the interstices, so they add mass but no sites. The ±1 % covers the lattice-parameter difference that method leaves
-out. `k1_model.py --case clad-density` measures what +1 % does to k rather than assuming it is small. The "< x"
+the interstices, so they add mass but no sites. The ±1 % is an allowance for the lattice-parameter difference that
+method leaves out. No source at hand gives that difference, so the ±1 % is not derived.
+`k1_model.py --case clad-density` measures what +1 % does to k rather than assuming it is small. The "< x"
 entries are left out; at their limits they move the density by less than 0.01 %.
 
 **Wire:** §2.3 gives a 1.2 mm helical wire on a 200 mm pitch but names no material. It is taken as the cladding
-steel (D-040). Its volume is smeared into the cladding by raising the cladding OD (NEA
-§2.1.1.3's convention), which gives 8.585 mm. The helix is 1.2 % longer than its axial run, so the wire holds 1.12 %
-of the cell.
+steel (D-040). Its volume is smeared into the cladding by raising the cladding OD (the convention of NEA
+Table 2.4 note a, for the MOX-3600 fuel pin), which gives 8.585 mm. The helix is 1.2 % longer than its
+axial run, so the wire holds 1.12 % of the cell.
 
 ## Wrapper: EM10 (D-040)
 
@@ -108,8 +129,9 @@ of the cell.
 MOX-3600 core. It is a direct, citable match for the same duty. Atom densities, as given (b⁻¹·cm⁻¹): C 3.8254e-4,
 Si 4.9089e-4, Ti 1.9203e-5, Cr 7.5122e-3, Fe 7.3230e-2, Ni 3.9162e-4, Mo 4.7925e-4, Mn 4.1817e-4.
 
-These are at the benchmark's operating state, not room temperature, which departs from D-039. The difference is
-about 1.5 % of a material that fills 9.5 % of the cell, and the model uses the numbers as the benchmark gives them.
+These are at the benchmark's operating state, not room temperature, which departs from D-039. EM10 fills the
+wrapper, the lower-reflector slugs, the rod structure and the follower duct. How far its density sits from room
+temperature is not quantified here, and the model uses the numbers as the benchmark gives them.
 
 ## Lower steel reflector and plenum (D-040)
 
@@ -126,9 +148,9 @@ about 1.5 % of a material that fills 9.5 % of the cell, and the model uses the n
 | RR, shim A/B/C | PSS | NEA primary B₄C: C 2.70e-2, ¹⁰B 2.32e-2, ¹¹B 8.49e-2 | NEA Table 2.8 oxide primary: B₄C 25.24 %, Na 56.83 %, EM10 17.93 % |
 | SSR | SSS | NEA secondary B₄C: C 2.70e-2, ¹⁰B 9.81e-2, ¹¹B 9.91e-3 | NEA Table 2.8 oxide secondary: B₄C 21.96 %, Na 65.52 %, EM10 12.52 % |
 
-- **Absorber length:** 1,000 mm. §3.4's worth curve is defined over the 1,000 mm active height, and with §0.1's
-  1,100 mm stroke that fills the modelled plenum exactly: 1,100 + 1,000 = 2,100 mm, which is §2.1's fuel plus
-  plenum.
+- **Absorber length:** 1,000 mm. §3.4's worth curve is defined over the 1,000 mm active height. Fully out at
+  §0.1's 1,100 mm, the absorber's top reaches the top of the modelled plenum: 1,100 + 1,000 = 2,100 mm, §2.1's fuel
+  plus plenum. That leaves 100 mm of follower between the fuel and the absorber.
 - **Follower:** an empty duct. It is K1's own wrapper (9.47 %) filled with sodium, as in MOX-1000's withdrawn-rod
   duct.
 - **Below the core:** the fuel assemblies' lower reflector. The NEA 1000 MWt cores (§2.1.2) give every assembly
@@ -141,7 +163,7 @@ about 1.5 % of a material that fills 9.5 % of the cell, and the model uses the n
 |---|---|---|---|
 | 11–12 | steel reflector | 84.5 % HT-9, 15.5 % Na | NEA MOX-1000 radial reflector (Tables 2.21, 2.28) |
 | 13–14 | B₄C shield | 53.22 % natural B₄C, 29.68 % HT-9, 17.1 % Na | NEA MOX-1000 radial shield |
-| 15 | in-vessel storage | outer-zone fuel assemblies in all 90 positions | a bound on its effect; the `storage-empty` case measures it |
+| 15 | in-vessel storage | fresh outer-zone fuel in all 90 positions, at the coolant temperature (it makes no power); discharged fuel in the BOC core | a bound on its effect; the `storage-empty` case measures it |
 | 16 | steel shield | as the steel reflector | – |
 | outside | – | vacuum beyond ring 16 and beyond the §2.1 lengths | the `axial-reflective` case bounds the axial ends |
 
@@ -151,7 +173,7 @@ them is K1's own, at K1's temperature.
 ## Sodium
 
 Spec Appendix A (Config.Sodium): ρ = 219 + 275.32(1 − T/Tc) + 511.58(1 − T/Tc)^0.5 kg/m³, Tc = 2,503.7 K.
-That gives 843.3 kg/m³ at 462.5 °C, 863.5 at 375 °C and 896.3 at 230 °C.
+That gives 842.3 kg/m³ at 467.0 °C, 863.5 at 375 °C and 896.3 at 230 °C.
 
 ## Volume fractions of the 179 mm fuel cell (277.48 cm²)
 
@@ -166,8 +188,11 @@ enough for the 1.2 mm wire. It also confirms that 271 × 301 = 81,571 pins, matc
 
 ## Open
 
-- **Primary B₄C enrichment:** NEA Table 2.14's primary set is 21.5 % ¹⁰B, although Table 2.6 calls it "natural"
-  (19.9 %). The numbers are used as printed.
+- **Primary B₄C enrichment:** NEA Table 2.14's primary set is 21.5 % ¹⁰B, although Table 2.6 calls it "natural".
+  Natural boron is 19.9 % ¹⁰B (IUPAC's representative isotopic composition), and the MOX-1000 shield's "natural"
+  set is 19.1 %. The numbers are used as printed.
+- **No outage decay at BOC:** the equilibrium core uses end-of-cycle compositions directly (D-044). §3.1's
+  Np-239 → Pu-239 gain (+30 pcm) waits on F34, the outage length.
 - **Homogeneous rods overestimate worth.** NEA §5.6 finds homogeneous rod models 10–17 % above heterogeneous ones.
   K1 has no rod pin design to model heterogeneously. Keep this in mind when the §3.7 bank worths (±10 %) are
   compared.

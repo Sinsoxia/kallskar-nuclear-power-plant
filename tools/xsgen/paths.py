@@ -16,7 +16,11 @@ CHAIN_FAST = NUCDATA / "chain_endfb81_fast.xml"
 RUNS = DATA_ROOT / "xs-runs"
 RESULTS = REPO / "tools" / "xsgen" / "results"  # small, committed summaries of runs
 
-THREADS = os.cpu_count() or 1
+# KALLSKAR_THREADS caps the OpenMC threads (e.g. to keep a machine cooler on long runs); default: every CPU
+THREADS = int(os.environ.get("KALLSKAR_THREADS") or os.cpu_count() or 1)
+if os.environ.get("KALLSKAR_THREADS"):
+    # depletion runs OpenMC through openmc.lib, whose OpenMP runtime reads this when the library loads
+    os.environ["OMP_NUM_THREADS"] = str(THREADS)
 
 
 def configure_openmc():

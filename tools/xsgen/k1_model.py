@@ -167,13 +167,15 @@ def build(case: str):
     # pure materials
     fuel = {}
     boc = case in BOC_CASES
+    # ring 15's stored assemblies make no power, so their fuel sits at the coolant temperature (D-042)
     if boc:
         for key, dens in depleted_fuel(openmc).items():
-            fuel[key] = material(f"fuel_{key}", st["fuel"], dens)
+            fuel[key] = material(f"fuel_{key}", Ts if key == "outer_discharged" else st["fuel"], dens)
     else:
         for zone in ("inner", "outer"):
             dens, _ = M.fresh_mox(g["puFraction"][zone], g["pelletTD"])
             fuel[zone] = material(f"fuel_{zone}", st["fuel"], dens)
+        fuel["storage"] = material("fuel_storage", Ts, M.fresh_mox(g["puFraction"]["outer"], g["pelletTD"])[0])
     clad = openmc.Material(name="clad_15-15Ti", temperature=Ts)
     for el, w in M.clad_weight_percent().items():
         clad.add_element(el, w, "wo")
@@ -283,8 +285,8 @@ def build(case: str):
     universes["shieldSteel"] = column("shieldSteel", [(None, reflector)])
     if case == "storage-empty":
         universes["storage"] = column("storage", [(None, follower)])
-    else:
-        universes["storage"] = universes["outer_discharged" if boc else "outer"]
+    elif boc:
+        universes["storage"] = universes["outer_discharged"]
 
     layout = core_map()
     pitch = g["assemblyPitch"]
@@ -340,7 +342,7 @@ def build(case: str):
     mats = list(fuel.values()) + [clad, em10, na, lower_mix, follower, absorber["primary"], absorber["secondary"],
                                   reflector, shield]
     model.materials = openmc.Materials(mats)
-    parts = {"universes": universes, "fuel": fuel, "assemblyMaterials": list(fuel.values()) + [clad, em10, na]}
+    parts = {"universes": universes, "fuel": fuel, "structureMaterials": [clad, em10, na]}
     return model, layout, xy, g, fr, parts
 
 
@@ -377,7 +379,7 @@ def check():
     geom = model.geometry
     bad = []
     for (q, r), kind in layout.items():
-        name = "outer" if kind == "storage" else kind
+        name = kind
         path = [getattr(p, "name", "") for p in geom.find((*xy(q, r), 150.0))]
         if name not in path:
             bad.append(((q, r), kind, path[-3:]))
@@ -525,11 +527,14 @@ def summarise():
         info["excessReactivity230BOC_pcm"] = {"value": v, "sigma": s, "target": target, "absTol": tol,
                                               "withinTolerance": abs(v - target) <= tol + 3 * s}
         print(f"excess reactivity, BOC, 230 °C, all rods out: {v:+.0f} ± {s:.0f} pcm against §3.3's {target:.0f} ± {tol:.0f}")
+    has_boc = any(sp[c] for c in BOC_CASES)
     meta = {
-        "model": "tools/xsgen/k1_model.py (explicit pins, fresh as-fabricated fuel; D-038 to D-042)",
+        "model": "tools/xsgen/k1_model.py (explicit pins; D-038 to D-042" + (", BOC core D-043/D-044)" if has_boc else ")"),
         "library": "ENDF/B-VIII.1 (OpenMC HDF5)",
         "openmc": openmc.__version__,
-        "quality": "preliminary: fresh core, not the equilibrium BOC core §3.3 and D-012 refer to",
+        "cases": {c: ("equilibrium BOC core (D-012, D-043, D-044)" if c in BOC_CASES else "fresh as-fabricated core")
+                  for c in rows},
+        "quality": "preliminary: statistics of a quick pass; the BOC core rests on single-assembly depletion (D-043)",
     }
     RESULTS.write_text(json.dumps({"meta": meta, "cases": rows, "forInformation": info}, indent=1))
     print("wrote", RESULTS)

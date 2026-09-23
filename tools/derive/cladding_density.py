@@ -20,13 +20,17 @@ both in one paper:
   Table 1 (certified mass fractions of SRM 1155a) and the room-temperature density (7904 ± 25) kg/m³.
 
 What the method leaves out is the difference between the two steels' lattice parameters: 316L carries 2.2 % Mo and
-17.8 % Cr against 15-15Ti's 1.2 % and 15.1 %, which shifts the site density by a fraction of a percent. The result
-is therefore quoted to ±1 %, and the K1 model measures how much ±1 % on the cladding density moves k
-(tools/xsgen/k1_model.py --case clad-density) rather than assuming it does not matter.
+17.8 % Cr against 15-15Ti's 1.2 % and 15.1 %. No source at hand gives the lattice parameters, so that difference
+is not derived. The ±1 % quoted is an allowance for it, not a derived bound. For that reason the K1 model measures
+what +1 % on the cladding density does to k (tools/xsgen/k1_model.py --case clad-density) instead of assuming it is
+negligible.
 
 Atomic weights: IUPAC standard atomic weights (abridged, 2021).
 Run: python tools/derive/cladding_density.py
 """
+import sys
+
+sys.stdout.reconfigure(encoding="utf-8")  # the output has ρ, ±, … (a default Windows console is cp1252)
 
 # IUPAC 2021 abridged standard atomic weights
 A = {
@@ -88,8 +92,9 @@ rho_hi = RHO_SRM * s_ref / sites_per_gram(taste_hi)
 rho = 0.5 * (rho_lo + rho_hi)
 print(f"  mass per lattice site: SRM {1 / s_ref:.4f} g/mol, 15-15Ti {1 / sites_per_gram(taste_lo):.4f} g/mol")
 print(f"  ρ(15-15Ti, room temperature) = {rho_lo:.1f} (below-limit at zero) … {rho_hi:.1f} (at limits) kg/m³")
-print(f"  adopted: {rho:.0f} kg/m³ ± 1 % (method), ± {RHO_SRM_U / RHO_SRM * 100:.2f} % from the SRM measurement")
-check("the below-limit entries move the result by far less than the ±1 % quoted", abs(rho_hi - rho_lo) / rho < 1e-3)
+print(f"  adopted: {rho:.0f} kg/m³ ± 1 % (an allowance for the lattice difference, not derived), "
+      f"± {RHO_SRM_U / RHO_SRM * 100:.2f} % from the SRM measurement")
+check("the below-limit entries move the result by far less than the ±1 % allowance", abs(rho_hi - rho_lo) / rho < 1e-3)
 check("the result is an austenitic-steel density: within 2 % of the measured 316L it is scaled from",
       abs(rho / RHO_SRM - 1) < 0.02)
 
