@@ -610,7 +610,7 @@ Protection.commands = {
 		why the count is held rather than a boolean — one operator leaning on one button does not trip the plant.
 	]]
 	["reactor.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local where = if cmd.tag == "BCR" then "bcr" else "mcr"
+		local where = if cmd.target == "BCR" then "bcr" else "mcr"
 		self.manual[where] += 1
 		local needed = self.cfg.pss.manualButtons.mainControlRoom
 		if where == "bcr" or self.manual.mcr >= needed then
@@ -635,7 +635,7 @@ Protection.commands = {
 		available, so a bypassed trip has to be something an auditor can find afterwards.
 	]]
 	["pss.bypass"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local id = cmd.tag
+		local id = cmd.target
 		if id == nil or self.state[id] == nil then
 			return { ok = false, reason = `unknown protective signal '{tostring(id)}'` }
 		end
@@ -648,7 +648,7 @@ Protection.commands = {
 	end,
 
 	["runback.start"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local id = cmd.tag
+		local id = cmd.target
 		if id == nil or self.cfg.runbacks[id] == nil then
 			return { ok = false, reason = `unknown runback '{tostring(id)}'` }
 		end

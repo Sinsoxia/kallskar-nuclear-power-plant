@@ -442,15 +442,15 @@ end
 
 local function unitIndex(self: any, cmd: Command): (number?, string?)
 	for i, unit in self.units do
-		if unit.name == cmd.tag then
+		if unit.name == cmd.target then
 			return i
 		end
 	end
-	return nil, `unknown IHX '{tostring(cmd.tag)}'`
+	return nil, `unknown IHX '{tostring(cmd.target)}'`
 end
 
 local function loopIndex(self: any, cmd: Command): (number?, string?)
-	local l = tonumber(cmd.tag)
+	local l = tonumber(cmd.target)
 	if l == nil or l < 1 or l > self.loopCount or l % 1 ~= 0 then
 		return nil, `secondary loop must be 1–{self.loopCount}`
 	end

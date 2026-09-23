@@ -271,7 +271,7 @@ return {
 
 		-- An operator withdraws one regulating rod 100 mm, at §3.4's 5 mm/s
 		local worth0 = channels:get("rods.indicativeWorth_pcm")
-		rods:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 600 })
+		rods:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 600 })
 		advance(40)
 		local power = channels:get("core.power_pctFP")
 		t.log(string.format("100 mm of RR1 (%.1f pcm): power %.3f → %.3f %%FP, fuel %.1f K, feedback %.1f → %.1f pcm, ρ %.2f pcm",
@@ -290,7 +290,7 @@ return {
 		advance(1)
 		t.ok(InitialConditions.seatAtPower(byName, channels, Config, 20) ~= nil, "seated at 20 %FP")
 		t.near(channels:get("core.thermalPower_pctFP"), 20, 20 * 1e-9, "seated: heat equals the load exactly")
-		byName.Protection:applyCommand(OPERATOR, { kind = "reactor.trip.manual", tag = "BCR" })
+		byName.Protection:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "BCR" })
 
 		--[[
 			Superposition, which is what makes the group model trustworthy for any history: the decay heat after
