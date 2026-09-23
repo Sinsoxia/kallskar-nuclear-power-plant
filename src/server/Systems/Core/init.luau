@@ -203,13 +203,7 @@ function Core.step(self: any, dt: number)
 		self.pk.external = (self.excess_pcm - worth) / self.pcmPerUnit
 	end
 
-	local drivers = self.drivers
-	drivers.fuelAverage = port:read("fuel.coreAverage_K") or drivers.fuelAverage
-	drivers.coreAverageSodium = port:read("fuel.coreAverageSodium_K") or drivers.coreAverageSodium
-	drivers.coreOutlet = port:read("pools.mixedCoreOutlet_K") or drivers.coreOutlet
-	drivers.coreInlet = port:read("pools.coreInlet_K") or drivers.coreInlet
-	drivers.upperHotPool = port:read("pools.hotPool_K") or drivers.upperHotPool
-	drivers.coldPool = port:read("pools.coldPool_K") or drivers.coldPool
+	local drivers = self:readDrivers()
 
 	-- withdrawing a rod REMOVES inserted worth, which is positive reactivity
 	local external_pcm = -(worth - self.worth0_pcm)
@@ -234,7 +228,24 @@ function Core.step(self: any, dt: number)
 		self.promptCritical = false
 	end
 
-	-- spread the pin power over the mesh: assembly share × axial shape
+	self:spreadPower()
+	self:publish()
+end
+
+-- The temperatures the §3.2 feedbacks act on, from whatever the plant has published
+function Core.readDrivers(self: any): Kinetics.Drivers
+	local port, drivers = self.port, self.drivers
+	drivers.fuelAverage = port:read("fuel.coreAverage_K") or drivers.fuelAverage
+	drivers.coreAverageSodium = port:read("fuel.coreAverageSodium_K") or drivers.coreAverageSodium
+	drivers.coreOutlet = port:read("pools.mixedCoreOutlet_K") or drivers.coreOutlet
+	drivers.coreInlet = port:read("pools.coreInlet_K") or drivers.coreInlet
+	drivers.upperHotPool = port:read("pools.hotPool_K") or drivers.upperHotPool
+	drivers.coldPool = port:read("pools.coldPool_K") or drivers.coldPool
+	return drivers
+end
+
+-- Spread the pin power over the mesh: assembly share × axial shape
+function Core.spreadPower(self: any)
 	local pinTotal = self.n * self.rated_W * self.pinShare
 	local power, axial, L = self.pinPower, self.axial, self.L
 	for a = 1, self.NA do
@@ -244,7 +255,33 @@ function Core.step(self: any, dt: number)
 			power[base + l] = share * axial[l]
 		end
 	end
-	self:publish()
+end
+
+--[[
+	Seat every feedback term on the plant's present temperatures and return the total in pcm (plan: initial
+	conditions). The §3.2 lags make feedback follow the plant late; an initial condition has no history to be late
+	about, so each term starts at its driver — which is updateFeedback at dt = 0.
+]]
+function Core.seatFeedback(self: any): number
+	self.pk:updateFeedback(0, self:readDrivers())
+	return self.pk.feedback * self.pcmPerUnit
+end
+
+-- The inserted worth at which the core is exactly critical with the feedback it has now: ρ = excess − W + feedback
+function Core.criticalWorth_pcm(self: any): number
+	return self.excess_pcm + self.pk.feedback * self.pcmPerUnit
+end
+
+--[[
+	Take the rods where they now stand as the external term's reference, as the first step's latch does at boot,
+	so ρ = excess − worth + feedback holds from here on.
+]]
+function Core.latchRods(self: any)
+	local worth = self.port:read("rods.indicativeWorth_pcm") or 0
+	self.worth0_pcm = worth
+	self.pk.external = (self.excess_pcm - worth) / self.pcmPerUnit
+	self.pk.rho = self.pk.external + self.pk.feedback
+	self.rho_pcm = self.pk.rho * self.pcmPerUnit
 end
 
 --[[
@@ -272,6 +309,24 @@ function Core.setPower(self: any, n: number)
 	end
 	amp.n = n
 	self.n = n
+	self:spreadPower()
+	self:publish()
+end
+
+--[[
+	Seat the core critical at a power with its precursors exactly in equilibrium there, sᵢ = βᵢ·n — the state
+	`newAmplitude` builds, which only a critical core can hold. InitialConditions calls this after it has placed
+	the rods to make ρ zero; setPower is the rescale for everything else.
+]]
+function Core.seatPower(self: any, n: number)
+	local amp = self.pk.amp
+	for i = 1, #amp.s do
+		amp.s[i] = amp.beta[i] * n
+	end
+	amp.n = n
+	amp.rho = self.pk.rho
+	self.n = n
+	self:spreadPower()
 	self:publish()
 end
 

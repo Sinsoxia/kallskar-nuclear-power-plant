@@ -149,6 +149,8 @@ function Runner.run(root: Instance, filter: string?): (number, number, number)
 			for _, line in logs do
 				emit(`[KSK-TEST]   log {specName} :: {name} :: {line}`)
 			end
+			-- yield between cases so Studio's script timeout applies to each test, not to the whole suite at once
+			task.wait()
 		end
 	end
 	emit(`[KSK-TEST] SUMMARY pass={pass} fail={fail} pending={pend}`)

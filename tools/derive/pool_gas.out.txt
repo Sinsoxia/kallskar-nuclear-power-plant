@@ -1,20 +1,20 @@
-Node masses and residence times (ง4.1)
+Node masses and residence times (ยง4.1)
   ok   hot pool residence time                                 57.9764 vs   58.000 s      (tol 0.5)
   ok   cold pool residence time                                52.3658 vs   52.000 s      (tol 0.5)
   ok   40 s + 18 s of rated flow = hot pool mass              620.2520 vs  620.000 t      (tol 1)
        -> node masses 427.8 t and 192.5 t; the model splits M_HOT by tau_i / sum(tau)
 
-Level tilt (ง4.1)
+Level tilt (ยง4.1)
   ok   tilt conserves volume: hotShare*A_hot = coldShare*A_cold    30.4000 vs   30.600 m3/m   (tol 0.5)
        -> at rated flow the tilt moves 45.6 m3 from cold pool to hot pool
 
-Thermal expansion, levels and cover gas volume (ง4.1, ง4.4)
+Thermal expansion, levels and cover gas volume (ยง4.1, ยง4.4)
   ok   gas volume swing, 230 C isothermal to 100 %             90.3210 vs   90.000 m3     (tol 1)
-       (at the pre-Rev-A4 545 C hot pool the same model gives 0.2583 m and 0.6371 m — F31)
+       (at the pre-Rev-A4 545 C hot pool the same model gives 0.2583 m and 0.6371 m โ€” F31)
   ok   mean level rise, 375 C isothermal to 100 %               0.2664 vs    0.260 m      (tol 0.01)
   ok   mean level rise, 230 C isothermal to 100 %               0.6452 vs    0.640 m      (tol 0.01)
 
-Cover gas pressure (ง4.4)
+Cover gas pressure (ยง4.4)
   ok   gas temperature at 100 %                               300.0000 vs  300.000 C      (tol 0.5)
   ok   gas temperature at the 230 C state                     180.0000 vs  180.000 C      (tol 0.5)
        -> inventory at the setpoint 8058 mol = 322 kg of argon

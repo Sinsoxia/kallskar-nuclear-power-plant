@@ -29,17 +29,45 @@
 	and its 5 % leak-by. It exists so that a unit whose secondary loop is gone cannot dump hot pool sodium straight
 	into the cold pool.
 
-	The M1 secondary boundary (per the milestone plan): each loop holds its inlet temperature and per-unit flow at
-	§4.3's 320 °C and 1,556 kg/s, adjustable by command so inlet-temperature feedback and loop loss can be driven
-	from the debug panel. The real secondary loops, their pumps and the steam generators arrive in a later
-	milestone; nothing here models them.
+	**The M1 heat sink** (D-032). The real secondary loops, their pumps, the steam generators and the turbines
+	arrive in a later milestone; until then this system stands in for all of them with one number, the steam
+	plant's load, and the steam plant TAKES that load: each tick the cold leg is solved so that the exchangers
+	carry the load plus the pumps' heat. Q = ε·C_min·(T_hot − T_cold) with ε fixed by the flows, so that is a
+	one-dimensional solve (a few secant passes, for c_p).
+
+	The cold leg is kept inside what the steam plant can give. It is never colder than §9.2's programme cold leg
+	for the load (320 °C at full load, 348 °C at 20 %FP; Systems/PartLoad), never warmer than 375 °C, which is
+	the no-load programme and hot standby's own temperature, and never warmer than the pool it faces, because a
+	steam generator cannot heat sodium. Secondary flow follows §9.2's flow programme. The load moves at §7.1's
+	5 %/min, and at LCO-10's 1 %/min above 40 %. A per-loop command overrides the inlet or flow of one loop,
+	which is how inlet-temperature feedback and a lost loop are driven by hand; the programme loops then carry
+	whatever the held loop does not.
+
+	Why solve for the load rather than pin §9.2's cold leg (F33): with §4.3's UA held constant (D-022) the
+	exchangers are far more effective at part flow than §9.2's temperatures imply — its 40 % row repeats the
+	full-load temperatures at 40 % of the duty, which needs UA ∝ flow. A pinned cold leg would pull the core
+	inlet 5.5–23 K below the programme at part load. Taking the load holds the reactor's side of §9.2 exactly and
+	lets the cold leg sit 6–23 K warmer than the table's secondary column instead, on the side of the plant M1
+	does not model (tools/derive/heat_sink.py).
+
+	A reactor trip takes the load to zero at once: the turbines trip with the reactor and §7.3's bypass, open in
+	2 s, holds the steam side while decay heat comes down — which from the sodium is the no-load programme, 375 °C
+	on the cold leg. Without that, a sink left at load would go on pulling rated heat out of a core making decay
+	heat and cool the plant through its own inlet-low trip. The stand-in has no secondary inventory, so the cold
+	leg steps where the real loops would take their transit time to follow; that arrives with them.
+
+	The plant follows the sink the way a fast reactor does: a heavier load cools the cold leg, the inlet
+	temperature coefficient adds reactivity, and power rises to meet it with rod auto trimming the outlet.
 
 	Inputs:  pools.hotPool_K         primary inlet, the second hot-pool node
 	         primary.coreFlow_kgps   total primary flow, split between the units
+	         primary.pumpHeat_MWt    the pumps' heat, which the steam plant carries away with the load
+	         protection.scram        a trip takes the turbines off with it
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local System = require(script.Parent.Parent.Framework.System)
+local PartLoad = require(script.Parent.PartLoad)
 local Kallskar = ReplicatedStorage:WaitForChild("Kallskar")
 local Sodium = require(Kallskar:WaitForChild("Props"):WaitForChild("Sodium"))
 local Types = require(Kallskar:WaitForChild("Types"))
@@ -51,7 +79,8 @@ type CommandResult = Types.CommandResult
 local IHX = System.extend({
 	name = "IHX",
 	lane = "fast",
-	reads = { "pools.hotPool_K", "primary.coreFlow_kgps" },
+	reads = { "pools.hotPool_K", "primary.coreFlow_kgps", "primary.pumpHeat_MWt" },
+	readsLagged = { "protection.scram" }, -- Protection runs after the pools it watches, so the trip arrives next tick
 	writes = {
 		"ihx.heatRemoved_W",
 		"ihx.dutyEach_W",
@@ -62,6 +91,9 @@ local IHX = System.extend({
 		"ihx.lmtd_K",
 		"ihx.loopsRunning",
 		"ihx.unitsInService",
+		"ihx.sinkLoad_pct",
+		"ihx.sinkLoadDemand_pct",
+		"ihx.secondaryInlet_K",
 	},
 })
 
@@ -109,6 +141,7 @@ function IHX.init(self: any, ctx: any)
 	self.port = ctx.channels
 	self.log = ctx.log
 	self.bus = ctx.bus
+	self.config = cfg
 	self.cfg = spec
 	self.kelvin = cfg.Units.kelvinOffset_K
 	self.ua = spec.ua_MWpK * 1e6
@@ -130,15 +163,30 @@ function IHX.init(self: any, ctx: any)
 	self.loopCount = loops
 	assert(self.count % loops == 0, `§4.3's {self.count} units do not divide between {loops} secondary loops`)
 
-	-- M1 secondary boundary: one inlet temperature and one per-unit flow per loop, both commandable
+	-- M1 heat sink. It boots with no load because the plant boots in hot standby (D-024).
+	local loading = cfg.Program.sinkLoading
+	self.loadRateLow = loading.hot_pctPerMin / 60
+	self.loadRateHigh = loading.aboveLimit_pctPerMin / 60
+	self.loadLimitAbove = loading.limitAbove_pct
+	self.rated_W = cfg.Units.ratedThermal_MWt * 1e6
+	self.warmest_K = cfg.Program.partLoad.coreInlet_C + self.kelvin -- the no-load programme: hot standby
+	self.load = 0
+	self.loadDemand = 0
+	self.lastScram = "none"
+	self.coldLeg_K = self.warmest_K
 	self.loops = {}
 	for l = 1, loops do
 		self.loops[l] = {
-			inlet_K = spec.secondaryInlet_C + self.kelvin,
-			flowEach_kgps = spec.secondaryFlowEach_kgps,
+			inlet_K = self.warmest_K,
+			flowEach_kgps = 0,
 			running = true,
+			inletOverride_K = nil :: number?,
+			flowOverride_kgps = nil :: number?,
 		}
 	end
+	self.secondaryInlet = table.create(loops, self.warmest_K)
+	self.port:write("ihx.secondaryInlet_K", self.secondaryInlet)
+	self:applyFlows()
 
 	self.duty = table.create(self.count, 0)
 	self.primaryOut = table.create(self.count, spec.primaryOutlet_C + self.kelvin)
@@ -151,8 +199,148 @@ function IHX.init(self: any, ctx: any)
 	self.port:write("ihx.primaryFlow_kgps", self.primaryFlow)
 	self.port:write("ihx.lmtd_K", self.lmtd)
 	self.total_W = 0
-	self:solve(spec.primaryInlet_C + self.kelvin, spec.primaryFlowEach_kgps * self.count)
+	self:solveAtProgramme()
 	self:publish()
+end
+
+--[[
+	Solve against the hot pool and primary flow the programme expects at the current load. That is only the first
+	frame's answer, before Pools has published a real hot pool; it is chosen so the first frame agrees with the
+	state the rest of the plant boots in rather than with §4.3's full-power design point.
+]]
+function IHX.solveAtProgramme(self: any)
+	local flow = PartLoad.flow_pct(self.config, self.load) / 100
+	local hotPool = PartLoad.outlet_C(self.config, self.load / 100, flow) + self.kelvin
+	self:solve(hotPool, self.cfg.primaryFlowEach_kgps * self.count * flow)
+end
+
+-- Solve again against the last hot pool and flow, so a command shows in the state at once rather than next tick
+function IHX.resolve(self: any)
+	if self.lastHot_K then
+		self:solve(self.lastHot_K, self.lastFlow_kgps)
+		self:publish()
+	end
+end
+
+-- Every loop's secondary flow from the programme, except where an override holds it by hand
+function IHX.applyFlows(self: any)
+	local flow = PartLoad.secondaryFlow_frac(self.config, self.load) * self.cfg.secondaryFlowEach_kgps
+	for _, loop in self.loops do
+		loop.flowEach_kgps = loop.flowOverride_kgps or flow
+	end
+end
+
+-- Duty the programme loops carry at one cold leg, W
+local function programmeDuty(self: any, hotPool_K: number, cold_K: number): number
+	local q = 0
+	for i, unit in self.units do
+		local loop = self.loops[unit.loop]
+		local mp, ms = self.primaryFlow[i], if loop.running then loop.flowEach_kgps else 0
+		if loop.inletOverride_K == nil and mp > MIN_FLOW_kgps and ms > MIN_FLOW_kgps then
+			q += (transfer(self.ua, mp, hotPool_K, ms, cold_K))
+		end
+	end
+	return q
+end
+
+--[[
+	The steam plant takes its load. Find the cold leg at which the programme loops carry the load and the pumps'
+	heat, less whatever the held loops carry, then keep it inside the steam plant's range (see the header). Each
+	pass is a secant through T_cold = T_hot: at fixed ε the duty is proportional to T_hot − T_cold, so the first
+	pass lands within the c_p variation, and each one after shrinks the error by the few per cent that c_p and ε
+	move over the approach. Passes stop when the cold leg moves by less than a nanokelvin, which is the solve
+	converged rather than a tolerance on the plant.
+]]
+local SINK_TOLERANCE_K = 1e-9
+local SINK_MAX_PASSES = 30
+
+function IHX.setColdLeg(self: any, hotPool_K: number)
+	local held, free = 0, false
+	for i, unit in self.units do
+		local loop = self.loops[unit.loop]
+		local mp, ms = self.primaryFlow[i], if loop.running then loop.flowEach_kgps else 0
+		if mp > MIN_FLOW_kgps and ms > MIN_FLOW_kgps then
+			if loop.inletOverride_K then
+				held += (transfer(self.ua, mp, hotPool_K, ms, loop.inletOverride_K))
+			else
+				free = true
+			end
+		end
+	end
+	-- a steam generator cannot heat sodium, so the cold leg never sits above the pool it faces
+	local warmest = math.min(self.warmest_K, hotPool_K)
+	local coldest = math.min(PartLoad.secondaryCold_C(self.config, self.load) + self.kelvin, warmest)
+	local need = self.load / 100 * self.rated_W + (self.port:read("primary.pumpHeat_MWt") or 0) * 1e6 - held
+	local cold = warmest
+	if free and need > 0 and warmest - coldest > 0 then
+		cold = math.clamp(hotPool_K - 1, coldest, warmest)
+		for _ = 1, SINK_MAX_PASSES do
+			local q = programmeDuty(self, hotPool_K, cold)
+			if q <= 0 then
+				break
+			end
+			local nextCold = math.clamp(hotPool_K - need * (hotPool_K - cold) / q, coldest, warmest)
+			local moved = math.abs(nextCold - cold)
+			cold = nextCold
+			if moved < SINK_TOLERANCE_K then
+				break
+			end
+		end
+	end
+	self.coldLeg_K = cold
+	for l, loop in self.loops do
+		loop.inlet_K = loop.inletOverride_K or cold
+		self.secondaryInlet[l] = loop.inlet_K
+	end
+end
+
+--[[
+	Seat the heat sink at a load as an initial condition, the way Core.setPower seats the core: no ramp, and the
+	demand goes with it so nothing moves afterwards. Commands ramp; this is for tests and the developer panel.
+]]
+function IHX.setLoad(self: any, load_pct: number)
+	self.load = math.clamp(load_pct, 0, 100)
+	self.loadDemand = self.load
+	self:applyFlows()
+	self:solveAtProgramme()
+	self:publish()
+end
+
+-- The turbines trip with the reactor: no ramp, and the demand goes with it so the load stays down after a reset
+function IHX.tripLoad(self: any, scram: string)
+	if self.load == 0 and self.loadDemand == 0 then
+		return
+	end
+	self.load = 0
+	self.loadDemand = 0
+	if self.log then
+		self.log:record("sink.trip", nil, "steam plant", `reactor trip ({scram}): turbines tripped, bypass holding`, "tripped")
+	end
+end
+
+--[[
+	Move the load toward its demand at §7.1's rate, or LCO-10's above 40 %. A tick that crosses 40 % is split
+	there, and the rest of it runs at the rate of the side it ends on, so each rate applies only on its own side
+	of the limit and the ramp does not depend on where the ticks happen to fall.
+]]
+function IHX.rampLoad(self: any, dt: number)
+	local load, demand, limit = self.load, self.loadDemand, self.loadLimitAbove
+	if load == demand then
+		return
+	end
+	local rising = demand > load
+	local high = if rising then load >= limit else load > limit
+	local rate = if high then self.loadRateHigh else self.loadRateLow
+	local step = rate * dt
+	local crosses = if rising
+		then not high and demand > limit and load + step > limit
+		else high and demand < limit and load - step < limit
+	if crosses then
+		local left = dt - math.abs(limit - load) / rate
+		load = limit
+		step = (if high then self.loadRateLow else self.loadRateHigh) * left
+	end
+	self.load = if rising then math.min(demand, load + step) else math.max(demand, load - step)
 end
 
 --[[
@@ -164,13 +352,18 @@ end
 	does over this small a resistance change.
 ]]
 function IHX.solve(self: any, hotPool_K: number, totalFlow_kgps: number)
+	self.lastHot_K, self.lastFlow_kgps = hotPool_K, totalFlow_kgps
 	local weight = 0
 	for _, unit in self.units do
 		weight += unit.shutter
 	end
+	for i, unit in self.units do
+		self.primaryFlow[i] = if weight > 0 then totalFlow_kgps * unit.shutter / weight else 0
+	end
+	self:setColdLeg(hotPool_K)
 	local total, mixedFlow, mixedEnthalpyFlow = 0, 0, 0
 	for i, unit in self.units do
-		local flow = if weight > 0 then totalFlow_kgps * unit.shutter / weight else 0
+		local flow = self.primaryFlow[i]
 		local loop = self.loops[unit.loop]
 		local secondary = if loop.running then loop.flowEach_kgps else 0
 		local q, tpOut, tsOut = 0, hotPool_K, loop.inlet_K
@@ -178,7 +371,6 @@ function IHX.solve(self: any, hotPool_K: number, totalFlow_kgps: number)
 			q, tpOut, tsOut = transfer(self.ua, flow, hotPool_K, secondary, loop.inlet_K)
 		end
 		self.duty[i] = q
-		self.primaryFlow[i] = flow
 		self.primaryOut[i] = tpOut
 		self.secondaryOut[i] = tsOut
 		-- Q/UA is the log-mean temperature difference by definition, and unlike the log form it stays finite when
@@ -209,6 +401,8 @@ function IHX.publish(self: any)
 	port:write("ihx.mixedPrimaryOutlet_K", self.mixedOut_K)
 	port:write("ihx.loopsRunning", running)
 	port:write("ihx.unitsInService", inService)
+	port:write("ihx.sinkLoad_pct", self.load)
+	port:write("ihx.sinkLoadDemand_pct", self.loadDemand)
 end
 
 function IHX.step(self: any, dt: number)
@@ -224,6 +418,13 @@ function IHX.step(self: any, dt: number)
 			unit.shutter += math.clamp(unit.demand - unit.shutter, -rate, rate)
 		end
 	end
+	local scram = port:read("protection.scram") or "none"
+	if scram ~= "none" and self.lastScram == "none" then
+		self:tripLoad(scram)
+	end
+	self.lastScram = scram
+	self:rampLoad(dt)
+	self:applyFlows()
 	self:solve(hotPool, flow)
 	self:publish()
 end
@@ -264,7 +465,20 @@ IHX.commands = {
 		return { ok = true }
 	end,
 
-	-- M1 secondary boundary, per loop
+	-- M1 heat sink: the steam plant's load demand, which the load then follows at its ramp limits
+	["sink.load"] = function(self: any, actor: Actor, cmd: Command): CommandResult
+		local value = cmd.value
+		if type(value) ~= "number" or value ~= value or value < 0 or value > 100 then
+			return { ok = false, reason = "steam plant load runs from 0 to 100 % of rated" }
+		end
+		self.loadDemand = value
+		if self.log then
+			self.log:record("sink.load", actor, "steam plant", string.format("demand %.1f %%", value), "set")
+		end
+		return { ok = true }
+	end,
+
+	-- Per-loop overrides of the programme, held until loop.secondary.program hands the loop back
 	["loop.secondary.inlet"] = function(self: any, actor: Actor, cmd: Command): CommandResult
 		local l, why = loopIndex(self, cmd)
 		if not l then
@@ -278,9 +492,11 @@ IHX.commands = {
 		if value < 150 or value > 500 then
 			return { ok = false, reason = "secondary inlet must be between 150 and 500 °C" }
 		end
-		self.loops[l].inlet_K = value + self.kelvin
+		self.loops[l].inletOverride_K = value + self.kelvin
+		self:applyFlows()
+		self:resolve()
 		if self.log then
-			self.log:record("loop.secondary.inlet", actor, `loop {l}`, string.format("%.0f °C", value), "set")
+			self.log:record("loop.secondary.inlet", actor, `loop {l}`, string.format("%.0f °C", value), "override")
 		end
 		return { ok = true }
 	end,
@@ -294,7 +510,31 @@ IHX.commands = {
 		if type(value) ~= "number" or value ~= value or value < 0 then
 			return { ok = false, reason = "secondary flow must be a number, kg/s per unit" }
 		end
-		self.loops[l].flowEach_kgps = value
+		self.loops[l].flowOverride_kgps = value
+		self:applyFlows()
+		self:resolve()
+		if self.log then
+			self.log:record("loop.secondary.flow", actor, `loop {l}`, string.format("%.0f kg/s per unit", value), "override")
+		end
+		return { ok = true }
+	end,
+
+	["loop.secondary.program"] = function(self: any, actor: Actor, cmd: Command): CommandResult
+		local l, why = loopIndex(self, cmd)
+		if not l then
+			return { ok = false, reason = why }
+		end
+		local loop = self.loops[l]
+		if loop.inletOverride_K == nil and loop.flowOverride_kgps == nil then
+			return { ok = false, reason = `loop {l} is already on the programme` }
+		end
+		loop.inletOverride_K = nil
+		loop.flowOverride_kgps = nil
+		self:applyFlows()
+		self:resolve()
+		if self.log then
+			self.log:record("loop.secondary.program", actor, `loop {l}`, nil, "on programme")
+		end
 		return { ok = true }
 	end,
 
@@ -416,11 +656,14 @@ function IHX.getState(self: any): { [string]: any }
 			inlet_C = loop.inlet_K - self.kelvin,
 			flowEach_kgps = loop.flowEach_kgps,
 			running = loop.running,
+			overridden = loop.inletOverride_K ~= nil or loop.flowOverride_kgps ~= nil,
 		}
 	end
 	return {
 		units = units,
 		loops = loops,
+		sinkLoad_pct = self.load,
+		sinkLoadDemand_pct = self.loadDemand,
 		total_MWt = self.total_W / 1e6,
 		mixedPrimaryOutlet_K = self.mixedOut_K,
 	}

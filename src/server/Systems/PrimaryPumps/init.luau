@@ -148,6 +148,24 @@ function PrimaryPumps.step(self: any, dt: number)
 end
 
 --[[
+	Seat all three pumps at one speed as an initial condition, with no ramp (plan: initial conditions). Refused
+	with a pump tripped, because a coasting pump has no speed to seat.
+]]
+function PrimaryPumps.seat(self: any, speed_pct: number): (boolean, string?)
+	for _, pump in self.pumps do
+		if pump.tripped then
+			return false, `{pump.name} is tripped; restart it first`
+		end
+	end
+	local speed = math.clamp(speed_pct, self.minSpeed, self.maxSpeed)
+	for _, pump in self.pumps do
+		pump.speed_pct, pump.demand_pct = speed, speed
+	end
+	self:publish()
+	return true
+end
+
+--[[
 	Trip or stop a pump: both hand over to the §4.2 coastdown from whatever flow the pump had. `reason` is logged so
 	the sequence of events can tell an operator stop from a fault trip.
 ]]

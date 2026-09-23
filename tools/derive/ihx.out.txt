@@ -1,4 +1,4 @@
-The five ง4.3 statements against each other
+The five ยง4.3 statements against each other
   ok   LMTD from the four stated temperatures                41.2449 vs    41.000 K     (tol 0.5)
   ok   UA implied by 396 MWt / that LMTD                      9.6012 vs     9.600 MW/K  (tol 0.1)
   ok   duty from the primary stream                         396.0370 vs   396.000 MW    (tol 4)
@@ -15,7 +15,7 @@ The model: duty from UA and the two inlets alone
 
 Where the loop actually settles (core + pump heat, secondary held at 320 C)
        hot pool 550.82 C -> 2390.0 MWt removed, primary out 374.80 C, secondary out 520.28 C
-  ok   balance point is just above ง2.4's 550 C             550.8175 vs   550.000 C     (tol 1.5)
+  ok   balance point is just above ยง2.4's 550 C             550.8175 vs   550.000 C     (tol 1.5)
 
 Off design (one unit; primary flow as a fraction of its share, secondary held at design)
        flow    duty MW   primary out   secondary out   LMTD   (* = Q/UA; the log form has degenerated)

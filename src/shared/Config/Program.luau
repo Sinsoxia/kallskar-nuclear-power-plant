@@ -37,6 +37,14 @@ return {
 	-- Between 5 and 10 %FP flow rises linearly from 25% to 40% instead of stepping at 10 %FP
 	partLoadFlowRamp_pctFP = decision({ 5, 10 }, "D-007"),
 
+	-- The M1 heat sink's load moves no faster than §7.1's hot loading rate, and above 40 % no faster than LCO-10
+	-- lets the plant move (the reactor sets the plant rate, §7.1). Both limits apply up and down.
+	sinkLoading = spec({
+		hot_pctPerMin = 5,
+		aboveLimit_pctPerMin = 1,
+		limitAbove_pct = 40,
+	}, "§7.1 loading rate ≤ 5 %/min hot; §9.6 LCO-10 ramp ≤ 1 %/min above 40%"),
+
 	-- §9.2 table, used as a validation target for the program functions
 	partLoadTable = spec({
 		power_pct = { 100, 80, 60, 40, 30, 20, 10, 5 },

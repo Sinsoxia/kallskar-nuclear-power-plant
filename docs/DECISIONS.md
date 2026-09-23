@@ -503,3 +503,64 @@ the 250–750 mm band, so the block fires on the operator's first withdrawal —
 Every unit test passed, because each set up a plant whose regulating rods were already in band; only running all
 nine systems together showed it. `RodDrives` now publishes `rods.selectionKind` so Protection can tell a bank
 move from a single rod, which is what the spec actually says.
+
+## D-032 The M1 heat sink takes its load, inside what the steam plant can give — Proposed
+The plan's M1 boundary held every secondary loop at §4.3's full-load 320 °C and 1,556 kg/s per unit. Running the
+plant showed what that means: at hot standby the IHXs pulled **570 MWt out of a core making nothing**, cooled the
+pools 20 K in a minute, and left core-inlet-low armed against a falling inlet the moment the rods came out.
+**Decision:** `Systems/IHX` stands in for the secondary loops, steam generators and turbines with one number, the
+steam plant's load, and the steam plant takes that load:
+- Each tick the cold leg is solved so the exchangers carry the load plus the pumps' heat.
+- The cold leg stays between §9.2's programme cold leg for the load (the coldest the steam plant gives, 320 °C
+  at full load) and 375 °C, the no-load programme and hot standby's own temperature. It never goes above the pool
+  it faces, because a steam generator cannot heat sodium.
+- Secondary flow follows §9.2's flow column, which the table's own heat balance gives (`tests/PartLoadSpec`).
+- The load ramps at §7.1's 5 %/min, and at LCO-10's 1 %/min above 40 %.
+- A reactor trip takes the load to zero at once, because the turbines trip with the reactor and §7.3's bypass
+  holds the steam side.
+- Per-loop overrides of inlet or flow stay available for driving inlet-temperature feedback and a lost loop by hand.
+
+**Why take the load rather than pin a temperature:** see F33. It is also how a fast reactor is run. A heavier load
+cools the cold leg, the inlet temperature coefficient adds reactivity, and power rises to meet it. At steady state
+the reactor makes exactly the load, and rod auto trims the outlet to the programme. **Known simplification:** the
+stand-in has no secondary inventory, so the cold leg steps where the real loops would take their transit time;
+that arrives with them. **Alternatives rejected:** the fixed full-load boundary (above); pinning §9.2's cold leg
+(F33); a temperature controller on the cold leg, which would need gains the spec does not give.
+
+## F33 §9.2's secondary temperatures need a UA that falls with flow; §4.3's is held constant — Open
+§9.2 holds the core inlet at 375 °C at every load and gives the secondary legs. Its 40–100 % rows repeat the
+full-load temperatures at part duty, which needs **UA ∝ flow**. The implied UA is 0.401 of §4.3's at 40 % and
+0.250 at 5 %FP (`tools/derive/heat_sink.py`). D-022 holds §4.3's UA constant. The two cannot both hold. If the cold
+leg is pinned to the table, the core inlet settles 5.5–23 K below the programme at part load (−23 K at 40 %). The
+M1 sink (D-032) instead holds the reactor's side of §9.2 exactly and lets its cold leg run 6–23 K warmer than the
+table's column, on the side of the plant M1 does not model. **For Aqua:** either §9.2's secondary column is
+indicative, or the IHX needs a flow-dependent UA (real sodium film coefficients fall with velocity, though far
+less than in proportion). The answer decides what the real secondary loops aim at when they are built.
+
+## D-033 Initial conditions seat every state, not only the rods — Proposed
+Integration tests and the developer panel need a plant already at power. Placing only the rods is wrong in a way
+the plant notices at once. With the fuel still at hot zero power, the power defect the rods were placed against
+does not exist yet, and the core sees its absence as a reactivity step. At 20 %FP that is about 270 pcm, three
+quarters of β. **Decision:** `Systems/InitialConditions` seats the whole plant in steady state. It sets the pumps
+and the load to §9.2's point, the core at the power, the pools around 375 °C, the fuel settled exactly, the
+feedback lags at equilibrium, and the rods (regulating mid-band, shims together) wherever ρ comes out zero,
+found by bisecting RodDrives' own worth curve. The mode is then declared per §9.1. None of these numbers are its own.
+
+## D-034 Rod auto's programme is indexed on the steam plant's load, not the reactor's power — Proposed
+D-003 has rod auto hold §9.2's programme outlet, 375 + 175·P/Q. Computed from **measured** power, that fails on
+the 40 % flow floor. There the setpoint rises with power exactly as fast as the outlet does, so the error collapses
+to (inlet − 375 °C). Rod auto becomes an inlet controller acting through minutes of pool transport, and it
+overshoots. The load-following test found it: a 20 → 25 % load step took the core to **34.9 %FP**, with 142 pcm
+withdrawn. **Decision:** index the programme on the steam plant's load (`ihx.sinkLoad_pct`), keeping the actual
+flow for Q. That is how real plants are built: a PWR's T_ref is programmed on turbine load, for the same reason.
+It leaves rod auto a fast loop on the outlet, and the heat sink's energy balance holds power on the load. Above
+40 % flow auto keeps P/Q at 1, so the setpoint is 550 °C either way and nothing changes there. With no steam
+plant on the channels (a unit test of AutoControls alone), the programme falls back to the reactor's own power.
+
+## D-035 A reactor trip drops rod auto to manual — Proposed
+§9.4's rod auto stood down during a scram and resumed when the trip was reset. Running the plant showed what that
+means. After a reset in hot standby, the outlet sits below the no-load setpoint, so rod auto began **withdrawing a
+regulating rod from a shut-down core**. That is a startup, and it has to be the crew's decision. **Decision:** a
+trip switches rod auto to manual (logged), and it stays there until someone puts it back in, as rod control does on
+real plants. A runback is different: rod auto stands down during it and takes over again afterwards. Flow auto is
+unaffected, because it only follows the §9.2 flow programme down to its floor.

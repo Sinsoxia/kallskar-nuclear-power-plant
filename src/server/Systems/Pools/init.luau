@@ -299,6 +299,54 @@ function Pools.publish(self: any)
 	port:write("pools.meanLevel_m", meanLevel)
 end
 
+-- The mixed core outlet: fuel-assembly sodium and the bypass streams, which carry the heat the fuel coolant does not
+function Pools.mixOutlet(self: any, flow: number, fuelOutlet: number, coolantHeat: number): number
+	local fuelFlow = flow * self.fuelFraction
+	local bypassFlow = flow - fuelFlow
+	local bypassOutlet = afterHeat(self.coreInlet, bypassFlow, coolantHeat * self.bypassHeatRatio)
+	local cpFuel = Sodium.specificHeat(0.5 * (self.coreInlet + fuelOutlet))
+	local cpBypass = Sodium.specificHeat(0.5 * (self.coreInlet + bypassOutlet))
+	local wf, wb = fuelFlow * cpFuel, bypassFlow * cpBypass
+	return (wf * fuelOutlet + wb * bypassOutlet) / (wf + wb)
+end
+
+--[[
+	Seat the pools in steady state around a core inlet temperature, for the flow, core heat and pump heat now on
+	the channels (plan: initial conditions). A well-mixed node in steady state sits at whatever flows into it, so
+	the hot pool is the mixed core outlet, the cold pool and the whole transport line hold IHX outlet sodium, and
+	the IHX outlet is the temperature the pumps then heat to the inlet — found by inverting the same afterHeat the
+	step uses. The cover gas is put back on its setpoint in the gas space the new temperatures leave, and the
+	thermocouple starts on the sodium it measures.
+
+	Call it once before FuelThermal settles, so the fuel sees the inlet, and once after, so the hot pool mixes the
+	settled fuel outlet.
+]]
+function Pools.seat(self: any, inlet_K: number)
+	local port = self.port
+	local flow = math.max(port:read("primary.coreFlow_kgps") or 0, MIN_FLOW_kgps)
+	local pumpHeat = (port:read("primary.pumpHeat_MWt") or 0) * 1e6
+	self.flowFraction = flow / self.ratedFlow
+	self.coreInlet = inlet_K
+	local cold = inlet_K
+	for _ = 1, 4 do
+		cold = inlet_K - (afterHeat(cold, flow, pumpHeat) - cold)
+	end
+	self.cold = cold
+	self.ihxOutlet = cold
+	for i = 1, self.bufferN do
+		self.buffer[i] = cold
+	end
+	local mixed = self:mixOutlet(flow, port:read("fuel.mixedOutlet_K") or inlet_K, port:read("fuel.heatToCoolant_W") or 0)
+	self.hot[1], self.hot[2] = mixed, mixed
+	self.mixedOutlet = mixed
+	self.measuredOutlet_K = mixed
+	self.reading_K = mixed
+	local hotMean = self:hotMean()
+	self.gas_mol = self.gasCfg.setpoint_MPa * 1e6 * self:gasVolume(hotMean, cold) / (self.R * self:gasTemperature(hotMean))
+	self.correcting = false
+	self:publish()
+end
+
 function Pools.step(self: any, dt: number)
 	local port = self.port
 	local flow = math.max(port:read("primary.coreFlow_kgps") or 0, MIN_FLOW_kgps)
@@ -310,13 +358,7 @@ function Pools.step(self: any, dt: number)
 	local scale = self.ratedFlow / flow -- residence times grow as flow falls
 
 	-- 1. mix the fuel-assembly outlet with the bypass streams (§2.5 flow zoning, Core.powerSplit)
-	local fuelFlow = flow * self.fuelFraction
-	local bypassFlow = flow - fuelFlow
-	local bypassOutlet = afterHeat(self.coreInlet, bypassFlow, coolantHeat * self.bypassHeatRatio)
-	local cpFuel = Sodium.specificHeat(0.5 * (self.coreInlet + fuelOutlet))
-	local cpBypass = Sodium.specificHeat(0.5 * (self.coreInlet + bypassOutlet))
-	local wf, wb = fuelFlow * cpFuel, bypassFlow * cpBypass
-	local mixed = (wf * fuelOutlet + wb * bypassOutlet) / (wf + wb)
+	local mixed = self:mixOutlet(flow, fuelOutlet, coolantHeat)
 	self.mixedOutlet = mixed
 
 	-- 2. hot pool: two mixing nodes in series (§4.1, §14.3). Node 2 sees node 1's updated temperature, which is what

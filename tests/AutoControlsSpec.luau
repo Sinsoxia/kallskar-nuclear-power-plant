@@ -35,6 +35,7 @@ local function make(power: number?, outlet_C: number?)
 	local pctFP = power or 100
 	local ch = Channels.new()
 	ch:declareExternal("core.power_pctFP", pctFP)
+	ch:declareExternal("ihx.sinkLoad_pct", pctFP) -- the steam plant on the same load, as at steady state
 	ch:declareExternal("primary.flowFraction", pctFP / 100)
 	ch:declareExternal("pools.mixedCoreOutletMeasured_K", (outlet_C or 550) + KEL)
 	ch:declareExternal("rods.position_mm", { 500, 500, 500 })
@@ -200,9 +201,17 @@ return {
 		run(sys, 1)
 		t.eq(ch:get("auto.rodSelected"), "", "a runback is not something to negotiate with")
 		ch:setExternal("protection.runback", "")
+		run(sys, 1)
+		t.ok(ch:get("auto.rodOn"), "after a runback it is still in auto")
 		ch:setExternal("protection.scram", "PSS")
 		run(sys, 1)
 		t.eq(ch:get("auto.rodSelected"), "", "nor a scram")
+		-- D-035: a trip drops it to manual, so a reset does not hand a shut-down core to a controller
+		t.ok(not ch:get("auto.rodOn"), "and a trip drops it to manual")
+		ch:setExternal("protection.scram", "none")
+		run(sys, 1)
+		t.ok(not ch:get("auto.rodOn"), "where it stays after the reset until the crew puts it back")
+		t.eq(ch:get("auto.rodSelected"), "", "moving nothing")
 	end,
 
 	["a rod withdrawal block stops rod auto withdrawing, but not inserting (§9.5)"] = function(t)

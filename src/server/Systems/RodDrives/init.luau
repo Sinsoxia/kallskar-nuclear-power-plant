@@ -349,6 +349,55 @@ function RodDrives.step(self: any, dt: number)
 	self:publish()
 end
 
+--[[
+	Place the rods, as an initial condition, where they insert exactly `worth_pcm` (plan: initial conditions): the
+	regulating rods mid-band, where rod auto has room both ways (§9.4), and the three shim banks together at the
+	one position that makes up the rest. Worth only falls as the shims come out, so bisection on that position
+	converges on this system's own worth curve, with no second copy of it to disagree. The SSRs stay parked.
+	Refused while a scram is latched or a rod is stuck, because either would make the placement a lie.
+]]
+function RodDrives.seatCritical(self: any, worth_pcm: number): (boolean, string?)
+	if self.scrammed.PSS or self.scrammed.SSR then
+		return false, "a scram is latched; reset it first"
+	end
+	for _, drive in self.drives do
+		if drive.stuck then
+			return false, `{drive.name} is stuck`
+		end
+	end
+	self:stopSelection()
+	self.autoSelection = nil
+	local mid = 0.5 * (self.band[1] + self.band[2])
+	local function place(shim_mm: number): number
+		for _, drive in self.drives do
+			if drive.set == "RR" then
+				drive.position_mm, drive.demand_mm = mid, mid
+			elseif drive.system == "PSS" then
+				drive.position_mm, drive.demand_mm = shim_mm, shim_mm
+			end
+		end
+		self:publish()
+		return self.worth_pcm
+	end
+	local most, least = place(0), place(self.travel_mm)
+	if worth_pcm > most or worth_pcm < least then
+		return false, string.format("%.0f pcm is outside the %.0f–%.0f pcm the shims can reach", worth_pcm, least, most)
+	end
+	local lo, hi = 0, self.travel_mm
+	for _ = 1, 60 do
+		local m = 0.5 * (lo + hi)
+		if place(m) > worth_pcm then
+			lo = m
+		else
+			hi = m
+		end
+	end
+	place(0.5 * (lo + hi))
+	self.rate_pcmps = 0
+	self:publish()
+	return true
+end
+
 function RodDrives.stopSelection(self: any, reason: string?, actor: Actor?)
 	local selection = self.selection
 	if not selection then

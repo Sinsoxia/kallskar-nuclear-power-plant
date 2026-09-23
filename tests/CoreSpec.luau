@@ -2,8 +2,9 @@
 --[[
 	Core verification (spec §3.1–§3.3, §2.4, §3.5, D-030).
 
-	The last test in this file is the one that matters: the whole plant wired together, a rod withdrawn, and
-	power rising and then being arrested by its own Doppler feedback. Everything above it checks a piece of that.
+	The plant-level tests at the end are the ones that matter: the whole plant wired together holding hot standby,
+	a rod withdrawn at power and caught by its own Doppler feedback, a seat that holds §9.2's operating point, and
+	the reactor following the steam plant's load. Everything above them checks a piece of that.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -18,6 +19,7 @@ local EventLog = require(Framework:WaitForChild("EventLog")) :: any
 local Bus = require(Framework:WaitForChild("Bus")) :: any
 local Systems = Root:WaitForChild("Systems")
 local Core = require(Systems:WaitForChild("Core")) :: any
+local InitialConditions = require(Systems:WaitForChild("InitialConditions")) :: any
 
 local KEL = Config.Units.kelvinOffset_K
 local DT = 1 / Config.Clocks.fast_Hz
@@ -50,6 +52,53 @@ local function run(sys: any, seconds: number)
 	for _ = 1, math.floor(seconds / DT + 0.5) do
 		sys:step(DT)
 	end
+end
+
+--[[
+	The whole M1 plant as Main registers it, with Main's external inputs, stepped in registry order. Returns the
+	registry, its channels, an advance(seconds) and a lookup by system name.
+]]
+local function plant()
+	local Registry = require(Framework:WaitForChild("Registry")) :: any
+	local channels = Channels.new()
+	for name, initial in {
+		["program.mode"] = 3,
+		["site.seismic_g"] = 0,
+		["electrical.boards11kV"] = 3,
+		["turbine.bypassAvailable"] = true,
+		["pools.levelDeviation_m"] = 0,
+	} do
+		channels:declareExternal(name, initial)
+	end
+	local registry = Registry.new(channels)
+	for _, class in require(Systems) :: any do
+		registry:add(System.new(class))
+	end
+	registry:resolve()
+	local log = EventLog.new(Config, { sim = 0, grid = 0 })
+	registry:initAll({ config = Config, log = log, bus = Bus.new() })
+
+	--[[
+		Yields every 10 s of plant time. The plant-level tests run for minutes of it, because that is how long a
+		pool takes to mix at part flow, and Studio's script timeout would otherwise end a test for being honest.
+	]]
+	local function advance(seconds: number)
+		for i = 1, math.floor(seconds / DT + 0.5) do
+			for _, sys in registry.systems do
+				if sys.spec.lane == "fast" then
+					sys:step(DT)
+				end
+			end
+			if i % 100 == 0 then
+				task.wait()
+			end
+		end
+	end
+	local byName = {}
+	for _, sys in registry.systems do
+		byName[sys.spec.name] = sys
+	end
+	return registry, channels, advance, byName
 end
 
 return {
@@ -161,134 +210,128 @@ return {
 		t.ok(ch:get("core.promptCritical"), "§14.2: the prompt jump form stops being valid, and says so")
 	end,
 
-	["the whole plant, wired together: a rod out, power up, Doppler catches it"] = function(t)
+	["the whole plant, wired together: hot standby holds, and at power a rod out is caught by Doppler"] = function(t)
 		--[[
 			This is the test that says the physics is operable. Core, FuelThermal, Pools, PrimaryPumps, IHX and
-			RodDrives, stepped in registry order with nothing imposed from outside except the secondary boundary.
-			An operator withdraws one regulating rod; power climbs, the fuel heats, and Doppler arrests it.
+			the rest, stepped in registry order with nothing imposed from outside except the heat sink's load.
+			The plant boots and holds hot standby; seated at power, an operator withdraws one regulating rod, power
+			climbs, the fuel heats, and Doppler arrests it.
 		]]
-		local Registry = require(Framework:WaitForChild("Registry")) :: any
-		local channels = Channels.new()
-		for name, initial in {
-			["program.mode"] = 3,
-			["site.seismic_g"] = 0,
-			["electrical.boards11kV"] = 3,
-			["turbine.bypassAvailable"] = true,
-			["pools.levelDeviation_m"] = 0,
-		} do
-			channels:declareExternal(name, initial)
-		end
-		local registry = Registry.new(channels)
-		for _, class in {
-			Core,
-			require(Systems:WaitForChild("FuelThermal")) :: any,
-			require(Systems:WaitForChild("Pools")) :: any,
-			require(Systems:WaitForChild("PrimaryPumps")) :: any,
-			require(Systems:WaitForChild("IHX")) :: any,
-			require(Systems:WaitForChild("RodDrives")) :: any,
-			require(Systems:WaitForChild("Detectors")) :: any,
-			require(Systems:WaitForChild("Protection")) :: any,
-			require(Systems:WaitForChild("AutoControls")) :: any,
-		} do
-			registry:add(System.new(class))
-		end
-		registry:resolve()
-		local log = EventLog.new(Config, { sim = 0, grid = 0 })
-		registry:initAll({ config = Config, log = log, bus = Bus.new() })
+		local _, channels, advance, byName = plant()
 		t.ok(true, "every read has a writer: the plant resolves")
-
-		local function advance(seconds: number)
-			for _ = 1, math.floor(seconds / DT + 0.5) do
-				for _, sys in registry.systems do
-					if sys.spec.lane == "fast" then
-						sys:step(DT)
-					end
-				end
-			end
-		end
 
 		advance(5)
 		t.ok(channels:get("core.k") < 1, "the plant boots shut down")
 		t.ok(channels:get("core.rho_pcm") < -3000, "deeply subcritical, as §3.4's margins say")
 		t.ok(not channels:get("protection.tripped"), "and sits there quietly")
-
-		local function systemNamed(name: string)
-			for _, sys in registry.systems do
-				if sys.spec.name == name then
-					return sys
-				end
-			end
-			return nil
-		end
-		local rods, core, ihx = systemNamed("RodDrives"), systemNamed("Core"), systemNamed("IHX")
+		local rods, ihx = byName.RodDrives, byName.IHX
 
 		--[[
-			Throttle the secondary first. At hot standby the core makes no power, but six IHXs pulling toward a
-			320 °C secondary cool the plant about 5 K a minute — and once the rods come out, D-004's Mode 3
-			inhibit lifts and the core-inlet-low trip is armed against a falling inlet. Cooling yourself into a
-			trip is exactly what the plant does if you skip this, which is worth knowing and not worth testing
-			around.
+			Hot standby has to hold its own temperature. The heat sink boots with no load, which §9.2 puts at
+			375 °C on the cold leg (D-032). A boundary held at full-load conditions instead pulled 570 MWt out of
+			this shut-down plant and cooled it 20 K in a minute — and once the rods came out, D-004's Mode 3
+			inhibit lifted and core-inlet-low tripped against the falling inlet.
 		]]
-		for l = 1, 3 do
-			ihx:applyCommand(OPERATOR, { kind = "loop.secondary.flow", tag = tostring(l), value = 60 })
-		end
+		local inlet0 = channels:get("pools.coreInlet_K")
+		advance(60)
+		local inlet1 = channels:get("pools.coreInlet_K")
+		t.near(inlet1, inlet0, 1, "a minute of hot standby leaves the core inlet where it was")
+		local mode3 = Config.Program.modes[3].coreInlet_C
+		t.ok(inlet1 - KEL >= mode3[1] and inlet1 - KEL <= mode3[2], "inside §9.1's Mode 3 band")
+		t.ok(ihx:getState().total_MWt < Config.Primary.pumps.pumpHeatToSodium_MWt,
+			"and the IHXs carry no more than the pumps put in")
 
 		--[[
-			Place the rods as an INITIAL CONDITION rather than moving them there. Teleporting them is a 3,745 pcm
-			step in one tick, which the wide range reads as a 0.04 s period and §9.5 trips on — correctly, since
-			rods move at 5 mm/s and 410 mm of travel takes 82 seconds. The plant cannot make that step, so neither
-			should the test. Regulating rods mid-band and shims at 700 mm is 1,863 pcm of worth against 1,874 of
-			excess: eleven pcm from critical.
+			At power, from a seat rather than from rods placed by hand (D-033). Placing the rods alone leaves the
+			fuel at hot zero power, and the power defect the rods were set against does not exist yet; the core
+			then spends minutes finding its own level while the pools drift, and a rod move made during that
+			drift cannot be told apart from it. The seat starts everything in steady state, so the only thing
+			that moves is what the operator moves. Autos stay out: this is the physics, not the controllers.
 		]]
-		for _, drive in rods.drives do
-			if drive.set == "RR" then
-				drive.position_mm = 500
-				drive.demand_mm = 500
-			elseif drive.set ~= "SSR" then
-				drive.position_mm = 700
-				drive.demand_mm = 700
-			end
-		end
-		rods:publish()
-		core:setPower(0.2) -- 20 %FP, with fuel that has not caught up yet
-		for _, sys in registry.systems do
-			if sys.spec.name == "Detectors" then
-				sys.started = false -- the period meter starts here rather than differentiating a jump
-			end
-		end
-		advance(1)
-		t.near(channels:get("core.rho_pcm"), 0, 30, "seated within thirty pcm of critical")
-
-		--[[
-			First half: the fuel is still at hot zero power temperature, so there is no power defect holding the
-			core down yet. As it heats, Doppler answers — and the core settles where the rods and the feedback
-			balance. That fall IS the feedback working, and it is the same −844 pcm power defect §3.3 budgets for.
-		]]
-		advance(240)
-		local settled = channels:get("core.power_pctFP")
+		t.ok(InitialConditions.seatAtPower(byName, channels, Config, 20) ~= nil, "seated at 20 %FP")
+		advance(10)
+		local seated = channels:get("core.power_pctFP")
 		local feedback = channels:get("core.feedback_pcm")
-		t.log(string.format("fuel heated to %.0f K: power settled at %.3f %%FP, feedback %.0f pcm, ρ %.1f",
-			channels:get("fuel.coreAverage_K"), settled, feedback, channels:get("core.rho_pcm")))
-		--[[
-			The core settles where the rods' eleven pcm is cancelled by feedback, which at this power is only a
-			few tens of pcm: §3.3's −844 pcm power defect is the value at FULL power, and the Doppler term is
-			logarithmic in fuel temperature. A small excess buys a small power, and that is the whole shape of
-			the reactivity balance an operator works with.
-		]]
-		t.ok(feedback < -10, "its own feedback pushed back as the fuel heated")
-		t.ok(settled < 20, "so the core came down off the power it was seated at")
-		t.ok(not channels:get("protection.tripped"), "without tripping")
+		-- the same ±3 K on an 87.5 K core rise as the seat test below: ±3.4 % of the power
+		local rise = Config.Program.partLoad.outletSlope_K * 0.2 / 0.4
+		local band = Config.Program.rodAuto.holdBand_K + Config.Core.flow.thermocoupleNoise_K
+		t.near(seated, 20, 20 * band / rise, "and sitting there")
 
-		-- Second half: an operator withdraws one regulating rod, at §3.4's 5 mm/s
+		-- An operator withdraws one regulating rod 100 mm, at §3.4's 5 mm/s
+		local worth0 = channels:get("rods.indicativeWorth_pcm")
 		rods:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 600 })
-		advance(180)
+		advance(40)
 		local power = channels:get("core.power_pctFP")
-		t.log(string.format("100 mm of RR1 (%.0f pcm): power %.3f → %.3f %%FP, fuel %.0f K, ρ %.1f pcm",
-			channels:get("rods.indicativeWorth_pcm"), settled, power, channels:get("fuel.coreAverage_K"),
-			channels:get("core.rho_pcm")))
-		t.ok(power > settled, "power rose when the rod came out")
-		t.ok(channels:get("core.feedback_pcm") < feedback, "and the feedback answered again, harder")
-		t.ok(math.abs(channels:get("core.rho_pcm")) < 50, "the core is holding near critical, not running away")
-		t.ok(not channels:get("protection.tripped"), "and it is still not tripping")
+		t.log(string.format("100 mm of RR1 (%.1f pcm): power %.3f → %.3f %%FP, fuel %.1f K, feedback %.1f → %.1f pcm, ρ %.2f pcm",
+			worth0 - channels:get("rods.indicativeWorth_pcm"), seated, power, channels:get("fuel.coreAverage_K"),
+			feedback, channels:get("core.feedback_pcm"), channels:get("core.rho_pcm")))
+		t.ok(power > seated, "power rose when the rod came out")
+		t.ok(channels:get("core.feedback_pcm") < feedback, "the fuel heated and the feedback answered")
+		local added = worth0 - channels:get("rods.indicativeWorth_pcm")
+		t.ok(math.abs(channels:get("core.rho_pcm")) < 0.5 * added,
+			"and caught it: the feedback has taken back most of what the rod added, so the core is not running away")
+		t.ok(not channels:get("protection.tripped"), "without a trip")
+	end,
+
+	["seated at 20 %FP with both autos in, the whole plant holds §9.2's operating point"] = function(t)
+		local _, channels, advance, byName = plant()
+		advance(1)
+		local seated, why = InitialConditions.seatAtPower(byName, channels, Config, 20)
+		t.ok(seated ~= nil, `seated ({why or "ok"})`)
+		t.near(channels:get("core.rho_pcm"), 0, 1e-6, "critical by construction")
+		byName.AutoControls:applyCommand(OPERATOR, { kind = "auto.rod", value = 1 })
+		byName.AutoControls:applyCommand(OPERATOR, { kind = "auto.flow", value = 1 })
+		advance(120)
+		--[[
+			Tolerances from §9.4 and §2.5, not from the result: rod auto holds the outlet within ±2 K on a
+			thermocouple good to ±1 K, so the core rise — 87.5 K at 20 %FP on 40 % flow — is held within ±3 K,
+			which is ±3.4 % of the power.
+		]]
+		local rise = Config.Program.partLoad.outletSlope_K * 0.2 / 0.4
+		local band = Config.Program.rodAuto.holdBand_K + Config.Core.flow.thermocoupleNoise_K
+		local power = channels:get("core.power_pctFP")
+		local outlet = channels:get("pools.mixedCoreOutlet_K") - KEL
+		local inlet = channels:get("pools.coreInlet_K") - KEL
+		t.log(string.format("after 120 s: %.3f %%FP, inlet %.2f °C, outlet %.2f °C, ρ %+.2f pcm, cold leg %.1f °C, rods %.0f pcm",
+			power, inlet, outlet, channels:get("core.rho_pcm"),
+			(channels:get("ihx.secondaryInlet_K") :: { number })[1] - KEL, channels:get("rods.indicativeWorth_pcm")))
+		t.near(power, 20, 20 * band / rise, "power stays on the load")
+		t.near(inlet, Config.Program.partLoad.coreInlet_C, band, "§9.2's 375 °C core inlet")
+		t.near(outlet, Config.Program.partLoad.coreInlet_C + rise, band, "and its 462 °C outlet")
+		t.eq(channels:get("program.mode"), 1, "§9.1: above 5 %FP is Mode 1")
+		t.ok(not channels:get("protection.tripped"), "without a trip")
+		t.eq(#(channels:get("protection.active") :: { any }), 0, "or a single alarm")
+	end,
+
+	["the reactor follows the steam plant's load"] = function(t)
+		local _, channels, advance, byName = plant()
+		advance(1)
+		t.ok(InitialConditions.seatAtPower(byName, channels, Config, 20) ~= nil, "seated at 20 %FP")
+		byName.AutoControls:applyCommand(OPERATOR, { kind = "auto.rod", value = 1 })
+		byName.AutoControls:applyCommand(OPERATOR, { kind = "auto.flow", value = 1 })
+		local worth0 = channels:get("rods.indicativeWorth_pcm")
+		t.ok(byName.IHX:applyCommand(OPERATOR, { kind = "sink.load", value = 25 }).ok, "the steam plant asks for 25 %")
+		--[[
+			A minute of ramp at §7.1's 5 %/min. Rod auto follows the load's setpoint at the regulating rods' pace, so
+			the reactor lags the steam plant and the pools give up some heat: the inlet dips. Holding the outlet on
+			the setpoint with a cold inlet means a bigger core rise, so the reactor then runs above the load until
+			the pools are refilled — which takes the loop's own mixing time, its inventory over its flow: D-021's
+			118 s of rated flow, on 40 % flow, is 295 s. Nine hundred seconds is the ramp and three of those.
+		]]
+		advance(60)
+		local ramped = channels:get("ihx.sinkLoad_pct")
+		advance(840)
+		local rise = Config.Program.partLoad.outletSlope_K * 0.25 / 0.4
+		local band = Config.Program.rodAuto.holdBand_K + Config.Core.flow.thermocoupleNoise_K
+		local power = channels:get("core.power_pctFP")
+		local inlet = channels:get("pools.coreInlet_K") - KEL
+		t.log(string.format("after 900 s: %.3f %%FP, flow %.1f %%, inlet %.2f °C, outlet %.2f °C (setpoint %.2f), rods %.0f → %.0f pcm",
+			power, channels:get("primary.flowFraction") * 100, inlet, channels:get("pools.mixedCoreOutlet_K") - KEL,
+			channels:get("auto.coreOutletSetpoint_C"), worth0, channels:get("rods.indicativeWorth_pcm")))
+		t.near(ramped, 25, 1e-6, "the load reached 25 % in the minute §7.1's rate allows")
+		t.near(power, 25, 25 * band / rise, "power came up to meet the load, and settled on it")
+		t.near(inlet, Config.Program.partLoad.coreInlet_C, band, "with the pools refilled to §9.2's inlet")
+		t.ok(channels:get("rods.indicativeWorth_pcm") < worth0, "rod auto withdrew to pay the extra power defect")
+		t.ok(not channels:get("protection.tripped"), "without a trip")
 	end,
 }

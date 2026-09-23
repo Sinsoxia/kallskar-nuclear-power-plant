@@ -30,6 +30,14 @@
 	would fight the programme all the way down. The setpoint is therefore 375 + 175·(P/Q), which reproduces every
 	row of §9.2's table, and the flow demand is the programme's own flow curve.
 
+	**The setpoint's P is the steam plant's load, not the reactor's power** (D-034). On the 40 % flow floor a
+	setpoint computed from measured power rises with power exactly as fast as the outlet does, so the error
+	collapses to (inlet − 375 °C): rod auto becomes an inlet controller acting through minutes of pool transport,
+	and it overshoots — 34.9 %FP against a 25 % load in the test that found it. Indexing the programme on load is
+	how real plants do it (a PWR's T_ref is programmed on turbine load), and it leaves rod auto a fast outlet loop
+	with the energy balance holding power on the load. With no steam plant on the channels, as in unit tests of
+	this system alone, the programme falls back to the reactor's own power.
+
 	Neither controller touches another system's state directly. They publish demands, and RodDrives and
 	PrimaryPumps read them like any other input — so every §3.4 interlock and §9.5 rod block applies to the
 	automatic controllers exactly as it does to an operator, without a line of code to make that true.
@@ -37,6 +45,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local System = require(script.Parent.Parent.Framework.System)
+local PartLoad = require(script.Parent.PartLoad)
 local Kallskar = ReplicatedStorage:WaitForChild("Kallskar")
 local Types = require(Kallskar:WaitForChild("Types"))
 
@@ -51,6 +60,7 @@ local AutoControls = System.extend({
 		"pools.mixedCoreOutletMeasured_K",
 		"core.power_pctFP",
 		"primary.flowFraction",
+		"ihx.sinkLoad_pct",
 	},
 	readsLagged = {
 		"rods.position_mm",
@@ -75,33 +85,10 @@ local AutoControls = System.extend({
 
 local KELVIN = 273.15
 
---[[
-	§9.2's programme, as the two functions the table is generated from. Core inlet is held at 375 °C throughout,
-	and with r = P/Q the core outlet is 375 + 175r — which reproduces 550 °C at full load and 506 °C at 30 %FP on
-	40 % flow, the row where holding §9.4's flat 550 would be wrong (D-003).
-]]
-local function programOutlet(cfg: any, powerFraction: number, flowFraction: number): number
-	local p = cfg.Program.partLoad
-	local r = if flowFraction > 1e-3 then powerFraction / flowFraction else 0
-	return p.coreInlet_C + p.outletSlope_K * r
-end
-
---[[
-	§9.2's flow programme: flow follows power down to the 40 % floor, and D-007 ramps it from 25 % to 40 %
-	between 5 and 10 %FP rather than stepping.
-]]
-local function programFlow(cfg: any, power_pctFP: number): number
-	local p = cfg.Program.partLoad
-	local ramp = cfg.Program.partLoadFlowRamp_pctFP
-	if power_pctFP >= ramp[2] then
-		return math.clamp(power_pctFP, p.minimumFlowAtOrAbove10_pct, 100)
-	end
-	if power_pctFP <= ramp[1] then
-		return p.minimumFlowAtOrBelow5_pct
-	end
-	local t = (power_pctFP - ramp[1]) / (ramp[2] - ramp[1])
-	return p.minimumFlowAtOrBelow5_pct + t * (p.minimumFlowAtOrAbove10_pct - p.minimumFlowAtOrBelow5_pct)
-end
+-- §9.2's programme lives in PartLoad, shared with the heat sink. Holding its outlet rather than §9.4's flat 550 °C
+-- is what keeps the 30 %FP row on 40 % flow at 506 °C (D-003).
+local programOutlet = PartLoad.outlet_C
+local programFlow = PartLoad.flow_pct
 
 function AutoControls.init(self: any, ctx: any)
 	local cfg = ctx.config
@@ -186,6 +173,13 @@ function AutoControls.stopRods(self: any, reason: string?)
 	end
 end
 
+-- Start the flow auto's power filter on a seated power, so it has no lag to catch up on (plan: initial conditions)
+function AutoControls.seat(self: any, power_pctFP: number)
+	self.filteredPower = power_pctFP
+	self.started = true
+	self.flowProgram = programFlow(self.cfg, power_pctFP)
+end
+
 function AutoControls.step(self: any, dt: number)
 	local port = self.port
 	local power = port:read("core.power_pctFP") or 0
@@ -199,7 +193,8 @@ function AutoControls.step(self: any, dt: number)
 		self.filteredPower += (power - self.filteredPower) * (1 - math.exp(-dt / self.flowCfg.powerFilter_s))
 	end
 
-	self.setpoint_C = programOutlet(self.cfg, power / 100, flowFraction)
+	local load = port:read("ihx.sinkLoad_pct") or power -- D-034: the programme is indexed on load
+	self.setpoint_C = programOutlet(self.cfg, load / 100, flowFraction)
 	self.flowProgram = programFlow(self.cfg, self.filteredPower)
 
 	-- Primary flow auto. §9.4 says it ignores a pump trip, so the demand is the programme and nothing else:
@@ -212,9 +207,22 @@ function AutoControls.step(self: any, dt: number)
 	local scrammed = port:read("protection.scram")
 	local runback = port:read("protection.runback")
 	if self.rodOn then
-		if (scrammed and scrammed ~= "none") or (runback and runback ~= "") then
-			-- a scram or a runback is not something to negotiate with
-			self:stopRods("scram or runback in progress")
+		if scrammed and scrammed ~= "none" then
+			--[[
+				A trip drops rod auto to manual, as it does on real plants (D-035). Standing down and waiting is
+				not enough: once the trip is reset, a controller still in auto would find the outlet below its
+				hot standby setpoint and start withdrawing regulating rods from a shut-down core, which is a
+				startup and has to be the crew's decision.
+			]]
+			self:stopRods("reactor trip")
+			self.rodOn = false
+			self.outOfBand = false
+			if self.log then
+				self.log:record("auto.rod", nil, "rod auto", `reactor trip ({scrammed})`, "manual")
+			end
+		elseif runback and runback ~= "" then
+			-- a runback is not something to negotiate with, but it ends, and rod auto takes over again after it
+			self:stopRods("runback in progress")
 		else
 			local measured = port:read("pools.mixedCoreOutletMeasured_K")
 			if measured ~= nil then

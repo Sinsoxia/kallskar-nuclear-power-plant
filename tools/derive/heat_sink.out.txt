@@ -1,0 +1,37 @@
+1. UA each row of §9.2 implies (duty / LMTD of the row's own temperatures), against §4.3's 9.6 MW/K
+  100 %FP on 100 % flow:  9.62 MW/K = 1.002 of §4.3's
+   80 %FP on  80 % flow:  7.69 MW/K = 0.801 of §4.3's
+   60 %FP on  60 % flow:  5.77 MW/K = 0.601 of §4.3's
+   40 %FP on  40 % flow:  3.85 MW/K = 0.401 of §4.3's
+   30 %FP on  40 % flow:  3.90 MW/K = 0.406 of §4.3's
+   20 %FP on  40 % flow:  4.01 MW/K = 0.418 of §4.3's
+   10 %FP on  40 % flow:  3.70 MW/K = 0.385 of §4.3's
+    5 %FP on  25 % flow:  2.40 MW/K = 0.250 of §4.3's
+  [ok] from 40 % up, the implied UA is the flow fraction to within the table's rounding
+
+2. Cold leg pinned to the table, §4.3's UA: where the primary settles to carry the load
+  100 %FP: hot pool  549.8 °C, core inlet  374.6 °C ( -0.4 K)
+   80 %FP: hot pool  541.8 °C, core inlet  366.7 °C ( -8.3 K)
+   60 %FP: hot pool  533.9 °C, core inlet  359.1 °C (-15.9 K)
+   40 %FP: hot pool  526.6 °C, core inlet  351.9 °C (-23.1 K)
+   30 %FP: hot pool  488.6 °C, core inlet  357.9 °C (-17.1 K)
+   20 %FP: hot pool  450.9 °C, core inlet  364.0 °C (-11.0 K)
+   10 %FP: hot pool  412.3 °C, core inlet  369.0 °C ( -6.0 K)
+    5 %FP: hot pool  404.1 °C, core inlet  369.5 °C ( -5.5 K)
+  part load: -23.1 to -5.5 K from the programme's 375 °C
+  [ok] at part load a pinned cold leg always pulls the inlet below the programme
+
+3. A sink that takes the load, §4.3's UA, primary on the programme: the cold leg it needs
+  100 %FP: cold leg  320.2 °C against the table's 320 °C ( +0.2 K)
+   80 %FP: cold leg  328.0 °C against the table's 320 °C ( +8.0 K)
+   60 %FP: cold leg  335.6 °C against the table's 320 °C (+15.6 K)
+   40 %FP: cold leg  342.7 °C against the table's 320 °C (+22.7 K)
+   30 %FP: cold leg  351.0 °C against the table's 334 °C (+17.0 K)
+   20 %FP: cold leg  358.9 °C against the table's 348 °C (+10.9 K)
+   10 %FP: cold leg  367.6 °C against the table's 361 °C ( +6.6 K)
+    5 %FP: cold leg  369.8 °C against the table's 364 °C ( +5.8 K)
+  part load: +5.8 to +22.7 K from the table's secondary column
+  [ok] every row's cold leg lies inside the sink's range: the table's value to 375 °C
+  [ok] at full load the needed cold leg is the table's 320 °C to within its rounding
+
+4/4 checks pass

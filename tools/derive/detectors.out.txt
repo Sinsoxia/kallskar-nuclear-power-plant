@@ -1,9 +1,9 @@
-ง3.5's source range against the ง3.3 budget and ง3.4 worths
+ยง3.5's source range against the ยง3.3 budget and ยง3.4 worths
        PSS only     rho   -3450 pcm -> k 0.96665 ->   449.8 cps
        PSS and SSR  rho   -6420 pcm -> k 0.93967 ->   248.6 cps
   ok   'all rods in' means every rod, SSRs included        248.6449 vs   250.000 cps   (tol 5)
        top of span 1e+06 cps is 1-k = 1.50e-05, i.e. rho = -1.5 pcm -- essentially critical
-       the formula floors at 15 cps (k = 0), well above the 1 cps bottom of the ง3.5 span
+       the formula floors at 15 cps (k = 0), well above the 1 cps bottom of the ยง3.5 span
 
 Counting statistics: no free parameter, sigma = sqrt(R/tau)
        rate cps    tau 0.1 s     tau 1 s     tau 2 s     tau 5 s   (relative sigma)
@@ -13,7 +13,7 @@ Counting statistics: no free parameter, sigma = sqrt(R/tau)
          1000000      0.316%      0.100%      0.071%      0.045%
               40     50.000%     15.811%     11.180%      7.071%
 
-Filter time constants derived from ง9.5 (5 sigma clear of every setpoint)
+Filter time constants derived from ยง9.5 (5 sigma clear of every setpoint)
        power range noise 0.5% over one 0.1 s tick is 7.1 %FP/s of pure noise, against a 10 %FP/s trip
        -> flux-rate filter must be at least 0.35 s
   ok   flux-rate filter, rounded up                          0.5000 vs     0.354 s     (tol 0.146447)
@@ -28,13 +28,13 @@ Filter time constants derived from ง9.5 (5 sigma clear of every setpoint)
        SR ratemeter: 5% precision at 250 cps needs tau = 1.60 s
        SR ratemeter: 3% precision at 250 cps needs tau = 4.44 s
   ok   SR ratemeter tau of 2 s gives                         0.0447 vs     0.045 relative (tol 0.005)
-       at tau 5 s the noise-driven period is off the ง3.5 span entirely (-100 to +3 s), which is the point
+       at tau 5 s the noise-driven period is off the ยง3.5 span entirely (-100 to +3 s), which is the point
        consequence: the period channel is the SLOW protection. A 0.47 s excursion (all RR out, S-19)
        rises e-fold every 0.47 s, so the 115 %FP overpower trip and the 10 %FP/s flux-rate trip reach
-       their setpoints long before a 5 s filter has caught up. ง9.5 carries all three for that reason.
+       their setpoints long before a 5 s filter has caught up. ยง9.5 carries all three for that reason.
 
-How far the noise sits from each ง9.5 setpoint, with those filters
-       power range at 100 %FP: sigma 0.50 %FP, trip at 115 -> 30 sigma on one channel, and ง9.5 needs 2 of 4
+How far the noise sits from each ยง9.5 setpoint, with those filters
+       power range at 100 %FP: sigma 0.50 %FP, trip at 115 -> 30 sigma on one channel, and ยง9.5 needs 2 of 4
        DND at 40 cps background with tau 2 s: sigma 11.2%, alarm at x3 -> 18 sigma
 
 7/7 checks pass

@@ -130,11 +130,33 @@ Players.PlayerRemoving:Connect(function(player)
 	log:record("player.left", { kind = "player", name = player.Name, userId = player.UserId }, nil, nil, "info")
 end)
 
+--[[
+	The developer panel (plan: Dev/DebugPanelServer). Studio only, and stepped from the same loop the plant runs
+	on so its snapshots are always of a consistent tick rather than of a half-updated one.
+]]
+local devPanel = nil
+if isStudio then
+	local DebugPanelServer = require(Root.Dev:WaitForChild("DebugPanelServer"))
+	local panel = DebugPanelServer.new({
+		registry = registry,
+		channels = channels,
+		config = Config,
+		log = log,
+		clock = scheduler.clock,
+		commands = commands,
+	})
+	devPanel = panel
+	log:record("dev.panel", nil, nil, "developer panel listening on KallskarDev", "info")
+end
+
 -- Main loop ------------------------------------------------------------------------------------------------------
 RunService.Heartbeat:Connect(function(dt)
 	scheduler:advance(dt)
 	replicator:tick(dt)
 	persistence:tick(dt)
+	if devPanel then
+		devPanel:step(dt) -- after the plant, so a snapshot is always of a completed tick
+	end
 end)
 
 game:BindToClose(function()
@@ -155,6 +177,7 @@ if isStudio then
 		faults = faults,
 		replicator = replicator,
 		persistence = persistence,
+		devPanel = devPanel,
 	}
 end
 

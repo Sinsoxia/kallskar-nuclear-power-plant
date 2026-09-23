@@ -35,6 +35,8 @@ local function make(opts: { [string]: any }?)
 	local ch = Channels.new()
 	ch:declareExternal("pools.hotPool_K", (o.hotPool_C or SPEC.primaryInlet_C) + KEL)
 	ch:declareExternal("primary.coreFlow_kgps", o.flow or RATED)
+	ch:declareExternal("protection.scram", "none")
+	ch:declareExternal("primary.pumpHeat_MWt", if o.pumpHeat ~= nil then o.pumpHeat else PRIMARY.pumps.pumpHeatToSodium_MWt)
 	local sys = System.new(IHX)
 	local bus = Bus.new()
 	sys:init({
@@ -43,6 +45,8 @@ local function make(opts: { [string]: any }?)
 		log = EventLog.new(Config, { sim = 0, grid = 0 }),
 		bus = bus,
 	})
+	-- §4.3's figures are the full-load design point, so the heat sink is seated there unless a test says otherwise
+	sys:setLoad(if o.load ~= nil then o.load else 100)
 	return sys, ch, bus
 end
 
@@ -246,6 +250,7 @@ return {
 		local ctx = { config = Config, log = EventLog.new(Config, { sim = 0, grid = 0 }), bus = Bus.new() }
 		pools:init({ config = ctx.config, channels = ch:port(Pools.spec), log = ctx.log, bus = ctx.bus })
 		ihx:init({ config = ctx.config, channels = ch:port(IHX.spec), log = ctx.log, bus = ctx.bus })
+		ihx:setLoad(100)
 
 		local function advance(seconds: number)
 			for _ = 1, math.floor(seconds / DT + 0.5) do
@@ -267,5 +272,98 @@ return {
 		t.ok(p.hotPool_K - KEL > Config.Core.limits.mixedCoreOutlet_C, "pump heat lifts it slightly above nominal")
 		t.log(string.format("settled at hot pool %.2f °C, core inlet %.2f °C, %.0f MWt through the IHXs",
 			p.hotPool_K - KEL, p.coreInlet_K - KEL, i.total_MWt))
+	end,
+
+	["the steam plant takes exactly its load at every row of §9.2, on the programme's own flow"] = function(t)
+		--[[
+			Each row's primary side, as §9.2 states it: the programme outlet in the hot pool on the programme flow.
+			With the pumps' heat set to zero the load is the whole duty, so the IHXs must carry exactly it. The cold
+			leg that does so is logged against the table's secondary column; the gap is F33.
+		]]
+		local tbl = Config.Program.partLoadTable
+		local rated = Config.Units.ratedThermal_MWt
+		for row, power in tbl.power_pct do
+			local flow = tbl.flow_pct[row] / 100
+			local sys = make({ load = power, pumpHeat = 0, flow = RATED * flow, hotPool_C = tbl.coreOutlet_C[row] })
+			run(sys, 0.1)
+			local s = sys:getState()
+			-- the solve converges the cold leg to a nanokelvin, a part in 10¹¹ of a 100 K approach; 10⁻⁹ is headroom
+			t.near(s.total_MWt, rated * power / 100, rated * power / 100 * 1e-9, `{power} %: takes {power} % of rated`)
+			t.near(s.loops[1].flowEach_kgps / SPEC.secondaryFlowEach_kgps, flow, 1e-12,
+				`{power} %: secondary flow follows the {tbl.flow_pct[row]} % primary column`)
+			t.log(string.format("%3d %%: cold leg %.1f °C (§9.2 table %d °C, %+.1f K)", power, s.loops[1].inlet_C,
+				tbl.secondaryCold_C[row], s.loops[1].inlet_C - tbl.secondaryCold_C[row]))
+		end
+	end,
+
+	["the cold leg stays inside what the steam plant can give"] = function(t)
+		local partLoad = Config.Program.partLoad
+		-- a primary too cold to carry full load: the cold leg bottoms out at §9.2's 320 °C and carries what it can
+		local cold = make({ load = 100, hotPool_C = 500 })
+		run(cold, 0.1)
+		t.near(cold:getState().loops[1].inlet_C, SPEC.secondaryInlet_C, 1e-9, "no colder than the full-load programme")
+		t.ok(cold:getState().total_MWt < Config.Units.ratedThermal_MWt, "so the load is not met")
+		-- no load and a plant above hot standby: the bypass pulls it back toward 375 °C
+		local hot = make({ load = 0, hotPool_C = 390 })
+		run(hot, 0.1)
+		t.near(hot:getState().loops[1].inlet_C, partLoad.coreInlet_C, 1e-9, "no warmer than hot standby's 375 °C")
+		t.ok(hot:getState().total_MWt > 0, "and it takes heat out of a pool above that")
+		-- no load and a plant below hot standby: a steam generator cannot heat sodium
+		local below = make({ load = 0, hotPool_C = 360 })
+		run(below, 0.1)
+		t.near(below:getState().loops[1].inlet_C, 360, 1e-9, "no warmer than the pool it faces")
+		t.near(below:getState().total_MWt, 0, 1e-9, "so it neither takes heat nor gives it")
+	end,
+
+	["hot standby is not cooled: no load takes no heat out of a pool at its own temperature"] = function(t)
+		-- The bug this pins: a boundary held at full-load conditions pulled 570 MWt out of a shut-down plant
+		local sys = make({ load = 0, hotPool_C = Config.Program.partLoad.coreInlet_C })
+		run(sys, 1)
+		t.near(sys:getState().total_MWt, 0, 1e-9, "375 °C against 375 °C carries nothing")
+	end,
+
+	["the load ramps at §7.1's 5 %/min, and at LCO-10's 1 %/min above 40 %"] = function(t)
+		local sys = make({ load = 30 })
+		t.ok(sys:applyCommand(OPERATOR, { kind = "sink.load", value = 50 }).ok, "ask for 50 %")
+		run(sys, 60)
+		t.near(sys:getState().sinkLoad_pct, 35, 1e-6, "a minute at 5 %/min")
+		run(sys, 60)
+		t.near(sys:getState().sinkLoad_pct, 40, 1e-6, "arriving at 40 % without carrying the fast rate over")
+		run(sys, 60)
+		t.near(sys:getState().sinkLoad_pct, 41, 1e-6, "then a minute at 1 %/min")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "sink.load", value = 30 }).ok, "and back down")
+		run(sys, 60)
+		t.near(sys:getState().sinkLoad_pct, 40, 1e-6, "1 %/min down to the limit")
+		run(sys, 60)
+		t.near(sys:getState().sinkLoad_pct, 35, 1e-6, "5 %/min below it")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "sink.load", value = 101 }).ok, "past rated is refused")
+	end,
+
+	["a reactor trip trips the turbines: the load goes to zero at once and stays there"] = function(t)
+		local sys, ch = make({ load = 60 })
+		run(sys, 1)
+		ch:setExternal("protection.scram", "PSS")
+		run(sys, 0.2)
+		local s = sys:getState()
+		t.near(s.sinkLoad_pct, 0, 1e-12, "no ramp: the turbines are off the line")
+		t.near(s.loops[1].inlet_C, Config.Program.partLoad.coreInlet_C, 1e-9, "the cold leg is at hot standby")
+		ch:setExternal("protection.scram", "none") -- reset
+		run(sys, 60)
+		t.near(sys:getState().sinkLoad_pct, 0, 1e-12, "and a reset does not bring the load back by itself")
+	end,
+
+	["an override holds one loop by hand until it is handed back to the programme"] = function(t)
+		local sys = make()
+		run(sys, 0.1)
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", tag = "1", value = 330 }).ok, "hold loop 1 at 330 °C")
+		local s = sys:getState()
+		t.near(s.loops[1].inlet_C, 330, 1e-9, "loop 1 stays where it was put")
+		-- the other two loops try to make up what loop 1 no longer carries, and bottom out at the programme
+		t.near(s.loops[2].inlet_C, SPEC.secondaryInlet_C, 1e-9, "loop 2 is on the programme at full load")
+		t.ok(s.loops[1].overridden and not s.loops[2].overridden, "and the state says which is which")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.program", tag = "1" }).ok, "hand loop 1 back")
+		t.near(sys:getState().loops[1].inlet_C, SPEC.secondaryInlet_C, 1e-9, "it rejoins the programme at once")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.program", tag = "1" }).ok,
+			"handing back a loop that is not held is refused")
 	end,
 }
