@@ -155,6 +155,12 @@ and renormalised "so shape and amplitude stay consistent". D-014 records the sha
 **Recommendation.** A. Do it together with allocating the shape step's work arrays once (the part of L9 left for
 this).
 
+**Also measured (while doing the L12 follow-up).** `IQS.shapeStep` calls `Diffusion.assemble` before its first
+budget check, and on the full K1 mesh (26,264 unknowns) that assembly takes 7.35–7.84 ms headless on the
+development host (median 7.46 ms over seven runs). So every shape step's first slice overruns the 4 ms slice by
+more than the slice itself. Whichever option is chosen, the assembly needs budget checks inside it too, for
+example one per energy group, or it should run only when the cross sections have changed.
+
 ## L2: The two-button manual trip
 
 **Today.** Protection counts MCR presses and trips on the second, whenever it comes and whoever makes it. Only a
