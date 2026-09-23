@@ -56,14 +56,18 @@ local function makeT(logs: { string }): T
 			error(`{msg or "not equal"}: got {fmt(actual)}, expected {fmt(expected)}`, 2)
 		end
 	end
+	-- |x − NaN| > tol and |x − y| > NaN are both false, so a NaN expectation or tolerance would pass anything
+	local function unusable(expected: number, tol: number): boolean
+		return type(expected) ~= "number" or expected ~= expected or not (tol >= 0)
+	end
 	function t.near(actual: number, expected: number, tol: number, msg: string?)
-		if type(actual) ~= "number" or actual ~= actual or math.abs(actual - expected) > tol then
+		if type(actual) ~= "number" or actual ~= actual or unusable(expected, tol) or math.abs(actual - expected) > tol then
 			error(`{msg or "not within tolerance"}: got {fmt(actual)}, expected {fmt(expected)} ± {fmt(tol)}`, 2)
 		end
 	end
 	function t.rel(actual: number, expected: number, relTol: number, msg: string?)
 		local tol = math.abs(expected) * relTol
-		if type(actual) ~= "number" or actual ~= actual or math.abs(actual - expected) > tol then
+		if type(actual) ~= "number" or actual ~= actual or unusable(expected, tol) or math.abs(actual - expected) > tol then
 			error(`{msg or "outside relative tolerance"}: got {fmt(actual)}, expected {fmt(expected)} ± {relTol * 100}%`, 2)
 		end
 	end
@@ -86,6 +90,7 @@ local function makeT(logs: { string }): T
 end
 
 local Runner = {}
+Runner.makeT = makeT -- the assertions themselves, for RunnerSpec
 
 function Runner.run(root: Instance, filter: string?): (number, number, number)
 	local specs = {}
