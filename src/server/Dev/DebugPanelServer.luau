@@ -47,6 +47,25 @@ local function remotes(): (RemoteEvent, RemoteEvent)
 	return ensure("Snapshot"), ensure("Action")
 end
 
+local function bindables(): (BindableEvent)
+	local folder = ReplicatedStorage:FindFirstChild(FOLDER)
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = FOLDER
+		folder.Parent = ReplicatedStorage
+	end
+	local function ensure(name: string): BindableEvent
+		local r = folder:FindFirstChild(name)
+		if not r then
+			r = Instance.new("BindableEvent")
+			r.Name = name
+			r.Parent = folder
+		end
+		return r :: BindableEvent
+	end
+	return ensure("SnapshotServer")
+end
+
 function DebugPanelServer.new(opts: { registry: any, channels: any, config: any, log: any, clock: any, commands: any? })
 	local self = setmetatable({}, DebugPanelServer)
 	self.registry = opts.registry
@@ -56,6 +75,7 @@ function DebugPanelServer.new(opts: { registry: any, channels: any, config: any,
 	self.clock = opts.clock
 	self.commands = opts.commands
 	self.snapshot, self.action = remotes()
+	self.snapshotServer = bindables()
 	self.accumulator = 0
 	self.period = 0.2 -- 5 Hz, the same cadence §14.1 gives the real gauges
 
@@ -177,7 +197,9 @@ function DebugPanelServer.step(self: any, dt: number)
 		return
 	end
 	self.accumulator = 0
-	self.snapshot:FireAllClients(self:build())
+	local build = self:build()
+	self.snapshot:FireAllClients(build)
+	self.snapshotServer:Fire(build)
 end
 
 local DEV = { kind = "dev" :: any, name = "DebugPanel", userId = 0 }
