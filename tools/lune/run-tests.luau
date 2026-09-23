@@ -14,7 +14,8 @@
 	  4. Wait for the Runner's LastDone attribute, read LastReport, and compare the outcome with
 	     tools/lune/expectations.luau (known failures and why).
 	  5. Audit: in a fresh copy of the place, require every ModuleScript under src/ and record which cannot load
-	     headless and the engine API that stops them (informational; never fails the run).
+	     headless and the engine API that stops them, boot ServerScriptService.Kallskar.Main and drive it with
+	     600 Heartbeat frames, and list the scripts that are not run (informational; never fails the run).
 
 	Writes <out>/report.txt (the Runner's LastReport), <out>/results.json, <out>/junit.xml and <out>/audit.txt.
 	Exit code: 0 when every outcome matches expectations, 1 otherwise (an unexpected failure, an expected failure
