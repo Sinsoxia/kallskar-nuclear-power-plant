@@ -1076,6 +1076,57 @@ return {
 		t.eq(store.data["plant/r2"], nil, "the reset removed the plant after that write, so the old plant is gone")
 	end,
 
+	["an owner reset whose remove raises still frees the store for the next save (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local store: any = { data = { ["plant/r3"] = { old = true } } }
+		function store.get(self: any, key: string)
+			return true, self.data[key]
+		end
+		function store.set(self: any, key: string, value: any)
+			self.data[key] = value
+			return true, nil
+		end
+		function store.remove(_self: any, _key: string)
+			error("RemoveAsync: 502 service unavailable")
+		end
+		local pers = Persistence.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			clock = p.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/r3",
+			ownerUserId = 7,
+		})
+		local owner = { kind = "player", name = "Owner", userId = 7 }
+		local reset = false
+		p.bus:subscribe("PlantReset", function()
+			reset = true
+		end)
+		t.ok(pers:requestReset(owner, Config.Engineering.resetConfirmationPhrase).ok)
+		pers.reset.remaining = 0
+		local ok, err = pcall(pers.tick, pers, Config.Engineering.serverFrame_s)
+		t.ok(ok, `the failed remove does not escape the tick ({err})`)
+		t.eq(pers.saving, false, "no write is left marked in flight")
+		local failed = false
+		for _, e in p.log:latest() do
+			failed = failed or (e.kind == "plant.reset" and e.result == "error" and string.find(e.detail or "", "502", 1, true) ~= nil)
+		end
+		t.ok(failed, "the log says the stored plant could not be removed, and why")
+		t.ok(reset, "the owner's reset still happens")
+		-- the next save is not held behind a write that never finished, and it replaces the old plant
+		local done = false
+		task.spawn(function()
+			t.ok(pers:save(), "the next save goes through")
+			done = true
+		end)
+		t.ok(done, "without waiting on anything")
+		t.eq(store.data["plant/r3"].old, nil, "and the old plant is gone")
+	end,
+
 	["a DataStore call is retried with backoff, and nothing waits after the last try"] = function(t)
 		local calls, waits = 0, {}
 		local backend = setmetatable({

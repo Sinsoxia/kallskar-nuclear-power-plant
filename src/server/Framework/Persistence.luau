@@ -321,8 +321,16 @@ function Persistence.tick(self: any, dt: number)
 				task.wait()
 			end
 			self.saving = true
-			self.store:remove(self.key)
+			-- a store that raises must not leave the write marked in flight, or every later save waits on it forever
+			local okCall, ok, err = pcall(self.store.remove, self.store, self.key)
 			self.saving = false
+			if not okCall then
+				ok, err = false, ok
+			end
+			if not ok then
+				-- the reset goes ahead: the fresh plant's first save overwrites what could not be removed
+				self.log:record("plant.reset", nil, self.key, `the stored plant could not be removed: {tostring(err)}`, "error")
+			end
 			self.log:record("plant.reset", nil, nil, `requested by {r.requestedBy}`, "ok")
 			if self.bus then
 				self.bus:publish("PlantReset", { requestedBy = r.requestedBy })
