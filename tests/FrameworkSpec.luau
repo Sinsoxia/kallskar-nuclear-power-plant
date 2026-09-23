@@ -596,6 +596,37 @@ return {
 		t.ok(not faults:arm("S-99").ok, "unknown id")
 	end,
 
+	["a fault clears the target it was armed on, not a default (§13.1)"] = function(t)
+		-- the shape of RD-STUCK, IHX-SHUT, NI-FAIL and PROT-CHANNEL: params name the target, with a default
+		local Rack = System.extend({ name = "Rack", lane = "fast", reads = {}, writes = {} })
+		function Rack:step() end
+		function Rack:init()
+			self.failed = {}
+		end
+		Rack.faults = {
+			{
+				id = "RACK-FAIL",
+				label = "Channel failure",
+				cost = 1,
+				arm = function(self, params)
+					self.failed[(params and params.channel) or "A"] = true
+				end,
+				clear = function(self, params)
+					self.failed[(params and params.channel) or "A"] = nil
+				end,
+			},
+		}
+		local p = plant({ Rack })
+		resolveAndInit(p)
+		local faults = Faults.new(p.registry, p.log, p.bus)
+		local rack = p.systems[1]
+		t.ok(faults:arm("RACK-FAIL", { channel = "B" }, SERVER).ok)
+		t.ok(rack.failed.B, "armed on channel B")
+		t.ok(faults:clear("RACK-FAIL", SERVER).ok)
+		t.eq(rack.failed.B, nil, "clearing the fault restores channel B")
+		t.ok(not faults:isActive("RACK-FAIL"))
+	end,
+
 	-- Packets and tags ----------------------------------------------------------------------------------------
 	["gauge packets round-trip and respect the byte budget"] = function(t)
 		local ids, values = {}, {}

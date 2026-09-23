@@ -90,7 +90,8 @@ function Faults.clear(self: any, id: string, actor: Actor?): CommandResult
 		return { ok = false, reason = `fault '{id}' is not active` }
 	end
 	if entry.fault.clear then
-		local ok, err = pcall(entry.fault.clear, entry.system)
+		-- with the params it was armed with: a fault that picked its target from them must clear that target
+		local ok, err = pcall(entry.fault.clear, entry.system, self.active[id].params)
 		if not ok then
 			self.log:record("fault.clear", actor, id, tostring(err), "error")
 			return { ok = false, reason = `clearing '{id}' failed: {tostring(err)}` }

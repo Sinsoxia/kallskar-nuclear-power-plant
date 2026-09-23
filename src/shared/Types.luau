@@ -51,7 +51,7 @@ export type FaultSpec = {
 	cost: number, -- 1 minor, 3 moderate, 8 major (§13.1)
 	eligible: ((snapshot: any) -> boolean)?,
 	arm: (sys: any, params: { [string]: any }?) -> (),
-	clear: ((sys: any) -> ())?,
+	clear: ((sys: any, params: { [string]: any }?) -> ())?, -- given the params `arm` was given
 }
 
 export type EventRecord = {
