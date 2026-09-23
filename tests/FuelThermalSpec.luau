@@ -237,22 +237,28 @@ return {
 		end
 	end,
 
-	["full-plant step fits the fast-tick budget"] = function(t)
+	["full-plant step fits the fast-tick budget on average, with its P99 logged"] = function(t)
 		local sys, _, power = make()
 		uniform(sys, power, Expected.average.q_Wpm)
 		sys:settle()
 		local dt = (1 / Config.Clocks.fast_Hz)
-		local worst, total = 0, 0
 		local n = 200
-		for _ = 1, n do
+		local samples = table.create(n, 0)
+		local total = 0
+		for i = 1, n do
 			local c = os.clock()
 			sys:step(dt)
-			local e = os.clock() - c
-			total += e
-			worst = math.max(worst, e)
+			samples[i] = os.clock() - c
+			total += samples[i]
 		end
-		t.log(string.format("FuelThermal step over %d nodes: mean %.3f ms, worst %.3f ms", sys.N, total / n * 1000, worst * 1000))
-		-- necessary, not sufficient: this one system must fit inside the whole fast-tick budget
+		table.sort(samples)
+		-- P99 taken as Scheduler's Window.percentile does. It is logged, not asserted: on the development host it
+		-- ranges 3.1–4.8 ms against the 5 ms budget from run to run (garbage collection in single samples), so as
+		-- an assertion it would fail at random rather than on a change in the code
+		local p99 = samples[math.clamp(math.ceil(0.99 * n), 1, n)]
+		t.log(string.format("FuelThermal step over %d nodes: mean %.3f ms, P99 %.3f ms, worst %.3f ms",
+			sys.N, total / n * 1000, p99 * 1000, samples[n] * 1000))
+		-- necessary, not sufficient: on average this one system must fit inside the whole fast lane's budget
 		t.ok(total / n < Config.Engineering.fastTickBudgetP99_s, "mean step inside Engineering.fastTickBudgetP99_s")
 	end,
 }

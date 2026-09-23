@@ -798,7 +798,14 @@ return {
 		t.eq(persist(q):load(), "loaded")
 		t.eq(q.systems[1].burnup, 42.5, "system slice restored")
 		t.eq(q.scheduler.clock.sim, 1234, "clock restored")
-		t.ok(q.log.seq >= 1, "event log restored")
+		-- load() records its own "load" entry, so a sequence number alone would pass with nothing imported
+		local restored = false
+		for _, e in q.log:latest() do
+			if e.kind == "before-save" then
+				restored = true
+			end
+		end
+		t.ok(restored, "event log restored")
 
 		-- a version-1 save migrated to a hypothetical version 3
 		local migrated = plant({ Keeper })

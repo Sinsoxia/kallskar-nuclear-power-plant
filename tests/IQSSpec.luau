@@ -302,8 +302,23 @@ return {
 		end
 		local sched = Scheduler.new({ order = { fast = {}, slow = {} } }, Config)
 		local done, ok = false, false
+		--[[
+			The budget is checked between pieces of work, so a slice can overrun it by the piece that is running when
+			the deadline passes. Every piece (each stretch between two checks) is timed, so the bound comes from the
+			method rather than from a guessed margin.
+		]]
+		local longest, mark = 0, 0
 		sched:runSliced("shape", function(budget)
-			return iqs:shapeStep(budget)
+			local timed = {}
+			function timed.check(_self: any)
+				longest = math.max(longest, os.clock() - mark)
+				budget:check()
+				mark = os.clock()
+			end
+			mark = os.clock()
+			local converged = iqs:shapeStep(timed)
+			longest = math.max(longest, os.clock() - mark)
+			return converged
 		end, function(success, converged)
 			done, ok = true, success and converged
 		end)
@@ -312,7 +327,14 @@ return {
 			sched:resumeSliced()
 			frames += 1
 		end
-		t.log(string.format("shape step finished in %d frames, %d outers, worst slice %.2f ms", frames, iqs.shapeOuter, sched.stats.frameSliced:max() * 1000))
+		local worst = sched.stats.frameSliced:max()
+		local sliceBudget = Config.Clocks.shapeSliceBudget_s
+		t.log(string.format("shape step finished in %d frames, %d outers, worst slice %.2f ms, longest piece %.3f ms",
+			frames, iqs.shapeOuter, worst * 1000, longest * 1000))
 		t.ok(ok, "sliced shape step converged")
+		-- one piece past the budget if the deadline falls inside it, and at most one more for the scheduler's own
+		-- resume and yield around it: a handful of statements, against a piece that is a colour pass of node updates
+		t.ok(worst <= sliceBudget + 2 * longest,
+			string.format("worst slice %.3f ms is inside the %.1f ms budget plus two pieces", worst * 1000, sliceBudget * 1000))
 	end,
 }
