@@ -729,6 +729,73 @@ return {
 		t.eq(public:save(), false)
 	end,
 
+	["a plant that could not be loaded is never overwritten (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local writes = 0
+		local stored: any = { version = Persistence.CURRENT_VERSION + 1, systems = {} } -- written by a newer server
+		local store: any = {}
+		function store.get(_self: any, _key: string)
+			return true, stored
+		end
+		function store.set(_self: any, _key: string, value: any)
+			writes += 1
+			stored = value
+			return true, nil
+		end
+		function store.remove(_self: any, _key: string)
+			stored = nil
+			return true, nil
+		end
+		local function persist(backing: any)
+			return Persistence.new({
+				config = Config,
+				registry = p.registry,
+				log = p.log,
+				bus = p.bus,
+				clock = p.scheduler.clock,
+				store = backing,
+				mode = "private",
+				key = "plant/unreadable",
+				ownerUserId = 7,
+			})
+		end
+		local pers = persist(store)
+		t.ok(not pcall(pers.load, pers), "a save from a newer server does not load")
+		pers.sinceSave = Config.Engineering.saveInterval_s
+		pers:tick(Config.Engineering.serverFrame_s)
+		t.eq(writes, 0, "the autosave does not replace it")
+		t.ok(not (pers:save()), "nor does any other save")
+		t.eq(stored.version, Persistence.CURRENT_VERSION + 1, "the save this server could not read is still there")
+
+		-- a store that cannot be read at all at boot is the same case
+		local outage: any = {}
+		function outage.get(_self: any, _key: string)
+			return false, "DataStore outage"
+		end
+		function outage.set(_self: any, _key: string, _value: any)
+			writes += 1
+			return true, nil
+		end
+		function outage.remove(_self: any, _key: string)
+			return true, nil
+		end
+		local blind = persist(outage)
+		t.ok(not pcall(blind.load, blind), "an outage at boot does not load")
+		t.ok(not (blind:save()), "and the fresh plant is not saved over the real one")
+		t.eq(writes, 0)
+
+		-- the owner can still choose to start over, and from then on the plant saves normally
+		local owner = { kind = "player", name = "Owner", userId = 7 }
+		t.ok(pers:requestReset(owner, Config.Engineering.resetConfirmationPhrase).ok)
+		for _ = 1, Config.Access.reset.countdown_s do
+			pers:tick(1)
+		end
+		t.eq(stored, nil, "the reset cleared the old save")
+		t.ok((pers:save()), "and the new plant saves")
+		t.eq(writes, 1)
+	end,
+
 	["owner reset needs the owner, the phrase and a countdown"] = function(t)
 		local p = plant({})
 		resolveAndInit(p)

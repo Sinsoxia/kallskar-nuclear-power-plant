@@ -144,6 +144,7 @@ function Persistence.new(opts: {
 	self.migrations = opts.migrations or Persistence.MIGRATIONS
 	self.currentVersion = opts.currentVersion or Persistence.CURRENT_VERSION
 	self.saveInterval = opts.config.Engineering.saveInterval_s
+	self.writable = true -- false while the stored plant has not been read successfully (see load)
 	self.phrase = opts.config.Engineering.resetConfirmationPhrase
 	self.countdownLength = opts.config.Access.reset.countdown_s
 	self.sinceSave = 0
@@ -197,6 +198,9 @@ function Persistence.migrate(self: any, data: any): any
 end
 
 function Persistence.save(self: any): (boolean, string?)
+	if not self.writable then
+		return false, "the stored plant could not be loaded, so nothing overwrites it"
+	end
 	if not self:enabled() then
 		return false, "persistence disabled on this server"
 	end
@@ -232,11 +236,15 @@ function Persistence.load(self: any): string
 	if not self:enabled() then
 		return "fresh"
 	end
+	-- Until this load succeeds nothing may overwrite what is stored: a save this server could not read (an outage, a
+	-- newer version) is still the owner's plant, and Main halts rather than start fresh over it.
+	self.writable = false
 	local ok, data = self.store:get(self.key)
 	if not ok then
 		error(`could not read save: {tostring(data)}`)
 	end
 	if data == nil then
+		self.writable = true
 		return "fresh"
 	end
 	local fromVersion = data.version
@@ -252,6 +260,7 @@ function Persistence.load(self: any): string
 	end
 	self.log:import(data.eventLog)
 	self.log:record("load", nil, self.key, `save version {fromVersion} → {self.currentVersion}`, "ok")
+	self.writable = true
 	return "loaded"
 end
 
@@ -317,6 +326,7 @@ function Persistence.tick(self: any, dt: number)
 			if self.bus then
 				self.bus:publish("PlantReset", { requestedBy = r.requestedBy })
 			end
+			self.writable = true -- the owner chose to start over, so the fresh plant may now be saved
 		end
 	end
 end
