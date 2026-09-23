@@ -131,9 +131,13 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 --[[
-	The developer panel (plan: Dev/DebugPanelServer). Studio only, and stepped from the same loop the plant runs
-	on so its snapshots are always of a consistent tick rather than of a half-updated one.
+	The plant snapshot (plan: Telemetry/PlantSnapshot): the plant's state as one table at 5 Hz, on every server,
+	for server-side consumers — the developer panel in Studio and the website telemetry everywhere.
 ]]
+local PlantSnapshot = require(Root:WaitForChild("Telemetry"):WaitForChild("PlantSnapshot"))
+local plantSnapshot = PlantSnapshot.new({ registry = registry, channels = channels, clock = scheduler.clock })
+
+-- The developer panel (plan: Dev/DebugPanelServer). Studio only: its Action remote can seat and scram the plant.
 local devPanel = nil
 if isStudio then
 	local DebugPanelServer = require(Root.Dev:WaitForChild("DebugPanelServer"))
@@ -144,6 +148,7 @@ if isStudio then
 		log = log,
 		clock = scheduler.clock,
 		commands = commands,
+		plantSnapshot = plantSnapshot,
 	})
 	devPanel = panel
 	log:record("dev.panel", nil, nil, "developer panel listening on KallskarDev", "info")
@@ -154,9 +159,7 @@ RunService.Heartbeat:Connect(function(dt)
 	scheduler:advance(dt)
 	replicator:tick(dt)
 	persistence:tick(dt)
-	if devPanel then
-		devPanel:step(dt) -- after the plant, so a snapshot is always of a completed tick
-	end
+	plantSnapshot:step(dt) -- after the plant, so a snapshot is always of a completed tick
 end)
 
 game:BindToClose(function()
@@ -178,6 +181,7 @@ if isStudio then
 		replicator = replicator,
 		persistence = persistence,
 		devPanel = devPanel,
+		plantSnapshot = plantSnapshot,
 	}
 end
 

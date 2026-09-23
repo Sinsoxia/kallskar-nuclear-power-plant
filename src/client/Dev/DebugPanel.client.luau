@@ -24,12 +24,16 @@ local WARN = Color3.fromRGB(255, 176, 64)
 local TRIP = Color3.fromRGB(255, 92, 92)
 local GOOD = Color3.fromRGB(96, 224, 160)
 
+--[[
+	The folder exists on every server, because the plant snapshot lives there too (Telemetry/PlantSnapshot), but
+	the panel's own remotes exist only in Studio. On a live server they never appear, and the panel does not exist.
+]]
 local folder = ReplicatedStorage:WaitForChild("KallskarDev", 30)
-if not folder then
+local snapshotRemote = folder and folder:WaitForChild("Snapshot", 10) :: RemoteEvent?
+local actionRemote = folder and folder:WaitForChild("Action", 10) :: RemoteEvent?
+if not snapshotRemote or not actionRemote then
 	return -- not a dev build; the panel simply does not exist
 end
-local snapshotRemote = folder:WaitForChild("Snapshot") :: RemoteEvent
-local actionRemote = folder:WaitForChild("Action") :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "KallskarDebugPanel"
