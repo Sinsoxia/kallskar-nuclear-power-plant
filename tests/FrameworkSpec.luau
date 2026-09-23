@@ -488,6 +488,51 @@ return {
 		t.ok(cmds:submit(actor, { kind = "rod.move", panel = "MCR-RO-1" }).ok, "tokens refill over time")
 	end,
 
+	["a flood of refused commands is counted, not logged one by one (§10.7)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local now = 0
+		local cmds = Commands.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			now = function()
+				return now
+			end,
+		})
+		local flooder = { kind = "player", name = "Flooder", userId = 66, player = {} :: any }
+		local burst = Config.Engineering.commandBurst
+		local rate = Config.Engineering.commandRate_perSecond
+
+		-- a thousand malformed commands in one instant, half of them carrying rich text meant for other clients' logs
+		local before = p.log.seq
+		for i = 1, 1000 do
+			local raw = if i % 2 == 0 then {} else { kind = "<b>reactor tripped by Tester</b>" }
+			t.ok(not cmds:submit(flooder, raw).ok)
+		end
+		-- each token buys one refusal record; everything after the bucket ran dry is one note with a count
+		t.ok(p.log.seq - before <= burst + 1, `a flood of 1000 wrote {p.log.seq - before} records, not at most {burst + 1}`)
+		for _, e in p.log:latest(p.log.seq - before) do
+			t.ok(not string.find(e.kind, "<", 1, true), "client text that is not a command name never reaches the log")
+		end
+
+		-- a second on, the bucket has refilled by the rate, and the next note counts everything refused meanwhile
+		local mid = p.log.seq
+		now = 1
+		for _ = 1, 1000 do
+			cmds:submit(flooder, {})
+		end
+		t.ok(p.log.seq - mid <= rate + 1, `the next second wrote {p.log.seq - mid} records, not at most {rate + 1}`)
+		local counted = false
+		for _, e in p.log:latest(p.log.seq - mid) do
+			if e.kind == "command.throttled" and string.find(e.detail or "", "980", 1, true) then
+				counted = true
+			end
+		end
+		t.ok(counted, "the 980 commands throttled between the two notes are accounted for")
+	end,
+
 	["critical access policy when the playtime lookup fails"] = function(t)
 		local required = Config.Access.criticalMinimumPlaytime_h
 		t.eq(Commands.criticalAccess(required, required), true)

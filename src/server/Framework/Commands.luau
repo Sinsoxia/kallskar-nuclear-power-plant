@@ -4,13 +4,15 @@
 	========================================================================================================
 
 	submit(actor, raw) does, in order:
-	  1. sanitise   — copy the client's table into a fresh Command, rejecting wrong types, oversized strings, NaN/inf
-	  2. rate limit — token bucket per player (Engineering.commandRate_perSecond / commandBurst)
+	  1. rate limit — token bucket per player (Engineering.commandRate_perSecond / commandBurst), before any other work
+	  2. sanitise   — copy the client's table into a fresh Command, rejecting wrong types, oversized strings, NaN/inf
 	  3. route      — the system that declared this command kind (Registry), or refuse
 	  4. access     — players only: within reach of the panel (Access.panelReach_studs) and, for critical controls,
 	                  the minimum total playtime (Access.criticalMinimumPlaytime_h)
 	  5. apply      — system:applyCommand(actor, cmd)
-	  6. log        — every attempt, accepted or refused, goes to the EventLog with the actor's name (§10.7)
+	  6. log        — every attempt, accepted or refused, goes to the EventLog with the actor's name (§10.7). Commands
+	                  refused by the rate limit are the exception: they are counted, and the count is noted at most
+	                  once per token interval, so a flood cannot overwrite the log or reach every client through it
 
 	Actors of kind "auto" and "scenario" are server-internal and skip reach/playtime. "dev" actors come only from the
 	Studio/owner-gated debug panel and skip reach (there are no physical panels yet in M1).
@@ -154,7 +156,7 @@ function Commands.new(opts: {
 		return nil
 	end
 	self.now = opts.now or os.clock
-	self.buckets = {} :: { [number]: { tokens: number, t: number } }
+	self.buckets = {} :: { [number]: { tokens: number, t: number, throttled: number, noted: number } }
 	return self
 end
 
@@ -166,7 +168,7 @@ local function takeToken(self: any, userId: number): boolean
 	local now = self.now()
 	local b = self.buckets[userId]
 	if not b then
-		b = { tokens = self.burst, t = now }
+		b = { tokens = self.burst, t = now, throttled = 0, noted = -math.huge }
 		self.buckets[userId] = b
 	end
 	b.tokens = math.min(self.burst, b.tokens + (now - b.t) * self.rate)
@@ -176,6 +178,24 @@ local function takeToken(self: any, userId: number): boolean
 	end
 	b.tokens -= 1
 	return true
+end
+
+local THROTTLED = "too many commands; slow down"
+
+--[[
+	A command refused for want of a token costs its sender nothing, so it must cost the log nothing either. Logged one
+	by one, a flood would overwrite the whole sequence-of-events ring (and with it §10.7's record of who did what),
+	and the Replicator would send every record to every player. So throttled commands are counted, and the count is
+	written at most once per token interval: a player can then add at most twice the command rate to the log.
+]]
+local function noteThrottled(self: any, actor: Actor)
+	local b = self.buckets[actor.userId]
+	b.throttled += 1
+	local now = self.now()
+	if now - b.noted >= 1 / self.rate then
+		self.log:record("command.throttled", actor, nil, `{b.throttled} commands refused since the last note`, `denied: {THROTTLED}`)
+		b.throttled, b.noted = 0, now
+	end
 end
 
 local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolean, string?)
@@ -205,19 +225,23 @@ local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolea
 end
 
 function Commands.submit(self: any, actor: Actor, raw: any): CommandResult
+	if actor.kind == "player" or actor.kind == "dev" then
+		if not takeToken(self, actor.userId) then
+			noteThrottled(self, actor)
+			return { ok = false, reason = THROTTLED }
+		end
+	end
 	local cmd, why = Commands.sanitize(raw, self.limits)
-	local kindForLog = if cmd then cmd.kind else (if type(raw) == "table" and type(raw.kind) == "string" then string.sub(raw.kind, 1, 64) else "?")
+	-- every client is sent the log, so a refused command's kind goes in only if it is a plain name
+	local kindForLog = if cmd then cmd.kind
+		elseif type(raw) == "table" and type(raw.kind) == "string" and string.match(raw.kind, NAME_PATTERN) then string.sub(raw.kind, 1, 64)
+		else "?"
 	local function refuse(reason: string): CommandResult
 		self.log:record(kindForLog, actor, if cmd then cmd.target else nil, nil, `denied: {reason}`)
 		return { ok = false, reason = reason }
 	end
 	if not cmd then
 		return refuse(why :: string)
-	end
-	if actor.kind == "player" or actor.kind == "dev" then
-		if not takeToken(self, actor.userId) then
-			return refuse("too many commands; slow down")
-		end
 	end
 	local owner = self.registry:ownerOfCommand(cmd.kind)
 	if not owner then
