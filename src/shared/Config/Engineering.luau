@@ -14,8 +14,6 @@ return {
 	coreMapResolution_K = spec(0.05, "§14.1"),
 	coreMapBytesPerValue = spec(2, "§14.1: u16"),
 
-	devStrictState = engineering(true, "Studio-only strict metatable on system state catches key typos; disabled on live servers"),
-
 	-- Sequence-of-events log (§10.7, §14.6)
 	eventLogCapacity = engineering(5000, "bounded memory; a busy 13-player crew at one action per 10 s fills ~720 per grid day (2 h), so this holds several grid days plus alarms"),
 	eventLogPersisted = engineering(500, "most recent entries kept in the private-server save; keeps the save well under DataStore's 4 MB value limit"),

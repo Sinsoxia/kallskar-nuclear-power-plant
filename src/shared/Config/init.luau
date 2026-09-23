@@ -41,7 +41,7 @@ local Config = {
 	Engineering = load("Engineering", require(script.Engineering)),
 
 	provenance = table.freeze(prov),
-	revision = "A3",
+	revision = "A5", -- the spec revision these values follow (REACTOR SPEC/sfr-1000-spec.html)
 }
 
 --[[

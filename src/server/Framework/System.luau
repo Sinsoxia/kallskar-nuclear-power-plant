@@ -175,8 +175,8 @@ end
 function System.load(_self: any, _data: any, _version: number) end
 
 --[[
-	Development aid: a record whose unknown keys throw on read and write. Only active in Studio when
-	Config.Engineering.devStrictState is true; on live servers it returns the plain table unchanged.
+	Development aid: a record whose unknown keys throw on read and write. Only active in Studio, and only when the
+	caller passes strict = true; on live servers it returns the plain table unchanged.
 	Use it for per-system state records (touched once per tick), never for per-node arrays.
 ]]
 local STRICT_MT = {
