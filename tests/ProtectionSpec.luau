@@ -249,6 +249,19 @@ return {
 		t.eq(lch:get("protection.firstOut"), "LOOPS", "two lost trips")
 	end,
 
+	["a runback with no depth to run to is refused, so it cannot halt the plant later (§9.5 RB-3)"] = function(t)
+		local sys, ch = make()
+		run(sys, 1)
+		local r = sys:applyCommand(OPERATOR, { kind = "runback.start", target = "RB3" })
+		t.ok(not r.ok, "RB-3's bypass-limited target is not a power the plant can run to")
+		t.eq(ch:get("protection.runback"), "", "so no runback is running")
+		-- a pump lost afterwards starts RB-2 as usual, instead of failing on RB-3's missing target
+		ch:setExternal("primary.pumpsRunning", 2)
+		local ok, err = pcall(run, sys, 1)
+		t.ok(ok, `the protection step survives: {tostring(err)}`)
+		t.eq(ch:get("protection.runback"), "RB2")
+	end,
+
 	["power to flow: alarm and rod block at 1.05, trip at 1.12, armed above 5 %FP"] = function(t)
 		local sys, ch = make()
 		ch:setExternal("primary.flowFraction", 1 / (PSS.powerToFlow.alarm * 1.001))

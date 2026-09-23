@@ -437,7 +437,8 @@ end
 ]]
 function Protection.startRunback(self: any, id: string, actor: Actor?)
 	local spec = self.cfg.runbacks[id]
-	if spec == nil then
+	-- a runback runs to a depth; RB-3's is "bypass-limited", which M1 cannot evaluate (no turbines, no bypass yet)
+	if spec == nil or type(spec.target_pctFP) ~= "number" then
 		return false
 	end
 	if self.runback and self.runback.target <= spec.target_pctFP then
@@ -651,6 +652,9 @@ Protection.commands = {
 		local id = cmd.target
 		if id == nil or self.cfg.runbacks[id] == nil then
 			return { ok = false, reason = `unknown runback '{tostring(id)}'` }
+		end
+		if type(self.cfg.runbacks[id].target_pctFP) ~= "number" then
+			return { ok = false, reason = `{id} runs to a {tostring(self.cfg.runbacks[id].target)} target the plant does not model yet` }
 		end
 		if not self:startRunback(id, actor) then
 			return { ok = false, reason = "a runback at least this deep is already running" }
