@@ -93,6 +93,19 @@ function Scheduler.new(registry: any, config: any, bus: any?, log: any?)
 	return self
 end
 
+--[[
+	Start again from zero with nothing halted, for an owner reset (§14.6). The reset is how an owner recovers a plant,
+	including one that halted on a system error, so the halt goes with everything else. A sliced task still working
+	on the old plant is dropped. The clock rate is a session setting, not plant state, and is kept.
+]]
+function Scheduler.restart(self: any)
+	local clock = self.clock
+	clock.sim, clock.grid, clock.slow, clock.fastTicks = 0, 0, 0, 0
+	self.acc = 0
+	self.halted = nil
+	table.clear(self.sliced)
+end
+
 function Scheduler.setRate(self: any, rate: number)
 	assert(rate >= 1 and rate % 1 == 0, "rate must be a positive integer multiple of real time")
 	self.clock.rate = rate

@@ -96,7 +96,10 @@ if not okLoad then
 end
 
 bus:subscribe("PlantReset", function()
-	scheduler.clock.sim, scheduler.clock.grid, scheduler.clock.slow, scheduler.clock.fastTicks = 0, 0, 0, 0
+	-- §14.6: hot standby at beginning of cycle with every component as new, and the framework's own state with it
+	scheduler:restart()
+	faults:forgetAll()
+	channels:resetExternals()
 	registry:initAll(ctx)
 	log:record("plant.reinitialised", nil, nil, "hot standby, beginning of cycle", "ok")
 end)

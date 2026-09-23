@@ -81,6 +81,21 @@ function Faults.arm(self: any, id: string, params: { [string]: any }?, actor: Ac
 	return { ok = true }
 end
 
+--[[
+	Forget every active fault, for an owner reset (§14.6). The systems are re-initialised by the same reset, which
+	puts their side of each fault back, so the faults' own clear() is not called; each is still logged and announced.
+]]
+function Faults.forgetAll(self: any, actor: Actor?)
+	for id in self.active do
+		local entry = self.registry.faultIndex[id]
+		self.active[id] = nil
+		self.log:record("fault.clear", actor, id, "plant reset", "ok")
+		if self.bus and entry then
+			self.bus:publish("FaultCleared", { id = id, system = entry.system.spec.name })
+		end
+	end
+end
+
 function Faults.clear(self: any, id: string, actor: Actor?): CommandResult
 	local entry = self.registry.faultIndex[id]
 	if not entry then

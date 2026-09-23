@@ -275,6 +275,48 @@ return {
 		t.eq(p.systems[1].steps, stepsBefore, "nothing runs after a halt")
 	end,
 
+	["an owner reset restarts a halted plant, forgets its faults and restores its inputs (§14.6)"] = function(t)
+		local Flaky = System.extend({ name = "Flaky", lane = "fast", reads = { "program.mode" }, writes = {} })
+		function Flaky:init()
+			self.failing = false
+		end
+		function Flaky:step()
+			if self.failing then
+				error("sensor exploded")
+			end
+		end
+		Flaky.faults = {
+			{
+				id = "FLAKY",
+				label = "Flaky sensor",
+				cost = 1,
+				arm = function(self)
+					self.failing = true
+				end,
+			},
+		}
+		local p = plant({ Flaky })
+		p.channels:declareExternal("program.mode", 3)
+		resolveAndInit(p)
+		local faults = Faults.new(p.registry, p.log, p.bus)
+		t.ok(faults:arm("FLAKY", nil, SERVER).ok)
+		p.channels:setExternal("program.mode", 1) -- as the dev preset does when it seats the plant at power
+		t.eq(p.scheduler:stepFast(), false, "the fault halts the plant")
+
+		-- what Main's PlantReset handler does
+		p.scheduler:restart()
+		faults:forgetAll()
+		p.channels:resetExternals()
+		p.registry:initAll({ config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true })
+
+		t.eq(p.scheduler.halted, nil, "no longer halted")
+		t.eq(p.scheduler.clock.sim, 0, "the clocks start again from zero")
+		t.ok(not faults:isActive("FLAKY"), "no fault stays marked active on a plant that was re-initialised")
+		t.eq(p.channels:get("program.mode"), 3, "the external inputs are back at their boot values")
+		t.ok(p.scheduler:stepFast(), "and the plant runs")
+		t.ok(faults:arm("FLAKY", nil, SERVER).ok, "the fault can be armed again")
+	end,
+
 	["scheduler limits catch-up and counts dropped time"] = function(t)
 		local Fa = makeClass("Catch", "fast", {}, { "c.n" })
 		local p = plant({ Fa })

@@ -28,6 +28,7 @@ function Channels.new()
 	local self = setmetatable({}, Channels)
 	self.values = {} :: { [string]: any }
 	self.owner = {} :: { [string]: string }
+	self.externalInitial = {} :: { [string]: any } -- what each external input was declared with
 	return self
 end
 
@@ -47,6 +48,14 @@ end
 
 function Channels.declareExternal(self: any, name: string, initial: any)
 	self:declare(name, "<external>", initial)
+	self.externalInitial[name] = initial
+end
+
+-- Put every external input back to the value it was declared with (an owner reset, §14.6).
+function Channels.resetExternals(self: any)
+	for name, initial in self.externalInitial do
+		self.values[name] = initial
+	end
 end
 
 function Channels.isDeclared(self: any, name: string): boolean
