@@ -1,0 +1,7 @@
+# Tool versions for the headless test harness (docs/HEADLESS_TESTS.md).
+# `rokit install` installs these. tools/lune/bootstrap.sh reads the same lines and installs them without rokit,
+# checking each release archive against tools/lune/tools.sha256; bump both files together.
+
+[tools]
+lune = "lune-org/lune@0.10.5"
+rojo = "rojo-rbx/rojo@7.7.0"

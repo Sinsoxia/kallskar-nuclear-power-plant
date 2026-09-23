@@ -1,0 +1,42 @@
+# Runs the Luau test suite (tests/*Spec) headless on Lune. See docs/HEADLESS_TESTS.md.
+name: Headless tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  specs:
+    name: Luau specs (Lune)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Installs the rokit.toml versions of Lune and Rojo (archives checked against tools/lune/tools.sha256),
+      # builds the place and runs every spec. Fails on any outcome tools/lune/expectations.luau does not list.
+      - name: Run the suite headless
+        run: tools/lune/test.sh
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: headless-test-reports
+          path: |
+            tools/lune/.out/report.txt
+            tools/lune/.out/results.json
+            tools/lune/.out/junit.xml
+            tools/lune/.out/audit.txt
+          include-hidden-files: true
+          if-no-files-found: ignore

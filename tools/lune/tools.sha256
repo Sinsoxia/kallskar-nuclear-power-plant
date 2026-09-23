@@ -1,0 +1,15 @@
+# SHA-256 of the release archives tools/lune/bootstrap.sh may download (one line per archive, sha256sum format).
+# Neither lune-org/lune nor rojo-rbx/rojo publishes checksums with its releases, so these were computed from the
+# archives downloaded from the GitHub release pages on 2026-09-23 and are pinned here: a changed archive at the
+# same URL fails the install instead of running.
+# To bump a tool: change rokit.toml, download the new archives, replace their lines here.
+176e1272d41ba3d9ea30087b528048a4a97e3d74cfa0eaa5d35d9e0d4122caa6  lune-0.10.5-linux-aarch64.zip
+1fb5dee6a1afa1d300092805c6e660fe06144d29dd68c45cf6956f040667f791  lune-0.10.5-linux-x86_64.zip
+bdb94f47bc1d3af3e3fe796cfce9c7f406042d4aada9cc41a1c53836f3e3b411  lune-0.10.5-macos-aarch64.zip
+f4b43cfd495994b7ef783ac2bb0aa24f1f940f3804b28018121bb3cc2171c1a7  lune-0.10.5-macos-x86_64.zip
+ad0305f5cc6d7ff20996644b40bf7de0de613812f431ca241456e16f9fc89cda  lune-0.10.5-windows-x86_64.zip
+7e60d864d4b735f4b1122cbe4e3db4c215fda97f596196df5c3e99f3f5387485  rojo-7.7.0-linux-aarch64.zip
+22503e5839864f9d7c2171c48b536fc229f2cc4d8774c9cc149f60941d864073  rojo-7.7.0-linux-x86_64.zip
+000f663eb406ec4670e1b675069a5e9fdb6e131505ff60f6a8e28bc8a97488cd  rojo-7.7.0-macos-aarch64.zip
+9bd69697ca3a0abf0ec847c779013e7315501b2d997d63d5e1766e14d49d9c66  rojo-7.7.0-macos-x86_64.zip
+2179c44862a10ecbd725bdfeb4abc64e16dc4aad9b6c8f3e1a7c46a87280b949  rojo-7.7.0-windows-x86_64.zip
