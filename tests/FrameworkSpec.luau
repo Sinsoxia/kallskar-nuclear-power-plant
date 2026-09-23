@@ -18,6 +18,7 @@ local EventLog = require(Framework:WaitForChild("EventLog")) :: any
 local Commands = require(Framework:WaitForChild("Commands")) :: any
 local Faults = require(Framework:WaitForChild("Faults")) :: any
 local Persistence = require(Framework:WaitForChild("Persistence")) :: any
+local PlantReset = require(Framework:WaitForChild("PlantReset")) :: any
 
 local SERVER: any = { kind = "auto", name = "test-auto", userId = 0 }
 
@@ -303,11 +304,17 @@ return {
 		p.channels:setExternal("program.mode", 1) -- as the dev preset does when it seats the plant at power
 		t.eq(p.scheduler:stepFast(), false, "the fault halts the plant")
 
-		-- what Main's PlantReset handler does
-		p.scheduler:restart()
-		faults:forgetAll()
-		p.channels:resetExternals()
-		p.registry:initAll({ config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true })
+		-- the handler Main builds, answering the event Persistence publishes when the countdown ends
+		PlantReset.new({
+			registry = p.registry,
+			channels = p.channels,
+			scheduler = p.scheduler,
+			faults = faults,
+			log = p.log,
+			bus = p.bus,
+			ctx = { config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true },
+		})
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
 
 		t.eq(p.scheduler.halted, nil, "no longer halted")
 		t.eq(p.scheduler.clock.sim, 0, "the clocks start again from zero")
@@ -315,6 +322,51 @@ return {
 		t.eq(p.channels:get("program.mode"), 3, "the external inputs are back at their boot values")
 		t.ok(p.scheduler:stepFast(), "and the plant runs")
 		t.ok(faults:arm("FLAKY", nil, SERVER).ok, "the fault can be armed again")
+	end,
+
+	["an owner reset whose init fails leaves the plant halted and says why (§14.6)"] = function(t)
+		local Sound = makeClass("Sound", "fast", {}, { "s.n" })
+		local Fragile = makeClass("Fragile", "fast", {}, { "f.n" })
+		local broken = false
+		local fragileInit = Fragile.init
+		function Fragile:init(ctx)
+			if broken then
+				error("calibration table missing")
+			end
+			fragileInit(self, ctx)
+		end
+		local p = plant({ Sound, Fragile })
+		resolveAndInit(p)
+		local faults = Faults.new(p.registry, p.log, p.bus)
+		local reset = PlantReset.new({
+			registry = p.registry,
+			channels = p.channels,
+			scheduler = p.scheduler,
+			faults = faults,
+			log = p.log,
+			bus = p.bus,
+			ctx = { config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true },
+		})
+		t.ok(p.scheduler:stepFast(), "the plant runs before the reset")
+
+		broken = true
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+		local halted = p.scheduler.halted
+		t.ok(halted ~= nil and string.find(halted, "calibration table missing", 1, true) ~= nil,
+			`the plant stays halted, with the reason ({halted})`)
+		local steps = p.systems[1].steps
+		t.eq(p.scheduler:stepFast(), false, "a half-initialised plant does not run")
+		t.eq(p.systems[1].steps, steps, "not even the systems that did initialise")
+		local last = p.log:latest(1)[1]
+		t.eq(last.kind, "plant.reinitialised")
+		t.eq(last.result, "error")
+		t.ok(string.find(last.detail or "", "calibration table missing", 1, true) ~= nil, "the log says why")
+
+		-- once the fault is put right, another reset brings the plant back
+		broken = false
+		t.ok(reset:reinitialise(), "a reset that initialises every system")
+		t.eq(p.scheduler.halted, nil, "clears the halt")
+		t.ok(p.scheduler:stepFast(), "and the plant runs")
 	end,
 
 	["scheduler limits catch-up and counts dropped time"] = function(t)

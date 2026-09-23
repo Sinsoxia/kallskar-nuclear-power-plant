@@ -25,6 +25,7 @@ local Commands = require(Framework:WaitForChild("Commands"))
 local Faults = require(Framework:WaitForChild("Faults"))
 local Replicator = require(Framework:WaitForChild("Replicator"))
 local Persistence = require(Framework:WaitForChild("Persistence"))
+local PlantReset = require(Framework:WaitForChild("PlantReset"))
 local SystemClasses = require(Root:WaitForChild("Systems")) :: { any }
 
 local isStudio = RunService:IsStudio()
@@ -95,14 +96,16 @@ if not okLoad then
 	log:record("load", nil, nil, tostring(loadResult), "error")
 end
 
-bus:subscribe("PlantReset", function()
-	-- §14.6: hot standby at beginning of cycle with every component as new, and the framework's own state with it
-	scheduler:restart()
-	faults:forgetAll()
-	channels:resetExternals()
-	registry:initAll(ctx)
-	log:record("plant.reinitialised", nil, nil, "hot standby, beginning of cycle", "ok")
-end)
+-- §14.6: hot standby at beginning of cycle with every component as new, and the framework's own state with it
+PlantReset.new({
+	registry = registry,
+	channels = channels,
+	scheduler = scheduler,
+	faults = faults,
+	log = log,
+	bus = bus,
+	ctx = ctx,
+})
 
 -- Network --------------------------------------------------------------------------------------------------------
 local remotes = Remotes.server()

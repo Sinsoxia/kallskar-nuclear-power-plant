@@ -94,15 +94,14 @@ function Scheduler.new(registry: any, config: any, bus: any?, log: any?)
 end
 
 --[[
-	Start again from zero with nothing halted, for an owner reset (§14.6). The reset is how an owner recovers a plant,
-	including one that halted on a system error, so the halt goes with everything else. A sliced task still working
-	on the old plant is dropped. The clock rate is a session setting, not plant state, and is kept.
+	Start the clocks again from zero, for an owner reset (§14.6). A sliced task still working on the old plant is
+	dropped. The clock rate is a session setting, not plant state, and is kept. A halt is not cleared here: the reset
+	is how an owner recovers a halted plant, but only once every system has initialised again (Framework/PlantReset).
 ]]
 function Scheduler.restart(self: any)
 	local clock = self.clock
 	clock.sim, clock.grid, clock.slow, clock.fastTicks = 0, 0, 0, 0
 	self.acc = 0
-	self.halted = nil
 	table.clear(self.sliced)
 end
 
