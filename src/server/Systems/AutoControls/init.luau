@@ -84,6 +84,7 @@ local AutoControls = System.extend({
 })
 
 local KELVIN = 273.15
+local BAND_ALARM = "Rod auto at the regulating band limit"
 
 -- §9.2's programme lives in PartLoad, shared with the heat sink. Holding its outlet rather than §9.4's flat 550 °C
 -- is what keeps the 30 %FP row on 40 % flow at 506 °C (D-003).
@@ -164,6 +165,16 @@ function AutoControls.rodUsable(self: any, name: string, withdrawing: boolean): 
 	return if withdrawing then pos < self.band[2] else pos > self.band[1]
 end
 
+-- Rod auto has authority again, or is out of service: the band alarm goes, and the annunciator is told so
+function AutoControls.clearOutOfBand(self: any)
+	if self.outOfBand then
+		self.outOfBand = false
+		if self.bus then
+			self.bus:publish("Alarm", { tag = "AUTO-ROD-BAND", priority = 2, state = "out", text = BAND_ALARM })
+		end
+	end
+end
+
 function AutoControls.stopRods(self: any, reason: string?)
 	if self.selected ~= "" then
 		self.selected = ""
@@ -216,7 +227,7 @@ function AutoControls.step(self: any, dt: number)
 			]]
 			self:stopRods("reactor trip")
 			self.rodOn = false
-			self.outOfBand = false
+			self:clearOutOfBand()
 			if self.log then
 				self.log:record("auto.rod", nil, "rod auto", `reactor trip ({scrammed})`, "manual")
 			end
@@ -230,7 +241,7 @@ function AutoControls.step(self: any, dt: number)
 				local band = self.rodCfg.holdBand_K
 				if math.abs(error_K) <= band then
 					self:stopRods()
-					self.outOfBand = false
+					self:clearOutOfBand()
 				else
 					-- too hot: insert to bring power down. Too cold: withdraw.
 					local withdrawing = error_K < 0
@@ -268,12 +279,12 @@ function AutoControls.step(self: any, dt: number)
 										tag = "AUTO-ROD-BAND",
 										priority = 2,
 										state = "in",
-										text = "Rod auto at the regulating band limit",
+										text = BAND_ALARM,
 									})
 								end
 							end
 						else
-							self.outOfBand = false
+							self:clearOutOfBand()
 							self.selected = name
 							-- drive toward the band edge in the needed direction; the band is the limit of
 							-- this controller's authority, not a target
@@ -293,7 +304,7 @@ AutoControls.commands = {
 		self.rodOn = on
 		if not on then
 			self:stopRods()
-			self.outOfBand = false
+			self:clearOutOfBand()
 		end
 		if self.log then
 			self.log:record("auto.rod", actor, "rod auto", nil, if on then "auto" else "manual")

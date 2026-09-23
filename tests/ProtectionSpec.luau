@@ -183,6 +183,26 @@ return {
 		t.eq(twoCh:get("protection.scram"), "none", "Mode 2 during heatup")
 	end,
 
+	["an alarm on a row that stops being watched goes out on the annunciator"] = function(t)
+		local sys, ch, bus = make(30)
+		local states = {}
+		bus:subscribe("Alarm", function(p)
+			if p.tag == "INLET-LOW" then
+				table.insert(states, p.state)
+			end
+		end)
+		-- below §9.5's 360 °C alarm and above its 345 °C trip, in Mode 1 at 30 %FP where D-004 arms the row
+		ch:setExternal("pools.coreInlet_K", PSS.coreInlet.alarmLow_C - 5 + KEL)
+		run(sys, 1)
+		t.eq(states[#states], "in", "the low inlet alarms")
+		-- the power falls under D-004's 5 %FP arming point, and the row is no longer evaluated
+		ch:setExternal("core.power_pctFP", 2)
+		ch:setExternal("detectors.pr_pctFP", fill(4, 2))
+		run(sys, 1)
+		t.eq(states[#states], "out", "so its alarm is announced as gone, not left showing")
+		t.eq(#sys:getState().active, 0)
+	end,
+
 	["the 25 %FP low setpoint protects a startup and bypasses itself above the permissive"] = function(t)
 		local sys, ch = make(2)
 		run(sys, 1)

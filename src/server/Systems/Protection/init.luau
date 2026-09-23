@@ -478,6 +478,10 @@ function Protection.step(self: any, dt: number)
 			armed, why = m.armed(self)
 		end
 		if not armed then
+			if st.alarm and self.bus then
+				-- the row stops being watched, so its alarm has gone: say so, or the annunciator shows it forever
+				self.bus:publish("Alarm", { tag = m.id, priority = 2, state = "out", text = m.label })
+			end
 			st.alarm, st.block, st.trip = false, false, false
 			st.blockFor, st.tripFor = 0, 0
 			if why then
