@@ -369,6 +369,49 @@ return {
 		t.ok(p.scheduler:stepFast(), "and the plant runs")
 	end,
 
+	["an owner reset announces every alarm still in as out (§14.6)"] = function(t)
+		local Panel = makeClass("Panel", "fast", {}, { "a.n" })
+		local p = plant({ Panel })
+		resolveAndInit(p)
+		PlantReset.new({
+			registry = p.registry,
+			channels = p.channels,
+			scheduler = p.scheduler,
+			faults = Faults.new(p.registry, p.log, p.bus),
+			log = p.log,
+			bus = p.bus,
+			ctx = { config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true },
+		})
+		local lit = {} -- the annunciator's view: tag -> in
+		local outs = {}
+		p.bus:subscribe("Alarm", function(a)
+			if a.state == "in" then
+				lit[a.tag] = true
+			elseif a.state == "out" then
+				lit[a.tag] = nil
+				table.insert(outs, a)
+			end
+		end)
+		-- three alarms come in; one goes out again and one is acknowledged, which leaves it in
+		p.bus:publish("Alarm", { tag = "INLET-LOW", priority = 2, state = "in", text = "Core inlet low" })
+		p.bus:publish("Alarm", { tag = "AUTO-ROD-BAND", priority = 2, state = "in", text = "Rods at band edge" })
+		p.bus:publish("Alarm", { tag = "CORE-PROMPT", priority = 1, state = "in", text = "Prompt critical" })
+		p.bus:publish("Alarm", { tag = "CORE-PROMPT", priority = 1, state = "out", text = "Prompt critical" })
+		p.bus:publish("Alarm", { tag = "INLET-LOW", priority = 2, state = "ack", text = "Core inlet low" })
+		table.clear(outs)
+
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+		t.eq(next(lit), nil, "nothing is left lit on a plant that starts again as new")
+		t.eq(#outs, 2, "one out for each alarm that was in, and none for one already out")
+		for _, a in outs do
+			t.ok(a.tag == "INLET-LOW" or a.tag == "AUTO-ROD-BAND", `out for {a.tag}`)
+			t.ok(a.priority == 2 and type(a.text) == "string", "with the priority and text it came in with")
+		end
+		-- a second reset has nothing more to clear
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+		t.eq(#outs, 2, "and a second reset announces nothing again")
+	end,
+
 	["scheduler limits catch-up and counts dropped time"] = function(t)
 		local Fa = makeClass("Catch", "fast", {}, { "c.n" })
 		local p = plant({ Fa })
