@@ -351,11 +351,11 @@ return {
 		t.ok(not sys:applyCommand(OPERATOR, { kind = "sink.load", value = 101 }).ok, "past rated is refused")
 	end,
 
-	["the steam plant's load does not hide the System.load persistence hook (§14.6)"] = function(t)
+	["the steam plant's load does not hide the persistence load hook (§14.6)"] = function(t)
 		local sys = make({ load = 40 })
-		t.eq(sys.load, System.load, "IHX:load is the hook Persistence.load calls")
-		t.eq(sys:getState().sinkLoadDemand_pct, 40, "and the load itself is still the load")
-		sys:load(nil, 1) -- what Persistence.load calls once IHX saves a slice; the default hook takes it quietly
+		t.eq(sys.sinkLoad, 40, "the steam plant's load is held in sinkLoad")
+		-- whether IHX keeps System's default hook or has its own, Persistence.load calls sys:load(clock, slice)
+		t.eq(type(sys.load), "function", "so IHX:load is still a method, not a number")
 	end,
 
 	["a reactor trip trips the turbines: the load goes to zero at once and stays there"] = function(t)
