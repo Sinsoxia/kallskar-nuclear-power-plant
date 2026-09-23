@@ -246,8 +246,9 @@ gives 3.5 % at full power and 0.75 % at 1 %FP. **Proposal:** fix the denominator
 ## F24 Feed-pump motor rating (§7.6) — Accepted
 §7.6 reads "2 × 55 % main feed pumps (12 MW motors on VFDs, 9.8 MW absorbed at 100 %)". The 9.8 MW is the **per-train**
 figure: the spec's own file-20 calc prints "MFP power/train 9.8 MW" from the pump enthalpy rise, and an independent
-hydraulic check (437.5 kg/s, ~14.5 MPa rise, feedwater at ~887 kg/m³, 82 % pump and 96 % motor efficiency) gives
-9.1 MW per train. Each of the two pumps therefore absorbs about **4.9 MW**, which cannot sit behind a 12 MW motor.
+hydraulic check (437.5 kg/s, a 16.5 MPa rise from the 1.0 MPa deaerator to 17.5 MPa, feedwater at ~887 kg/m³,
+82 % pump efficiency) gives 9.9 MW of shaft power per train, 10.3 MW electrical at 96 % motor efficiency. (Corrected
+2026-09-23, P-02 of `docs/audit/SPEC_AUDIT_UNBUILT.md`: this had used a ~14.5 MPa rise, and 9.1 MW.) Each of the two pumps therefore absorbs about **4.9 MW**, which cannot sit behind a 12 MW motor.
 With that reading the listed major drives total **51.0 MWe** (feed 19.6, primary 10.3, secondary 6.2, circulating
 water 14.8), leaving 14 MWe of the 65 MWe house load for condensate pumps, heater drains, sodium trace heating and
 cold traps, HVAC, lighting and transformer losses — so the ≈ 65 MWe house load and ≈ 935 MWe net are consistent.
@@ -447,8 +448,10 @@ mixed core outlet is the same class of instrument in the hot pool, so it carries
 treatment, not yet applied.
 
 ## D-028 Rod auto sequences one rod, and holds it — Proposed
-D-006 has rod auto move one regulating rod at a time, and finding F6 is why: ganging all three crosses the
-250–750 mm band in about 33 minutes rather than 100. That leaves the question of *which* rod, which the first
+D-006 has rod auto move one regulating rod at a time, and finding F6 is why. On the 250–750 mm band, one rod
+reaches the band edge from mid-band in about 55 minutes, against about 164 minutes for all three ganged. (Corrected
+2026-09-23, P-01 of `docs/audit/SPEC_AUDIT_UNBUILT.md`: this sentence had the comparison backwards, with the old
+400–700 mm band's figures.) That leaves the question of *which* rod, which the first
 implementation answered every tick — take the most-inserted when withdrawing, the most-withdrawn when inserting,
 so the three stay together. A test caught what that actually does: as soon as the chosen rod moves ahead of the
 others it stops being the most-inserted, so the controller hops to the next one, every tick.
@@ -752,3 +755,13 @@ D-012's equilibrium BOC core needs a loading pattern, and the spec gives none. *
 - **Ring 15:** holds outer-zone fuel at discharge (640 EFPD) in all 90 positions, at the coolant temperature. That
   is realistic content in bounding quantity (90 positions against a quarter core). The fresh-fuel bound of D-042
   applies to the fresh-core cases.
+
+## F38 Audit of the spec sections the code has not reached (§5–§8, §10–§13, file 16) — Open
+A cloud session audited the unbuilt sections, recomputing every number from the spec's own primitives:
+`docs/audit/SPEC_AUDIT_UNBUILT.md`, reproduced by `tools/audit/spec_audit_unbuilt.py` (IAPWS-IF97 steam, TEOS-10
+seawater, and file 20's `calc.py` run unmodified). Findings C-01 to C-40: 1 high, 15 medium and 24 low, plus 64
+groups of checks that passed. It also found two errors in this log, P-01 (D-028) and P-02 (F24), both confirmed and
+corrected above. **C-29 is the high one**, and I confirmed it against the text: §0.2 puts heater failures on the
+×360 slow-process clock (so does `Config/Clocks.luau`), while §12.3 gives "1 per 2,000 zone-hours real". Read on ×360,
+about 180 zones would fail every couple of minutes. Nothing in these sections is built yet, so none of this affects
+M1. **For Aqua:** review before the steam-plant milestone, starting with C-29 and the medium findings.
