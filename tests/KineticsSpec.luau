@@ -84,6 +84,16 @@ return {
 		t.near(Kinetics.inhourPeriod(LAMBDA, BETA, -1), -1 / LAMBDA[1], 0.5, "very deep subcriticality → −1/λ₁ ≈ −77 s")
 	end,
 
+	["an exactly critical core has an infinite period, not a negative one"] = function(t)
+		t.eq(Kinetics.inhourPeriod(LAMBDA, BETA, 0), math.huge, "ρ = 0: the level holds")
+		-- and the integrator agrees: at ρ = 0 the level does not move, so there is no finite period to find
+		local a = Kinetics.newAmplitude(LAMBDA, BETA, 1)
+		for _ = 1, 1000 do
+			Kinetics.step(a, 0.1, 0)
+		end
+		t.near(a.n, 1, 1e-12, "no drift in 100 s")
+	end,
+
 	["all three RR out: period and prompt-jump margin (§3.4, S-19, F7, F12)"] = function(t)
 		local rho = Config.Rods.interlocks.allRegulatingOutFromCritical_pcm * PCM
 		local T = Kinetics.inhourPeriod(LAMBDA, BETA, rho)

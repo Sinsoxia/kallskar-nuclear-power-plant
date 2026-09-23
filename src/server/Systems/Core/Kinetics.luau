@@ -124,8 +124,12 @@ end
 	Asymptotic period for a constant reactivity step under the prompt-jump approximation (Λ → 0):
 	ρ = Σ βᵢ / (1 + λᵢT). Returns the root that dominates at long times: the positive root for ρ > 0; for ρ < 0 the
 	slowest-decaying root, which lies below the most negative pole −1/λ_min (f → −ρ > 0 as T → −∞, → −∞ at the pole).
+	At ρ = 0 exactly there is no root: a critical core holds its level, so the period is infinite.
 ]]
 function Kinetics.inhourPeriod(lambda: { number }, beta: { number }, rho: number): number
+	if rho == 0 then
+		return math.huge
+	end
 	local function f(T: number): number
 		local s = 0
 		for i = 1, #beta do
