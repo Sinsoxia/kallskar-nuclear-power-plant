@@ -2,7 +2,8 @@
 
 Nine findings from `docs/review/CODE_REVIEW.md` cannot be fixed until someone decides how the plant should behave.
 Each proposal below states what the code does today, what the spec says (section numbers only), the options, and a
-recommendation. One further item came up while fixing L1 and is at the end.
+recommendation. One further item came up while fixing L1, and one test the review asked for under L12 is deferred;
+both are at the end.
 
 | ID | Question | Recommendation |
 |---|---|---|
@@ -16,6 +17,7 @@ recommendation. One further item came up while fixing L1 and is at the end.
 | L4 | Should Detectors read `core.*` fresh? | Yes; decide separately whether lagged reads are snapshotted |
 | L13 | Where do the unexplained test tolerances come from? | Derive most from the method; record the rest as decisions |
 | L1+ | Should alarms have a reset deadband? | Yes, the channel's own noise |
+| L12 (deferred) | Where can a whole-fast-lane P99 test run reliably? | In Studio, with the headless run logging it |
 
 ---
 
@@ -222,3 +224,27 @@ channels' noise.
 - **C.** Leave it.
 
 **Recommendation.** A.
+
+## L12 (deferred): A whole-fast-lane P99 test
+
+**Today.** FuelThermalSpec's "full-plant step fits the fast-tick budget on average, with its P99 logged" times
+FuelThermal alone. It asserts FuelThermal's mean step against `Engineering.fastTickBudgetP99_s` (5 ms) and only
+logs its P99. No test runs the whole fast lane through the Scheduler and checks `Scheduler:report().fastP99_ms`
+against that budget, and the budget is about the whole lane. The review asked for that test under L12, and
+PR #4 does not add it.
+
+**Why it is deferred.** A P99 over a few hundred headless samples is set by single garbage-collection pauses.
+FuelThermal's own P99 ranged from 3.1 to 4.8 ms between runs on the development host (2.5 ms on the CI runner),
+against 5 ms for the whole lane, so as an assertion it would fail at random rather than when the code gets slower.
+Lune's timing is also not a Roblox server's (no native code generation, a different collector), so a headless
+pass would not show that the budget holds in a live server.
+
+**Options.**
+- **A. Headless**, on the M1 plant as Main builds it, over enough fast ticks for a stable P99 (for example 3,000,
+  or 300 s of simulated time). The CI runner's speed then becomes part of the test.
+- **B. In Studio only**, with the headless run marking it pending and saying why. The harness reports `IsStudio`
+  as true, so this needs its own flag.
+- **C. Log only.** The P99 is logged headless and in Studio, and the budget is watched rather than asserted. The
+  Scheduler's report already carries `fastP99_ms`.
+
+**Recommendation.** B, with the headless run also logging the whole lane's P99 (C) so that CI shows the trend.

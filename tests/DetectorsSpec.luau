@@ -265,8 +265,9 @@ return {
 		ch:setExternal("core.power_pctFP", 40)
 		run(sys, 5)
 		t.near((ch:get("detectors.pr_pctFP") :: any)[3], frozen, 1e-9, "a frozen channel keeps its last reading")
-		-- the frozen quadrant still reads full power with the plant at 40 %FP; the median of four sets it aside
-		-- (D-005), to within four standard deviations of one channel's D-025 noise at 40 %FP
+		-- the frozen quadrant still reads full power with the plant at 40 %FP; the median of the four quadrants, which
+		-- Detectors writes as prMean_pctFP, sets it aside, to within four standard deviations of one channel's D-025
+		-- noise at 40 %FP
 		t.near(ch:get("detectors.prMean_pctFP"), 40, 4 * INST.noise.powerRangeRelative * 40,
 			"the median of four is not dragged by one frozen quadrant")
 	end,
