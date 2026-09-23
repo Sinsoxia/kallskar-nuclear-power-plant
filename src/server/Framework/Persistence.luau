@@ -7,7 +7,8 @@
 	- The save is versioned. Persistence.CURRENT_VERSION increases whenever any system's save layout changes, and a
 	  migration function is added to MIGRATIONS[oldVersion] that upgrades a save by one version. load() walks the
 	  chain, so any old plant can be brought forward.
-	- Each system saves its own slice via System.save()/load(); the framework adds clock and event log.
+	- Each system saves its own slice via System.save()/load(); the framework adds clock and event log. load(slice,
+	  version) is given the slice after migration, so `version` is always CURRENT_VERSION.
 	- Owner reset: requestReset(actor, phrase) checks the private server owner and the typed phrase
 	  (Engineering.resetConfirmationPhrase), then counts down Access.reset.countdown_s, announcing on the Bus; at zero
 	  it clears the save and publishes PlantReset (Main rebuilds the plant).
@@ -255,7 +256,7 @@ function Persistence.load(self: any): string
 	for _, sys in self.registry.systems do
 		local slice = data.systems and data.systems[sys.spec.name]
 		if slice ~= nil then
-			sys:load(slice, fromVersion)
+			sys:load(slice, self.currentVersion) -- the slice has been migrated to this version above
 		end
 	end
 	self.log:import(data.eventLog)

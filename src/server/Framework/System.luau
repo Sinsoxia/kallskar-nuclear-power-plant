@@ -166,12 +166,13 @@ function System.applyCommand(self: any, actor: Actor, cmd: Command): CommandResu
 	return result
 end
 
--- Persistence hooks (spec §14.6). Return nil to persist nothing.
+-- Persistence hooks (spec §14.6). Return nil to persist nothing. load() gets its slice already migrated by
+-- Persistence.MIGRATIONS, together with the version it is now in, so a system never upgrades a slice itself.
 function System.save(_self: any): any
 	return nil
 end
 
-function System.load(_self: any, _data: any, _fromVersion: number) end
+function System.load(_self: any, _data: any, _version: number) end
 
 --[[
 	Development aid: a record whose unknown keys throw on read and write. Only active in Studio when

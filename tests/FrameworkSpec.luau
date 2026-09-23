@@ -763,8 +763,9 @@ return {
 		function Keeper:save()
 			return { burnup = self.burnup }
 		end
-		function Keeper:load(data)
+		function Keeper:load(data, version)
 			self.burnup = data.burnup
+			self.loadedAs = version
 		end
 		local p = plant({ Keeper })
 		resolveAndInit(p)
@@ -817,6 +818,7 @@ return {
 		})
 		t.eq(pers3:load(), "loaded")
 		t.eq(migrated.systems[1].burnup, (42.5 + 1) * 2, "migrations applied in order")
+		t.eq(migrated.systems[1].loadedAs, 3, "and the system is told the version its slice is now in, not the old one")
 		local gap = persist(plant({}), { currentVersion = 3, migrations = {} })
 		t.throws(function()
 			gap:load()

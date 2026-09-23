@@ -122,7 +122,7 @@ function DecayHeat.save(self: any): any
 	return { groups = table.clone(self.H) }
 end
 
-function DecayHeat.load(self: any, data: any, _fromVersion: number)
+function DecayHeat.load(self: any, data: any, _version: number)
 	if type(data) ~= "table" or type(data.groups) ~= "table" or #data.groups ~= self.N then
 		return -- a save from a different group set: keep the boot state rather than guess a mapping
 	end
