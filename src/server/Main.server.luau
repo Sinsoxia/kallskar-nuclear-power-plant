@@ -130,7 +130,9 @@ for _, player in Players:GetPlayers() do
 	replicator:sendManifestTo(player)
 end
 Players.PlayerRemoving:Connect(function(player)
-	log:record("player.left", { kind = "player", name = player.Name, userId = player.UserId }, nil, nil, "info")
+	local actor = { kind = "player" :: any, name = player.Name, userId = player.UserId }
+	commands:forget(actor)
+	log:record("player.left", actor, nil, nil, "info")
 end)
 
 --[[

@@ -218,10 +218,18 @@ local function buildMonitors(cfg: any): { any }
 				if outlets == nil or #outlets == 0 then
 					return { 0 }
 				end
-				local sorted = table.clone(outlets)
+				-- two buffers per Protection, refilled every tick: a fresh copy of the 301 outlets to sort and a fresh
+				-- deviations table would be 600 slots of garbage every fast tick
+				local n = #outlets
+				local sorted = self.assySorted
+				if #sorted ~= n then
+					table.clear(sorted)
+					table.clear(self.assyDeviations)
+				end
+				table.move(outlets, 1, n, 1, sorted)
 				table.sort(sorted)
 				local expected = sorted[#sorted // 2]
-				local deviations = {}
+				local deviations = self.assyDeviations
 				for i, v in outlets do
 					deviations[i] = v - expected
 				end
@@ -384,6 +392,7 @@ function Protection.init(self: any, ctx: any)
 	self.curieTemp_C = 0
 	self.curieStarted = false
 	self.bypassed = {} :: { [string]: boolean }
+	self.assySorted, self.assyDeviations = {}, {} -- ASSY-DEV's working buffers
 	self:publish()
 end
 

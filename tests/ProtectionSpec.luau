@@ -93,6 +93,23 @@ return {
 		t.eq(#s.inhibited, 0, "and nothing is holding a trip off")
 	end,
 
+	["the assembly outlet row refills its buffers rather than allocating every tick"] = function(t)
+		local sys, ch = make()
+		local row = nil
+		for _, m in sys.monitors do
+			if m.id == "ASSY-DEV" then
+				row = m
+			end
+		end
+		local first = row.signal(sys)
+		t.ok(first == row.signal(sys), "the deviations table is the same table, tick after tick")
+		-- a different number of outlets refills it to the new length, with nothing left over from the old one
+		ch:setExternal("fuel.assemblyOutlet_K", { 830, 840, 850 })
+		local resized = row.signal(sys)
+		t.eq(#resized, 3, "sized to the outlets it was given")
+		t.eq(resized[3] - resized[1], 20, "holding the deviations of these three outlets")
+	end,
+
 	["PR high flux trips 2-out-of-4, not 1 (§9.5, D-005)"] = function(t)
 		local sys, ch = make()
 		run(sys, 1)

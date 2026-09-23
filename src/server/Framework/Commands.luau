@@ -285,4 +285,17 @@ function Commands.bindRemote(self: any, remote: RemoteFunction, isDev: (Player) 
 	end
 end
 
+--[[
+	Drop a player's bucket when they leave (Main, PlayerRemoving), so the table does not grow with everyone who has
+	ever joined the server. Throttled commands not yet noted are noted now.
+]]
+function Commands.forget(self: any, actor: Actor)
+	local b = self.buckets[actor.userId]
+	if b and (b.throttled or 0) > 0 then
+		self.log:record("command.throttled", actor, nil, `{b.throttled} commands refused since the last note`,
+			"denied: too many commands; slow down")
+	end
+	self.buckets[actor.userId] = nil
+end
+
 return Commands

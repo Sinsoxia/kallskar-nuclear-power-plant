@@ -445,6 +445,32 @@ return {
 		t.ok(cmd ~= raw and cmd.args ~= raw.args)
 	end,
 
+	["a player's rate-limit bucket goes when they leave, with any throttled count noted"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local cmds = Commands.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			now = function()
+				return 0
+			end,
+		})
+		local leaver = { kind = "player", name = "Leaver", userId = 77, player = {} :: any }
+		-- the burst, then five more: the first of those is noted at once, and four are left counted
+		for _ = 1, Config.Engineering.commandBurst + 5 do
+			cmds:submit(leaver, {})
+		end
+		t.ok(cmds.buckets[77] ~= nil, "a bucket while they play")
+		cmds:forget(leaver)
+		t.eq(cmds.buckets[77], nil, "none once they have gone")
+		local last = p.log:latest(1)[1]
+		t.eq(last.kind, "command.throttled")
+		t.ok(string.find(last.detail, "4 commands", 1, true) ~= nil, `the four still counted are noted ({last.detail})`)
+		cmds:forget(leaver) -- a second PlayerRemoving for the same player is harmless
+	end,
+
 	["commands route, check access and log every attempt (§10.7)"] = function(t)
 		local Rod = System.extend({ name = "RodDesk", lane = "fast", reads = {}, writes = {} })
 		Rod.commands = {
