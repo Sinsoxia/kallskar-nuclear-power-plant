@@ -64,11 +64,9 @@ local AutoControls = System.extend({
 	},
 	readsLagged = {
 		"rods.position_mm",
-		"rods.selection",
 		"protection.rodWithdrawalBlock",
 		"protection.runback",
 		"protection.scram",
-		"protection.runbackTarget_pctFP",
 	},
 	writes = {
 		"auto.rodOn",

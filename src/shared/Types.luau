@@ -6,8 +6,10 @@ export type Lane = "fast" | "slow"
 --[[
 	What a system declares about itself. The Registry uses reads/writes to order systems within a lane so that
 	writers run before readers. A physical feedback loop (power → fuel temperature → Doppler → power) must be
-	broken explicitly by listing the back-edge in `readsLagged`: those channels are read as last tick's value and
-	don't constrain ordering. An undeclared cycle is a startup error.
+	broken explicitly by listing the back-edge in `readsLagged`: those channels don't constrain ordering, so a system
+	reads whatever they hold when it runs, which is last tick's value if their writer runs later in the lane and this
+	tick's if it happens to run earlier. Code reading them must be right either way. An undeclared cycle is a startup
+	error. Every declared read must be a read the system makes (tests/ContractSpec).
 ]]
 export type SystemSpec = {
 	name: string,

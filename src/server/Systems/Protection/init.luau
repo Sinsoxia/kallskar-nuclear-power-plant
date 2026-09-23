@@ -30,9 +30,10 @@
 	This system does not move the rods itself: it writes `protection.scram`, and RodDrives reads it. Splitting the
 	decision from the mechanism means a scram can be tested without drives, and drives without protection.
 
-	Signals that belong to systems M1 does not build yet — seismic, the 11 kV boards, turbine availability, the
-	reactivity balance and the hot pool level programme — are declared as external inputs and stay inert at their
-	safe values until something writes them. They are wired, not invented.
+	Signals that belong to systems M1 does not build yet — seismic, the 11 kV boards, the reactivity balance and the
+	hot pool level programme — are declared as external inputs and stay inert at their safe values until something
+	writes them. They are wired, not invented. Turbine availability is declared too (Main), but no row reads it until
+	RB-3 has a target to run to.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -65,13 +66,11 @@ local Protection = System.extend({
 		"site.seismic_g",
 		"electrical.boards11kV",
 		"core.reactivityBalance_pcm",
-		"turbine.bypassAvailable",
 		"pools.levelDeviation_m",
 	},
 	readsLagged = {
 		"rods.allPssInserted",
 		"rods.regulatingInBand",
-		"rods.selection",
 		"rods.selectionKind",
 	},
 	writes = {
