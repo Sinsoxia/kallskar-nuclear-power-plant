@@ -111,6 +111,25 @@ return {
 		t.eq(last.target, "COVER-GAS")
 	end,
 
+	["a client's runback runs the runback it names, and the client can clear it (§9.5)"] = function(t)
+		local registry, byName, log, bus = plant()
+		local commands = intake(registry, log, bus)
+		local announced: any = nil
+		bus:subscribe("Runback", function(r)
+			announced = r
+		end)
+		local r = commands:submit(PLAYER, { kind = "runback.start", target = "RB2", panel = PANEL })
+		t.ok(r.ok, `runback.start refused: {r.reason}`)
+		local running = byName.Protection:getState().runback
+		t.eq(running and running.id, "RB2", "Protection is running the runback the client named")
+		t.eq(running.target, Config.Protection.runbacks.RB2.target_pctFP, "to that runback's depth")
+		t.eq(announced and announced.id, "RB2", "and announces it on the Bus")
+
+		r = commands:submit(PLAYER, { kind = "runback.clear", panel = PANEL })
+		t.ok(r.ok, `runback.clear refused: {r.reason}`)
+		t.eq(byName.Protection:getState().runback, nil, "the client's clear ends it")
+	end,
+
 	["a client's backup control room trip is one button (§9.5)"] = function(t)
 		local registry, byName, log, bus = plant()
 		local commands = intake(registry, log, bus)
