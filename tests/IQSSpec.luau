@@ -54,9 +54,9 @@ local MAT = {
 	scat = { { 1, 2, 0.004 }, { 1, 3, 0.001 }, { 2, 3, 0.003 }, { 2, 4, 0.0005 }, { 3, 4, 0.002 } },
 }
 
--- 3-ring, 6-layer core; the outer ring is a non-fissile scatterer. Returns problem and mesh.
-local function buildProblem()
-	local m = Mesh.build(fakeConfig(3, 6, 100))
+-- 3-ring, 6-layer core unless told otherwise; the outer ring is a non-fissile scatterer. Returns problem and mesh.
+local function buildProblem(lastRing: number?, layers: number?)
+	local m = Mesh.build(fakeConfig(lastRing or 3, layers or 6, 100))
 	local gamma = { 0.5, 0.5, 0.5, 0.5 }
 	local p = Diffusion.newProblem(m, 4, { radial = gamma, bottom = gamma, top = gamma })
 	for g = 1, 4 do
@@ -294,7 +294,9 @@ return {
 	end,
 
 	["shape step runs time-sliced inside the scheduler budget"] = function(t)
-		local p = buildProblem()
+		-- a core big enough that the whole step is many slices of work on any host this runs on, while each piece of
+		-- it (a colour pass, an assembly) stays far below one slice
+		local p = buildProblem(5, 10)
 		local iqs = IQS.new(p, options(p, 1e-9, 1))
 		iqs:initialize({ normaliseK = true })
 		for i = 1, #p.sigR do
@@ -332,6 +334,9 @@ return {
 		t.log(string.format("shape step finished in %d frames, %d outers, worst slice %.2f ms, longest piece %.3f ms",
 			frames, iqs.shapeOuter, worst * 1000, longest * 1000))
 		t.ok(ok, "sliced shape step converged")
+		t.ok(frames > 1, `the step yielded to the frame rather than running to the end in one go ({frames} frames)`)
+		t.ok(longest < sliceBudget,
+			string.format("each piece (longest %.3f ms) is finer than one %.1f ms slice", longest * 1000, sliceBudget * 1000))
 		-- one piece past the budget if the deadline falls inside it, and at most one more for the scheduler's own
 		-- resume and yield around it: a handful of statements, against a piece that is a colour pass of node updates
 		t.ok(worst <= sliceBudget + 2 * longest,
