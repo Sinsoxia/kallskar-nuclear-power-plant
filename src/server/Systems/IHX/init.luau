@@ -175,7 +175,7 @@ function IHX.init(self: any, ctx: any)
 	self.rated_W = cfg.Units.ratedThermal_MWt * 1e6
 	self.warmest_K = cfg.Program.partLoad.coreInlet_C + self.kelvin -- the no-load programme: hot standby
 	self.ratedPrimary_kgps = cfg.Primary.pumps.ratedFlowTotal_kgps -- F30: the total is the authoritative figure
-	self.load = 0
+	self.sinkLoad = 0 -- not `load`: that name is the System persistence hook (Framework/System)
 	self.loadDemand = 0
 	self.lastScram = "none"
 	self.coldLeg_K = self.warmest_K
@@ -214,8 +214,8 @@ end
 	state the rest of the plant boots in rather than with §4.3's full-power design point.
 ]]
 function IHX.solveAtProgramme(self: any)
-	local flow = PartLoad.flow_pct(self.config, self.load) / 100
-	local hotPool = PartLoad.outlet_C(self.config, self.load / 100, flow) + self.kelvin
+	local flow = PartLoad.flow_pct(self.config, self.sinkLoad) / 100
+	local hotPool = PartLoad.outlet_C(self.config, self.sinkLoad / 100, flow) + self.kelvin
 	self:applyFlows(self.ratedPrimary_kgps * flow)
 	self:solve(hotPool, self.ratedPrimary_kgps * flow)
 end
@@ -235,7 +235,7 @@ end
 ]]
 function IHX.applyFlows(self: any, primaryFlow_kgps: number?)
 	local fraction = if primaryFlow_kgps then primaryFlow_kgps / self.ratedPrimary_kgps
-		else PartLoad.secondaryFlow_frac(self.config, self.load)
+		else PartLoad.secondaryFlow_frac(self.config, self.sinkLoad)
 	local flow = fraction * self.cfg.secondaryFlowEach_kgps
 	for _, loop in self.loops do
 		loop.flowEach_kgps = loop.flowOverride_kgps or flow
@@ -281,8 +281,8 @@ function IHX.setColdLeg(self: any, hotPool_K: number)
 	end
 	-- a steam generator cannot heat sodium, so the cold leg never sits above the pool it faces
 	local warmest = math.min(self.warmest_K, hotPool_K)
-	local coldest = math.min(PartLoad.secondaryCold_C(self.config, self.load) + self.kelvin, warmest)
-	local need = self.load / 100 * self.rated_W + (self.port:read("primary.pumpHeat_MWt") or 0) * 1e6 - held
+	local coldest = math.min(PartLoad.secondaryCold_C(self.config, self.sinkLoad) + self.kelvin, warmest)
+	local need = self.sinkLoad / 100 * self.rated_W + (self.port:read("primary.pumpHeat_MWt") or 0) * 1e6 - held
 	local cold = warmest
 	if free and need > 0 and warmest - coldest > 0 then
 		cold = math.clamp(hotPool_K - 1, coldest, warmest)
@@ -311,18 +311,18 @@ end
 	demand goes with it so nothing moves afterwards. Commands ramp; this is for tests and the developer panel.
 ]]
 function IHX.setLoad(self: any, load_pct: number)
-	self.load = math.clamp(load_pct, 0, 100)
-	self.loadDemand = self.load
+	self.sinkLoad = math.clamp(load_pct, 0, 100)
+	self.loadDemand = self.sinkLoad
 	self:solveAtProgramme()
 	self:publish()
 end
 
 -- The turbines trip with the reactor: no ramp, and the demand goes with it so the load stays down after a reset
 function IHX.tripLoad(self: any, scram: string)
-	if self.load == 0 and self.loadDemand == 0 then
+	if self.sinkLoad == 0 and self.loadDemand == 0 then
 		return
 	end
-	self.load = 0
+	self.sinkLoad = 0
 	self.loadDemand = 0
 	if self.log then
 		self.log:record("sink.trip", nil, "steam plant", `reactor trip ({scram}): turbines tripped, bypass holding`, "tripped")
@@ -335,7 +335,7 @@ end
 	of the limit and the ramp does not depend on where the ticks happen to fall.
 ]]
 function IHX.rampLoad(self: any, dt: number)
-	local load, demand, limit = self.load, self.loadDemand, self.loadLimitAbove
+	local load, demand, limit = self.sinkLoad, self.loadDemand, self.loadLimitAbove
 	if load == demand then
 		return
 	end
@@ -351,7 +351,7 @@ function IHX.rampLoad(self: any, dt: number)
 		load = limit
 		step = (if high then self.loadRateLow else self.loadRateHigh) * left
 	end
-	self.load = if rising then math.min(demand, load + step) else math.max(demand, load - step)
+	self.sinkLoad = if rising then math.min(demand, load + step) else math.max(demand, load - step)
 end
 
 --[[
@@ -412,7 +412,7 @@ function IHX.publish(self: any)
 	port:write("ihx.mixedPrimaryOutlet_K", self.mixedOut_K)
 	port:write("ihx.loopsRunning", running)
 	port:write("ihx.unitsInService", inService)
-	port:write("ihx.sinkLoad_pct", self.load)
+	port:write("ihx.sinkLoad_pct", self.sinkLoad)
 	port:write("ihx.sinkLoadDemand_pct", self.loadDemand)
 end
 
@@ -673,7 +673,7 @@ function IHX.getState(self: any): { [string]: any }
 	return {
 		units = units,
 		loops = loops,
-		sinkLoad_pct = self.load,
+		sinkLoad_pct = self.sinkLoad,
 		sinkLoadDemand_pct = self.loadDemand,
 		total_MWt = self.total_W / 1e6,
 		mixedPrimaryOutlet_K = self.mixedOut_K,
