@@ -629,3 +629,95 @@ decay heat now in the plant and no sink (a station blackout, S-15, S-16), the mo
 scenarios:** add the internals' heat capacity to the pools without changing §4.1's mixing times. Two related effects
 remain unmodelled: §3.1's Np-239 +30 pcm over the week after shutdown, and §2.2 ring 15's stored assemblies, which
 hold a quarter of the vessel's decay heat outside the pins.
+
+## D-038 Fresh K1 MOX: NEA isotopics, Pu content by mass, stoichiometric, Carbajo's density — Proposed
+§2.3 gives "(U,Pu)O₂, 95 % TD" with "≈ 18 %" and "≈ 23 %" Pu, and no isotopics. D-012 took the Pu vector from NEA
+Table 2.11's inner-core midplane. **Decision:** (a) the uranium vector comes from the same column, all four isotopes
+as printed: U-235 is 0.159 % of the uranium, a depleted-uranium level, and U-236 is kept at 0.026 % rather than
+removed by assumption. (b) §2.3's Pu content is **Pu/(U+Pu) by mass**, the convention fuel is specified in. The
+mole fraction Carbajo's density needs follows from it: 17.90 % and 22.88 %. (c) O/M = 2.00, from §2.3's own formula.
+(d) Density = 0.95 × (10,970 + 490·y) kg/m³ at 273 K (Carbajo et al. §3.3, ±1 %). The fresh fuel has no americium,
+minor actinides or fission products; D-012's depletion supplies them.
+
+## D-039 The cross sections' reference state is as-fabricated geometry at operating temperatures — Proposed
+The spec gives dimensions without saying whether they are cold or hot. **Decision:** they are **as-fabricated**,
+and solids keep their room-temperature densities. Sodium takes its Appendix A density at the state's temperature,
+and nuclear data take the state's temperatures: full power is fuel 1,380 K (file 20) with everything else at
+735.65 K, the 375/550 °C mean. The spec's heavy-metal figure supports this: as fabricated, the pellets hold 29.11 t
+against §2.3's "≈ 29", while read as 1,380 K dimensions they would hold 28.1 t. Thermal expansion therefore stays
+out of the cross sections, and §3.7's expansion feedbacks apply it relative to this state. That reference has to be
+matched when XSData is wired into the 3D model. EM10 is the one exception: it enters at NEA Table 2.13's
+operating-state densities, about 1.5 % of 9.5 % of the cell.
+
+## D-040 Cladding, wire, wrapper, lower reflector and plenum materials — Proposed
+- **Cladding:** 15-15Ti per the measured JRC105589 TASTE tube, at 7,888 kg/m³ ± 1 %
+  (`tools/derive/cladding_density.py`). That value scales the measured density of NIST SRM 1155a, 316L at
+  7,904 ± 25 kg/m³ (Pichler et al. 2020), by mass per lattice site.
+- **Wire:** the cladding steel, which §2.3 does not name. It is smeared into the cladding as NEA §2.1.1.3 does
+  (OD 8.585 mm).
+- **Wrapper:** EM10 per NEA Table 2.13, the MOX-3600 core's ferritic-martensitic duct steel.
+- **Lower steel reflector:** EM10 slugs of the pellet's outer diameter inside the cladding, following NEA
+  Table 2.5's axial reflector.
+- **Plenum:** gas as void, with no spring, as in both NEA cores.
+
+## D-041 Rod assemblies: NEA MOX-3600 control assemblies, a 1,000 mm absorber over an empty duct — Proposed
+§3.4 gives worths and speeds but no rod design. **Decision:**
+- **PSS rods (RR and shim A/B/C):** NEA MOX-3600's primary control assembly, with Table 2.8's oxide fractions and
+  Table 2.14's B₄C.
+- **SSR:** the secondary assembly, 90.8 % ¹⁰B.
+- **Rod model:** each rod is homogeneous over its cell. The absorber is 1,000 mm long, the height §3.4's worth curve
+  is defined over. With §0.1's 1,100 mm stroke it then exactly fills §2.1's 1,100 mm plenum when fully out.
+- **Follower:** an empty duct, meaning K1's wrapper filled with sodium, as MOX-1000 models a withdrawn rod.
+- **Below the rod:** the fuel assemblies' lower reflector.
+
+The §3.7 worths (±10 %) are validation targets this design is measured against, never fitted. NEA §5.6 finds that
+homogeneous rods read 10–17 % high.
+
+## D-042 Rings 11–16 and the model's outer boundaries — Proposed
+- **Steel reflector (rings 11–12):** NEA MOX-1000's radial reflector, 84.5 % HT-9 and 15.5 % Na.
+- **Steel shield (ring 16):** the same material as the steel reflector.
+- **B₄C shield (rings 13–14):** MOX-1000's radial shield.
+- **In-vessel storage (ring 15):** outer-zone fuel in all 90 positions, which bounds its effect. The
+  `storage-empty` case measures it; behind two rings of B₄C it is expected to be small, but that is not assumed.
+- **Boundaries:** vacuum beyond ring 16 and beyond §2.1's 300 mm reflector and 1,100 mm plenum, as in the NEA
+  benchmarks. The `axial-reflective` case makes both axial ends reflective, which bounds what lies beyond.
+
+## D-043 Burnup comes from single-assembly depletion at the core's specific power, in EFPD — Proposed
+D-012 needs burnup-dependent fuel for the equilibrium four-batch core. **Decision:**
+- **Model:** deplete one assembly of each zone as an infinite lattice of itself, using explicit pins at the
+  full-power temperatures and the ENDF/B-VIII.1 fast chain (`tools/xsgen/k1_deplete.py`). This is the standard
+  lattice approach, and its known bias is a slightly softer spectrum than a leaking core's.
+- **Power:** the specific power is Config's 2,380 MWt over the model's 29.11 tHM, 81.8 W/g, with fission-q
+  normalisation.
+- **Batch points:** 0, 160, 320 and 480 EFPD at BOC and 640 at discharge, stepped in §2.3's 160 EFPD cycles.
+  These land on step boundaries.
+- **Steps:** at most 80 EFPD (6.5 GWd/t) with the CECM predictor-corrector. A fast MOX spectrum has no xenon,
+  samarium or gadolinium to resolve. A coarse scheme with steps twice as long checks this: CECM's error falls as
+  Δt², so |fine − coarse| / 3 estimates the fine scheme's error (`k1_deplete.py --export`).
+- **Statistics:** 5,000 particles × 25 active batches per transport. With about 230 nuclides in the fuel, OpenMC
+  runs at about 800 particles/s instead of 14,000 for fresh fuel. Reaction rates summed over the whole bundle are
+  still far more precise than k∞.
+- **Output:** nuclides above NEA's own 10⁻¹⁰ cut-off are kept.
+
+## F37 160 EFPD × 4 cycles at 2,380 MWt is 52.3 GWd/tHM, against §2.3's "≈ 51" — Open
+On §2.3's own numbers, a cycle burns 160 × 2,380 / 29.11 = 13.08 GWd/t, so four cycles discharge at **52.3**. On
+the round 29 t it would be 52.5. §2.3's "≈ 51" would need about 156 EFPD cycles or 29.9 tHM. D-043 follows power
+and time, the quantities the plant runs on, so the equilibrium core's batches sit at 0 / 13.1 / 26.2 / 39.2 GWd/t.
+**For Aqua:** accept 52.3 as what "≈ 51" means, or name which of the three inputs should move.
+
+## D-044 The equilibrium core scatters its four batches on the 2 × 2 sublattice — Proposed
+D-012's equilibrium BOC core needs a loading pattern, and the spec gives none. **Decision:**
+- **Pattern:** each fuel position's batch (0 fresh, then 1, 2 or 3 cycles burnt) follows its colour
+  (q mod 2) + 2·(r mod 2) in the mesh's axial coordinates, mapped 0→1, 1→0, 2→2, 3→3. Every assembly's six neighbours are then two of each other batch, which is as even a
+  scatter as four batches allow on a hexagonal lattice. Scatter loading is the usual way to flatten a multi-batch
+  core's power.
+- **Symmetry:** a 60° rotation fixes one colour and permutes the other three, so no four-batch sublattice pattern
+  is exactly 3-fold symmetric. At the scale of one assembly pitch this cannot tilt the core as a whole.
+- **Uneven colour:** the rods thin the fixed colour unevenly, leaving it 31 inner and 48 outer positions against
+  38 and 36 for each of the others (79 against 74 overall, all "a quarter"). No mapping from colour to batch
+  removes that. The fixed colour therefore takes batch 1: next to the core-average burnup of 1.5 cycles, a
+  zone imbalance moves the least reactivity. Batches 1 and 2 tie, and the lower was taken. The fresh batch then
+  holds 74 assemblies, 38 inner and 36 outer.
+- **Compositions:** each batch takes D-043's composition at 0, 160, 320 or 480 EFPD for its zone.
+- **Ring 15:** holds outer-zone fuel at discharge (640 EFPD) in all 90 positions, which bounds its effect as in
+  D-042.

@@ -1,0 +1,76 @@
+{
+ "meta": {
+  "model": "tools/xsgen/k1_model.py (explicit pins, fresh as-fabricated fuel; D-038 to D-042)",
+  "library": "ENDF/B-VIII.1 (OpenMC HDF5)",
+  "openmc": "0.16.0",
+  "quality": "preliminary: fresh core, not the equilibrium BOC core \u00a73.3 and D-012 refer to"
+ },
+ "cases": {
+  "nominal": {
+   "keff": 1.0577484059402267,
+   "sigma": 0.00021972169563040536,
+   "rho_pcm": 5459.559722890283,
+   "runtime_s": 1136.8714807229999,
+   "sourceConverged": true,
+   "run": {
+    "particles": 100000,
+    "batches": 150,
+    "inactive": 50
+   },
+   "betaEff_pcm": {
+    "value": 347.42039257941667,
+    "sigma": 7.7078126843965995
+   },
+   "generationTime_s": {
+    "value": 4.563958630417449e-07,
+    "sigma": 1.8049398195186156e-09
+   }
+  },
+  "hzp": {
+   "keff": 1.0648076499494596,
+   "sigma": 0.00020598314828093996,
+   "rho_pcm": 6086.324600742277,
+   "runtime_s": 1036.254031123,
+   "sourceConverged": true,
+   "run": {
+    "particles": 100000,
+    "batches": 150,
+    "inactive": 50
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": 626.764877851993,
+    "sigma": 26.75293793106324
+   }
+  },
+  "cold230": {
+   "keff": 1.0680100986603052,
+   "sigma": 0.00023020195626778585,
+   "rho_pcm": 6367.926552905811,
+   "runtime_s": 1134.15237205,
+   "sourceConverged": true,
+   "run": {
+    "particles": 100000,
+    "batches": 150,
+    "inactive": 50
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": 908.3668300155279,
+    "sigma": 28.159767203215953
+   }
+  }
+ },
+ "forInformation": {
+  "hzpToFullPower_pcm": {
+   "value": -626.764877851993,
+   "sigma": 26.75293793106324,
+   "specFixedGeometryParts_pcm": -645.2932736190783,
+   "note": "fresh core; \u00a73.2 Doppler + sodium-density terms only, no expansion"
+  },
+  "cold230ToHzp_pcm": {
+   "value": -281.6019521635349,
+   "sigma": 27.154212837277996,
+   "specFixedGeometryParts_pcm": -169.76212397563933,
+   "note": "fresh core; \u00a73.3 isothermal 376 pcm includes the expansion terms"
+  }
+ }
+}

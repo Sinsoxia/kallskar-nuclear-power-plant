@@ -1,0 +1,15 @@
+15-15Ti density from NIST SRM 1155a (316L), equal lattice-site density
+  SRM 1155a: certified fractions sum to 99.976 %; used as certified (Fe is measured, not balance)
+  [ok] the certified SRM 1155a fractions account for the whole sample to within 0.1 %
+  15-15Ti (TASTE): Fe by balance 65.633 % (below-limit entries at zero) or 65.532 % (at their limits)
+  mass per lattice site: SRM 55.7118 g/mol, 15-15Ti 55.5955 g/mol
+  ρ(15-15Ti, room temperature) = 7887.5 (below-limit at zero) … 7888.1 (at limits) kg/m³
+  adopted: 7888 kg/m³ ± 1 % (method), ± 0.32 % from the SRM measurement
+  [ok] the below-limit entries move the result by far less than the ±1 % quoted
+  [ok] the result is an austenitic-steel density: within 2 % of the measured 316L it is scaled from
+  total atom density 8.58716e-02 atoms/(b·cm) at 7888 kg/m³
+
+Config-ready (Python, tools/xsgen/k1_materials.py)
+CLAD_DENSITY_KGPM3 = 7887.8  # tools/derive/cladding_density.py, ±1 %
+
+3/3 checks pass
