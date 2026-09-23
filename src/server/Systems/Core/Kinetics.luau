@@ -95,13 +95,15 @@ end
 --[[
 	Advance one step to reactivity rho1 (at the end of the step) with source q1. Returns the new n.
 	If rho1 reaches the prompt-jump limit, the state is left unchanged and a.promptCritical is set; the caller
-	hands over to a scripted prompt-critical event (§14.2).
+	hands over to a scripted prompt-critical event (§14.2). The flag describes this step, so a step back below the
+	limit clears it.
 ]]
 function Kinetics.step(a: Amplitude, dt: number, rho1: number, q1: number?): number
 	if rho1 >= a.promptLimit then
 		a.promptCritical = true
 		return a.n
 	end
+	a.promptCritical = false
 	cache(a, dt)
 	local q = q1 or 0
 	local n0 = a.n

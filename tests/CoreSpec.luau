@@ -210,6 +210,26 @@ return {
 		t.ok(ch:get("core.promptCritical"), "§14.2: the prompt jump form stops being valid, and says so")
 	end,
 
+	["the prompt-critical flag clears once ρ is back under the limit (§14.2)"] = function(t)
+		local sys, ch = make(EXCESS)
+		local states = {}
+		sys.bus:subscribe("Alarm", function(p)
+			if p.tag == "CORE-PROMPT" then
+				table.insert(states, p.state)
+			end
+		end)
+		run(sys, 5)
+		ch:setExternal("rods.indicativeWorth_pcm", EXCESS - 1000)
+		run(sys, 1)
+		t.ok(ch:get("core.promptCritical"), "past 0.9β it is flagged")
+		t.eq(states[#states], "in")
+		-- the worth goes back in: critical again, far below the limit
+		ch:setExternal("rods.indicativeWorth_pcm", EXCESS)
+		run(sys, 1)
+		t.ok(not ch:get("core.promptCritical"), "and the flag describes the core as it is now")
+		t.eq(states[#states], "out", "the P1 alarm goes with it")
+	end,
+
 	["the whole plant, wired together: hot standby holds, and at power a rod out is caught by Doppler"] = function(t)
 		--[[
 			This is the test that says the physics is operable. Core, FuelThermal, Pools, PrimaryPumps, IHX and
