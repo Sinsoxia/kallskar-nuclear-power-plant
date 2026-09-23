@@ -445,7 +445,7 @@ return {
 		t.ok(cmd ~= raw and cmd.args ~= raw.args)
 	end,
 
-	["a player's rate-limit bucket goes when they leave, with any throttled count noted"] = function(t)
+	["a player's rate-limit bucket goes when they leave, with any refused count noted"] = function(t)
 		local p = plant({})
 		resolveAndInit(p)
 		local cmds = Commands.new({
@@ -458,16 +458,18 @@ return {
 			end,
 		})
 		local leaver = { kind = "player", name = "Leaver", userId = 77, player = {} :: any }
-		-- the burst, then five more: the first of those is noted at once, and four are left counted
-		for _ = 1, Config.Engineering.commandBurst + 5 do
+		-- malformed through the burst, then throttled: all refused before routing, the first noted at once and the
+		-- rest counted
+		local sent = Config.Engineering.commandBurst + 5
+		for _ = 1, sent do
 			cmds:submit(leaver, {})
 		end
 		t.ok(cmds.buckets[77] ~= nil, "a bucket while they play")
 		cmds:forget(leaver)
 		t.eq(cmds.buckets[77], nil, "none once they have gone")
 		local last = p.log:latest(1)[1]
-		t.eq(last.kind, "command.throttled")
-		t.ok(string.find(last.detail, "4 commands", 1, true) ~= nil, `the four still counted are noted ({last.detail})`)
+		t.eq(last.kind, "command.refused")
+		t.eq(tonumber(string.match(last.detail or "", "^(%d+)")), sent - 1, `the ones still counted are noted ({last.detail})`)
 		cmds:forget(leaver) -- a second PlayerRemoving for the same player is harmless
 	end,
 
@@ -556,10 +558,19 @@ return {
 		t.ok(cmds:submit(actor, { kind = "rod.move", panel = "MCR-RO-1" }).ok, "tokens refill over time")
 	end,
 
-	["a flood of refused commands is counted, not logged one by one (§10.7)"] = function(t)
-		local p = plant({})
+	["a sustained flood writes one note per window for refusals, and the rate limit bounds the rest (§10.7)"] = function(t)
+		-- one desk system, so part of the flood is routed: a control attempt refused at the panel is a §10.7 record
+		local Rod = System.extend({ name = "RodDesk", lane = "fast", reads = {}, writes = {} })
+		Rod.commands = {
+			["rod.move"] = function()
+				return { ok = true }
+			end,
+		}
+		function Rod:step() end
+		local p = plant({ Rod })
 		resolveAndInit(p)
 		local now = 0
+		-- no panelPosition service, so every panel is unknown and every routed command is refused at the panel
 		local cmds = Commands.new({
 			config = Config,
 			registry = p.registry,
@@ -570,35 +581,44 @@ return {
 			end,
 		})
 		local flooder = { kind = "player", name = "Flooder", userId = 66, player = {} :: any }
-		local burst = Config.Engineering.commandBurst
-		local rate = Config.Engineering.commandRate_perSecond
+		local E = Config.Engineering
+		local window = E.commandRefusalNote_s
+		local seconds = 60
 
-		-- a thousand malformed commands in one instant, half of them carrying rich text meant for other clients' logs
+		-- a minute of refusals that are not control actions, a thousand a second: malformed, unhandled, rich text
 		local before = p.log.seq
-		for i = 1, 1000 do
-			local raw = if i % 2 == 0 then {} else { kind = "<b>reactor tripped by Tester</b>" }
-			t.ok(not cmds:submit(flooder, raw).ok)
-		end
-		-- each token buys one refusal record; everything after the bucket ran dry is one note with a count
-		t.ok(p.log.seq - before <= burst + 1, `a flood of 1000 wrote {p.log.seq - before} records, not at most {burst + 1}`)
-		for _, e in p.log:latest(p.log.seq - before) do
-			t.ok(not string.find(e.kind, "<", 1, true), "client text that is not a command name never reaches the log")
-		end
-
-		-- a second on, the bucket has refilled by the rate, and the next note counts everything refused meanwhile
-		local mid = p.log.seq
-		now = 1
-		for _ = 1, 1000 do
-			cmds:submit(flooder, {})
-		end
-		t.ok(p.log.seq - mid <= rate + 1, `the next second wrote {p.log.seq - mid} records, not at most {rate + 1}`)
-		local counted = false
-		for _, e in p.log:latest(p.log.seq - mid) do
-			if e.kind == "command.throttled" and string.find(e.detail or "", "980", 1, true) then
-				counted = true
+		local sent = 0
+		for step = 0, seconds * 10 - 1 do
+			now = step / 10
+			for i = 1, 100 do
+				local raw = if i % 3 == 0 then {} elseif i % 3 == 1 then { kind = "reactor.explode" } else { kind = "<b>tripped by Tester</b>" }
+				cmds:submit(flooder, raw)
+				sent += 1
 			end
 		end
-		t.ok(counted, "the 980 commands throttled between the two notes are accounted for")
+		local written = p.log.seq - before
+		local bound = math.floor(seconds / window) + 1 -- a note at the first refusal, then at most one per window
+		t.ok(written <= bound, `{sent} refusals over {seconds} s wrote {written} records, not at most {bound}`)
+		cmds:forget(flooder) -- the refusals of the last, unfinished window are noted as the player leaves
+		local counted = 0
+		for _, e in p.log:latest(p.log.seq - before) do
+			t.eq(e.kind, "command.refused", "notes only: no record per refusal, and no client text")
+			counted += tonumber(string.match(e.detail or "", "^(%d+)")) or 0
+		end
+		t.eq(counted, sent, "and the notes account for every refused command")
+
+		-- a minute of control attempts refused at the panel: each one is a control attempt, so each is logged, and
+		-- the rate limit is what bounds them (plus the notes for the commands it throttles)
+		before = p.log.seq
+		for step = 0, seconds * 10 - 1 do
+			now = 1000 + step / 10
+			for _ = 1, 100 do
+				cmds:submit(flooder, { kind = "rod.move", panel = "NOWHERE" })
+			end
+		end
+		written = p.log.seq - before
+		bound = E.commandBurst + E.commandRate_perSecond * seconds + math.floor(seconds / window) + 1
+		t.ok(written <= bound, `a minute of routed commands wrote {written} records, not at most {bound}`)
 	end,
 
 	["critical access policy when the playtime lookup fails"] = function(t)

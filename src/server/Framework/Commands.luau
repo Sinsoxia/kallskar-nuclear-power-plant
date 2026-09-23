@@ -10,9 +10,13 @@
 	  4. access     — players only: within reach of the panel (Access.panelReach_studs) and, for critical controls,
 	                  the minimum total playtime (Access.criticalMinimumPlaytime_h)
 	  5. apply      — system:applyCommand(actor, cmd)
-	  6. log        — every attempt, accepted or refused, goes to the EventLog with the actor's name (§10.7). Commands
-	                  refused by the rate limit are the exception: they are counted, and the count is noted at most
-	                  once per token interval, so a flood cannot overwrite the log or reach every client through it
+	  6. log        — every control attempt that reaches a system's desk, accepted or refused, goes to the EventLog
+	                  with the actor's name (§10.7). A player's commands refused before that (throttled, malformed,
+	                  or of a kind no system handles) are not control actions: they are counted, and the count is
+	                  noted at most once per Engineering.commandRefusalNote_s. The rate limit bounds the rest, so a
+	                  player adds at most commandRate_perSecond + 1 / commandRefusalNote_s records a second (plus
+	                  up to commandBurst after a quiet spell), and one who sends only refused commands adds
+	                  1 / commandRefusalNote_s
 
 	Actors of kind "auto" and "scenario" are server-internal and skip reach/playtime. "dev" actors come only from the
 	Studio/owner-gated debug panel and skip reach (there are no physical panels yet in M1).
@@ -138,6 +142,7 @@ function Commands.new(opts: {
 	self.limits = { stringMax = eng.commandStringMax, argsMax = eng.commandArgsMax }
 	self.rate = eng.commandRate_perSecond
 	self.burst = eng.commandBurst
+	self.noteEvery = eng.commandRefusalNote_s
 	self.reach = access.panelReach_studs
 	self.requiredHours = access.criticalMinimumPlaytime_h
 	self.critical = {} :: { [string]: boolean }
@@ -156,7 +161,7 @@ function Commands.new(opts: {
 		return nil
 	end
 	self.now = opts.now or os.clock
-	self.buckets = {} :: { [number]: { tokens: number, t: number, throttled: number, noted: number } }
+	self.buckets = {} :: { [number]: { tokens: number, t: number, refused: number, why: string, noted: number } }
 	return self
 end
 
@@ -168,7 +173,7 @@ local function takeToken(self: any, userId: number): boolean
 	local now = self.now()
 	local b = self.buckets[userId]
 	if not b then
-		b = { tokens = self.burst, t = now, throttled = 0, noted = -math.huge }
+		b = { tokens = self.burst, t = now, refused = 0, why = "", noted = -math.huge }
 		self.buckets[userId] = b
 	end
 	b.tokens = math.min(self.burst, b.tokens + (now - b.t) * self.rate)
@@ -183,18 +188,21 @@ end
 local THROTTLED = "too many commands; slow down"
 
 --[[
-	A command refused for want of a token costs its sender nothing, so it must cost the log nothing either. Logged one
-	by one, a flood would overwrite the whole sequence-of-events ring (and with it §10.7's record of who did what),
-	and the Replicator would send every record to every player. So throttled commands are counted, and the count is
-	written at most once per token interval: a player can then add at most twice the command rate to the log.
+	A command refused before it reaches a system (throttled, malformed, or of a kind nothing handles) costs its sender
+	nothing and operates nothing, so it must cost the log nothing either. Logged one by one, a flood would overwrite
+	the sequence-of-events ring and the eventLogPersisted entries the save keeps (and with them §10.7's record of who did what), and
+	the Replicator would send every record to every player. So a player's are counted, and the count is written at
+	most once per commandRefusalNote_s, with the latest reason. Only the rate-limited control attempts are then
+	logged one by one, which bounds a player at commandRate_perSecond + 1 / commandRefusalNote_s records a second.
 ]]
-local function noteThrottled(self: any, actor: Actor)
+local function noteRefused(self: any, actor: Actor, why: string)
 	local b = self.buckets[actor.userId]
-	b.throttled += 1
+	b.refused += 1
+	b.why = why
 	local now = self.now()
-	if now - b.noted >= 1 / self.rate then
-		self.log:record("command.throttled", actor, nil, `{b.throttled} commands refused since the last note`, `denied: {THROTTLED}`)
-		b.throttled, b.noted = 0, now
+	if now - b.noted >= self.noteEvery then
+		self.log:record("command.refused", actor, nil, `{b.refused} commands refused before routing since the last note`, `denied: {why}`)
+		b.refused, b.noted = 0, now
 	end
 end
 
@@ -227,7 +235,7 @@ end
 function Commands.submit(self: any, actor: Actor, raw: any): CommandResult
 	if actor.kind == "player" or actor.kind == "dev" then
 		if not takeToken(self, actor.userId) then
-			noteThrottled(self, actor)
+			noteRefused(self, actor, THROTTLED)
 			return { ok = false, reason = THROTTLED }
 		end
 	end
@@ -240,12 +248,20 @@ function Commands.submit(self: any, actor: Actor, raw: any): CommandResult
 		self.log:record(kindForLog, actor, if cmd then cmd.target else nil, nil, `denied: {reason}`)
 		return { ok = false, reason = reason }
 	end
+	-- refused before routing: a player's are counted into the note, a server actor's logged as they come
+	local function refuseUnrouted(reason: string): CommandResult
+		if actor.kind == "player" or actor.kind == "dev" then
+			noteRefused(self, actor, reason)
+			return { ok = false, reason = reason }
+		end
+		return refuse(reason)
+	end
 	if not cmd then
-		return refuse(why :: string)
+		return refuseUnrouted(why :: string)
 	end
 	local owner = self.registry:ownerOfCommand(cmd.kind)
 	if not owner then
-		return refuse(`no system handles '{cmd.kind}'`)
+		return refuseUnrouted(`no system handles '{cmd.kind}'`)
 	end
 	if actor.kind == "player" then
 		local ok, reason = checkPlayerAccess(self, actor, cmd)
@@ -287,13 +303,13 @@ end
 
 --[[
 	Drop a player's bucket when they leave (Main, PlayerRemoving), so the table does not grow with everyone who has
-	ever joined the server. Throttled commands not yet noted are noted now.
+	ever joined the server. Refused commands not yet noted are noted now.
 ]]
 function Commands.forget(self: any, actor: Actor)
 	local b = self.buckets[actor.userId]
-	if b and (b.throttled or 0) > 0 then
-		self.log:record("command.throttled", actor, nil, `{b.throttled} commands refused since the last note`,
-			"denied: too many commands; slow down")
+	if b and b.refused > 0 then
+		self.log:record("command.refused", actor, nil, `{b.refused} commands refused before routing since the last note`,
+			`denied: {b.why}`)
 	end
 	self.buckets[actor.userId] = nil
 end

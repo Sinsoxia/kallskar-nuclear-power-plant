@@ -23,6 +23,7 @@ return {
 	commandBurst = engineering(20, "short bursts, e.g. stepping a rod selector quickly"),
 	commandStringMax = engineering(64, "longest command kind / tag / panel id accepted from a client"),
 	commandArgsMax = engineering(8, "most extra arguments any control needs"),
+	commandRefusalNote_s = engineering(10, "commands refused before routing (throttled, malformed, unhandled) are counted and noted at most once per 10 s per player, so a player adds at most commandRate_perSecond + 0.1 = 10.1 log records/s, all but 0.1/s of them control attempts §10.7 requires recorded, and one who sends only refused commands adds 0.1/s"),
 
 	-- Persistence (§14.6)
 	saveInterval_s = engineering(60, "one DataStore write per minute per server stays far inside Roblox's 60 + 10×players per-minute budget"),
