@@ -1,0 +1,330 @@
+KALLSKAR SPEC AUDIT: SECTIONS THE CODE HAS NOT REACHED (5-8, 10-13, FILE 16)
+spec: KALLSKAR_ALL_IN_ONE.txt, 3169 lines
+file-20 calc.py cut from spec lines 3056-3160 and run unmodified: SG heat per turbine 1194.52 MWt, steam 437.53 kg/s per turbine, 291.69 kg/s per loop, sodium 3111.7 kg/s per loop
+
+====================================================================================================================
+§5 SECONDARY SODIUM LOOPS  (lines 1186-1233)
+====================================================================================================================
+  [PASS] K-01 §5.1 L1194 volumetric flow at the 420 °C loop mean (file 20: rho(420)): computed 3.648 m³/s vs spec 3.65 m³/s (tolerance ±0.005, printed rounding)
+         at the 320 °C cold-leg pump the same flow is 3.553 m³/s; the spec does not name the temperature
+  [PASS] K-02 §5.1 L1196 hot-leg velocity, DN900 at 520 °C: computed 5.894 m/s vs spec 5.9 m/s (tolerance ±0.05, printed rounding)
+  [PASS] K-03a §5.1 L1197 hot-leg delay, 180 m: computed 30.54 s vs spec 31 s (tolerance ±0.5, printed rounding)
+  [PASS] K-03b §5.1 L1197 cold-leg delay, 180 m: computed 32.23 s vs spec 32 s (tolerance ±0.5, printed rounding)
+  [PASS] K-04 §5.1 L1198 lap ≈ 125 s: legs computed, SG 41 + buffer 17 + IHX 5 each ±0.5 give 124.3-127.3 s
+         the printed parts sum to 126 s; within the parts' own rounding 125 is reachable
+  [PASS] K-05 §5.1 L1199 inventory ≈ 400 t is at least the flowing inventory 391 t (residence times × flow)
+         the remaining 9 t sits in plena, buffer-tank heel and dead legs, which the spec does not size
+  [PASS] K-06 §5.1 L1200 pump 0.45 MPa × 3.553 m³/s / 2.0 MW shaft = efficiency 0.799; file 20 uses 0.80, the primary pumps 0.82
+  [PASS] K-07 §5.1 L1203 buffer 0.30 + head 0.45 = discharge 0.75 MPa, and the loop drops sum to 0.45 MPa = the head
+  [PASS] K-08 §4.3 L1145 with §5.1 IHX outlet 0.62 MPa and §4.4 cover gas 0.120 MPa, the 0.4 MPa margin holds wherever the IHX outlet sits less than 12.4 m below the hot-pool surface
+         the vessel is 14.5 m high (§4.1); the IHX nozzle elevations are not given, so this is a bound
+  [FAIL] C-01 §5.1 trace-heating low alarm 150 °C is at or above §9.1's 180 °C floor and above the 160 °C plugging alarm
+         alarm 150 < floor 180: a filled loop can sit at 150-180 °C, breaking §9.1, with no alarm
+         alarm 150 < plugging alarm 160: sodium can run below its own plugging temperature (oxide precipitates in the
+         coldest pipe) with neither alarm raised; the cold traps themselves run below 180 °C by design (§4.6 wall 125 °C)
+  [FAIL] C-02 §5.2 1 g/s water leak, all its hydrogen dissolved in the section's sodium (389.0 kg/s): section meter: computed 0.2877 ppm vs spec 0.28 ppm (tolerance ±0.005, printed rounding)
+  [PASS] K-09 §5.2 loop outlet meter = section/8 with the same hydrogen: computed 0.03596 ppm vs spec 0.036 ppm (tolerance ±0.0005, printed rounding; §12.4 'an eighth of the size')
+         the spec's own pair gives 0.036/0.28 = 1/7.78; 0.036 matches the full-hydrogen value 0.0360, the section figure is truncated
+  [PASS] K-10 §5.2 smallest 'small' leak 0.05 g/s gives 0.0144 ppm = 4.8 × the ±0.003 ppm meter noise (§10.5 L2194), so 'section meter within minutes' is plausible
+  [PASS] K-11 §5.2 L1230 rupture discs at 1.2 MPa lie above the highest normal secondary pressure (pump discharge 0.75 MPa)
+  [FAIL] C-03 §5.2 hydrogen drift and §12.3 impurity ingress are stated per GRID day, §0.2 puts both on the ×360 clock
+         cold trap 0 -> 150 kg: 1,500 h real on the grid clock, 50 h real on ×360 (30× apart)
+         hydrogen drift in 30 real min: 0.0025 ppm on the grid clock (below the ±0.003 ppm noise), 0.075 ppm on ×360
+         (×360 drifts more than the whole 0.06 ppm full-power background, §5.2, in half an hour)
+  [FAIL] C-04 file 20 nets 10.5 MW of pump heat; the spec's pumps put 15.9 MW of shaft power into sodium (3 × 3.3 primary, 3 × 2.0 secondary) and DRACS standby takes 1.2 MW out: net 14.7 MW
+         SG total 2389.0 MWt - 10.5 = 2378.5 MWt (calc prints 2379); with 14.7 MW it is 2374.3 MWt against §1.1's canonical 2,380
+         no stated heat loss accounts for the 4.2 MW; the secondary pumps' heat appears nowhere
+
+====================================================================================================================
+§6 STEAM GENERATORS, SPLITTER, REHEAT  (lines 1235-1379)
+====================================================================================================================
+  [PASS] K-12a §6.1 section duty 62.6 + 21.2 + 15.7 = 99.5 MWt
+  [PASS] K-12b §6.1 L1247 EV: file 20 gives 501.15 MWt per loop, 62.643 per section vs spec 501 / 62.6
+  [PASS] K-12b §6.1 L1247 SH: file 20 gives 169.90 MWt per loop, 21.238 per section vs spec 170 / 21.2
+  [PASS] K-12b §6.1 L1247 RH: file 20 gives 125.30 MWt per loop, 15.663 per section vs spec 125 / 15.7
+  [PASS] K-13a §6.1 L1248 sodium split to SH (same 520->445 °C range on both): computed 57.55 % vs spec 57.6 % (tolerance ±0.05, printed rounding)
+  [PASS] K-13b §6.1 SH/RH mixed sodium temperature (file 20 Tmid): computed 445.1 °C vs spec 445 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-14a §6.1 L1250 feed per section = steam per loop / 8: computed 36.46 kg/s vs spec 36.5 kg/s (tolerance ±0.05, printed rounding)
+  [PASS] K-14b §6.1 L1252 reheat steam per section: computed 31.86 kg/s vs spec 31.9 kg/s (tolerance ±0.05, printed rounding)
+  [PASS] K-14c §7.1 L1401 reheat fraction: computed 87.38 % vs spec 87.4 % (tolerance ±0.05, printed rounding)
+  [PASS] K-15 §6.1 L1250 EV outlet superheat at 14.6 MPa: computed 15 K vs spec 15 K (tolerance ±0.5, printed rounding)
+  [FAIL] C-05 §6.1 pinch ≈ 20 K: with boiling onset at the EV OUTLET pressure 14.6 MPa: Na 360.2 vs sat 340.0 -> 20.2 K; at the inlet pressure 16.0 MPa: Na 364.2 vs sat 347.4 -> 16.9 K
+         boiling starts upstream of the outlet, where pressure lies between 16.0 and 14.6 MPa, so the pinch is 16.9-20.2 K;
+         '≈ 20 K' (19.5-20.5) is the upper end, reached only if the whole 1.4 MPa drop comes before boiling
+  [PASS] K-16a §6.1 L1257 one section of eight: computed 12.5 % vs spec 12.5 % (tolerance ±0.05, printed rounding)
+  [PASS] K-16b §6.1 L1257 one section of 24: computed 4.167 %FP vs spec 4.2 %FP (tolerance ±0.05, printed rounding)
+  [PASS] K-17 §6.2 L1268 safety valves 3 × 35 % = 105 % ≥ 100 %; SG outlet 14.0 < relief 15.2 < safety 15.8 MPa
+  [PASS] K-18 §7.2 L1446 main-steam superheat at the stop valve, 500 °C at 13.5 MPa: computed 166.2 K vs spec 166 K (tolerance ±0.5, printed rounding)
+  [FAIL] C-06 §6.3 throttling a 145.8 kg/s branch by 0.7-0.8 MPa costs 'about 6 MWe'; the Gouy-Stodola bound m·T0·Δs (T0 = 306.0 K, the 5.0 kPa condenser) is at most 1.08 MW
+         an isenthalpic throttle cannot destroy more work than m·T0·Δs; even all of loop 2 through one branch loses 2.16 MW
+         the steam has nowhere else to go in reactor-leads mode, so the flow does not fall
+         C-07 inputs, file 20's reheater model (UA, sodium capacity and steam cp per module from calc.py):
+         sodium per module fixed (file 20): isolate an A-side SG2 section -> A -2.2 K, B +5.6 K; a B-side one -> A +2.0 K, B -8.6 K
+         SG2 sodium redistributed ×8/7: isolate an A-side SG2 section -> A -1.8 K, B +6.5 K; a B-side one -> A +2.4 K, B -6.5 K
+  [FAIL] C-07 §6.4 isolating one SG2 section at a 50/50 split moves each hot reheat by 'about 2 K' (taken as |ΔT| ≤ 2.5 K); largest move 8.6 K
+         turbine A has 12 reheater modules and moves about 2 K; turbine B has 4 and moves 5.6-8.6 K
+         file 20's §6.5 table (re-run):
+         sB=0.50 A   500 MWe RH 505.0C | B   167 MWe (steam-limited  167) RH 505.0C lim 100% | total   667
+         sB=0.60 A   467 MWe RH 508.1C | B   198 MWe (steam-limited  198) RH 494.6C lim 100% | total   665
+         sB=0.70 A   433 MWe RH 510.9C | B   229 MWe (steam-limited  229) RH 483.5C lim  94% | total   662
+         sB=0.75 A   417 MWe RH 512.2C | B   244 MWe (steam-limited  244) RH 478.0C lim  88% | total   660
+         sB=0.80 A   400 MWe RH 513.4C | B   259 MWe (steam-limited  259) RH 472.5C lim  83% | total   659
+         sB=0.90 A   367 MWe RH 515.5C | B   288 MWe (steam-limited  288) RH 462.0C lim  72% | total   655
+         sB=1.00 A   333 MWe RH 517.1C | B   311 MWe (steam-limited  317) RH 452.3C lim  62% | total   645
+  [PASS] K-19 §6.5 every A/B output, hot reheat and B load limit reproduced by file 20 (limit read at the SG outlet); totals within 1 MWe (parts rounded, SPEC_REVIEW_AUDIT #22); the 90 % row's A reheat is C-17
+  [FAIL] C-17 §6.5 L1338 90 % row, A hot reheat (file 20 prints 515.5 with one decimal): computed 515.5 °C vs spec 516 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-20 §6.5 'Trip B': dump = loop 2's B branch at 50/50: computed 145.8 kg/s vs spec 146 kg/s (tolerance ±0.5, printed rounding)
+  [FAIL] C-08 §6.5 applies §7.1's reheat load limit to the SG-outlet reheat temperature (505 °C normal); §7.1/§7.2 give hot reheat at the IP stop valve (500 °C normal). The two readings agree only if they are the same point
+         read at the IP stop valve (SG outlet - 5 K, as file 20's cycle() assumes) the B limit column is [100, 100, 89, 78, 67, 56] % instead of [100, 100, 94, 83, 72, 62] %
+         the 100 % row becomes B 279 MWe, plant 613 MWe (spec 311 and 645), and 38 MWe to bypass instead of 6
+  [FAIL] C-09 §6.5 60 % row: A hot reheat 508.1 °C carries no 'spraying' note although §9.4's attemperation auto holds ≤ 505 °C; the 70-100 % rows print >505 °C 'spraying'
+         the column is the reheater-module outlet before the sprays; file 20 credits the cycle with min(T, 505)
+  [PASS] K-21 §6.6 L1373 minimum evaporator flow 25 %: computed 72.92 kg/s vs spec 73 kg/s (tolerance ±0.5, printed rounding)
+  [PASS] K-22 §6.6 L1376 density-wave threshold 20 % lies below the 25 % minimum flow
+  [FAIL] C-10 §6.6 water-admission interlock 'feed ≥ sodium - 80 K' against §7.5's feed temperatures and §9.2's SG sodium OUTLET (the most lenient reading)
+         fails at 80%: feed 231 < 320-80 = 240; 60%: feed 222 < 320-80 = 240; 40%: feed 210 < 320-80 = 240; 30%: feed 204 < 334-80 = 254; 20%: feed 197 < 348-80 = 268; 10%: feed 188 < 361-80 = 281; 5%: feed 182 < 364-80 = 284
+         read at the SG sodium inlet it fails at every row (100 %: 240 < 440)
+         at hot standby (375 °C) water needs feed ≥ 295 °C; with feed 170-180 °C admission is possible only with SG sodium in 250-260 °C
+  [FAIL] C-11 §6.2 header 13.7 MPa at 100 % against §9.4 turbine auto 'header 13.5 ±0.2 MPa' (13.5 is §6.2's stop-valve pressure)
+         the normal header sits exactly on the edge of the auto band; bypass auto (§9.4 'header + 0.4') opens at 13.9 or 14.1 MPa depending on which is meant
+
+====================================================================================================================
+§7 TURBINE-GENERATORS, CONDENSERS, FEEDWATER  (lines 1390-1565)
+====================================================================================================================
+  [PASS] K-23a §7.1 L1397 590 MVA × 0.85 pf = 501.5 MW ≥ the 500 MWe rating
+  [PASS] K-23b §7.1 L1400 437.5 kg/s in t/h: computed 1,575 t/h vs spec 1,575 t/h (tolerance ±0.5, printed rounding)
+  [PASS] K-23c §7.1 L1401 cold reheat temperature (file 20): computed 292.2 °C vs spec 292 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-23d §7.1 L1403 LP exhaust dryness (file 20): computed 0.919 vs spec 0.92 (tolerance ±0.005, printed rounding)
+  [PASS] K-23e §7.1 L1404 efficiency on SG heat (file 20): computed 41.86 % vs spec 41.9 % (tolerance ±0.05, printed rounding)
+  [PASS] K-23f §7.1 L1405 minimum stable load: computed 150 MWe vs spec 150 MWe (tolerance ±0, printed rounding)
+  [PASS] K-24 §7.2 every row is ordered normal < alarm < trip: speed, condenser, hood (sprays 60), vibration, thrust, lube oil (falling), main steam temp (falling), superheat (falling), hot reheat (falling)
+  [FAIL] C-12 §7.2 generator trips 'above 52 Hz' while §8.4's time-limited range ends at 51.5 Hz (the low side matches: range 47.5, trip below 47.5 Hz for 20 s)
+         51.5-52 Hz is neither a permitted band nor a trip
+  [FAIL] C-13 §7.2 hot-reheat alarm 480 °C is fixed (only main steam 'tracks program below 40%'); at §9.2's 30 % row the reheat cannot exceed the 484 °C sodium, so at the IP stop valve it is ≤ 479 °C
+         a standing hot-reheat alarm in a normal programme state; line loss 5 K from §6.1 505 °C vs §7.1 500 °C
+  [PASS] K-25 §7.2 L1444 main steam 40 % -> 25 %FP on §9.2's programme falls 48.8 K; at §7.1's 5 %/min that takes 3 min, inside the 50 K / 10 min trip
+  [FAIL] C-14 §7.3 / S-28 house-load operation at ≈ 65 MWe = 13 % of a unit against §7.1's 30 % (150 MWe) minimum stable load
+         §6.5 says a unit at 33 % is 'a hair above its 30% minimum load, where the next disturbance trips it'
+         §9.2 says below 25 %FP 'the turbines are off' and in the same sentence calls those rows 'house-load states'
+  [PASS] K-26 §7.3 house-load steam balance: unit A 0.13 + 0.60 bypass = 319 kg/s, tripped unit B's bypass 262 kg/s -> reactor must run back to ≤ 66.5 %, as S-28 says
+  [FAIL] C-15 S-05's poor-crew outcome 'Condenser B overloaded, second trip' needs condenser pressure to rise; the bypass is sized for 60 %, which §7.3 says the condenser absorbs indefinitely
+         by §7.3's rule the 10 kPa alarm needs 110 % bypass and the 20 kPa trip 210 %; a tripped turbine sends its condenser nothing else
+  [PASS] K-27 §7.4 CW rise at 15.3 m³/s with 5 psu water (TEOS-10: ρ 1001.0 kg/m³, cp 4.153 kJ/kg·K): computed 10.84 K vs spec 11 K (tolerance ±0.5, printed rounding)
+  [FAIL] C-16 §7.4 / file 20 CW flow: file 20 uses cp 4.0 kJ/kg·K and ρ 1025 kg/m³ (open-ocean water) for a 5 psu site
+         with the site's water, 11.0 K needs 15.08 m³/s (not 15.3); the printed pair (15.3 m³/s, 11 K) survives only because 11 K is rounded (10.84 K)
+  [PASS] K-28a §7.4 L1479 one pump at 60 % flow: computed 18.33 K vs spec 18 K (tolerance ±0.5, printed rounding)
+  [PASS] K-28b §1.1 L465 four CW pumps × 3.7 MW: computed 14.8 MW vs spec 14.8 MW (tolerance ±0.05, printed rounding)
+  [PASS] K-29 §7.4 all 12 lineup rows (pressure, gross, net) reproduced by file 20's condenser snippet
+  [PASS] K-30 §7.4 condenser saturation minus intake is constant per lineup: both pumps 13.7-14.3 K, one pump 21.1-21.5 K (fixed duty, fixed flow)
+  [PASS] K-31 §7.4 winter L1493 per-unit peak 514 MWe × 2 = 1,028 (§1.1 L462), summer rating 500 at 19 °C
+  [PASS] K-32 §7.5 LP1 outlet = Tsat(0.03 MPa) - 3 K (file 20's terminal difference): computed 66.1 °C vs spec 66 °C (tolerance ±0.5, printed rounding)
+  [FAIL] C-17 §7.5 LP2 outlet = Tsat(0.08 MPa) - 3 K (file 20's terminal difference): computed 90.49 °C vs spec 91 °C (tolerance ±0.5, printed rounding; 90.485 prints as 90.5 at one decimal, then 91)
+  [PASS] K-32 §7.5 LP3 outlet = Tsat(0.2 MPa) - 3 K (file 20's terminal difference): computed 117.2 °C vs spec 117 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-32 §7.5 LP4 outlet = Tsat(0.55 MPa) - 3 K (file 20's terminal difference): computed 152.5 °C vs spec 152 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-32 §7.5 HP6 outlet = Tsat(2.8 MPa) - 3 K (file 20's terminal difference): computed 227.1 °C vs spec 227 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-32 §7.5 HP7 outlet = Tsat(3.5 MPa) - 3 K (file 20's terminal difference): computed 239.6 °C vs spec 240 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-32 §7.5 L1534 deaerator saturation at 1.0 MPa: computed 179.9 °C vs spec 180 °C (tolerance ±0.5, printed rounding)
+  [PASS] K-33 §7.5 L1534 deaerator storage at full feed: computed 8.449 min vs spec 8 min (tolerance ±0.5, printed rounding)
+  [PASS] K-34 §7.5 L1545 formula reproduces all eight §9.2 feed temperatures
+  [PASS] K-35a §7.6 2 × 55 % of 437.5 kg/s: computed 481.3 kg/s vs spec 481 kg/s (tolerance ±0.5, printed rounding)
+  [PASS] K-35b §7.6 plus one 30 % startup pump: computed 612.5 kg/s vs spec 612 kg/s (tolerance ±0.5, printed rounding)
+  [PASS] K-35c §7.6 L1558 train A feeding SG1 and all of SG2: computed 583.4 kg/s vs spec 583 kg/s (tolerance ±0.5, printed rounding)
+  [FAIL] C-18 §7.6 'train B lost': of 583.4 kg/s from SG1 + SG2, turbine A takes 437.5 and 'the rest goes to bypass'; the rest (145.9 kg/s) is exactly SG2's B branch at 50/50, which CV-2B/NRV-2B still route to turbine B
+         bypass is forced only if turbine B is also out; §7.6 also leaves SG3 without any feed path (the crosstie serves SG2 only)
+         and says nothing about the reactor power that follows
+  [FAIL] C-19 §1.1 house-load list vs §7.6: electrical/shaft ratios primary 1.040, secondary 1.033, feed 1.000
+         primary and secondary pumps are listed at electrical input, the feed pumps at absorbed power; on the primary pumps' basis the feed pumps draw 20.4 MWe
+
+====================================================================================================================
+§8 ELECTRICAL  (lines 1567-1640)
+====================================================================================================================
+  [PASS] K-36 §8.1 L1576 generator transformer 600 MVA ≥ generator 590 MVA
+  [PASS] K-37 §8.1 L1577 UAT 50 MVA ≥ one unit board's listed running load (PP, SP, two MFPs, two CW pumps) ≈ 22.7 MW plus condensate pumps
+  [FAIL] C-20 §8.1 on a double unit trip both unit boards transfer to the station boards, but ST-1 (60 MVA) is smaller than the 65 MWe house load at any power factor
+         it fits only after the feed-pump load (19.6 MW) has run down, leaving 45.4 MW; the spec states no load shedding or runback on transfer
+  [PASS] K-38 §8.4 L1621 +300 MVAr at 500 MW needs 583 MVA ≤ 590 (capability 313); at 514 MW only 290 MVAr, the 'less above 500 MWe in winter'
+  [PASS] K-39 §8.4 frequency ordering (L1618): trip 47.5 < shedding 48.8 < continuous 49.0 < FCR-D 49.5 < 49.9 < 50 < 50.1 < 50.5 < 51.0 < 51.5
+  [PASS] K-40 §8.4 L1636 aFRR = 0.4 %/min, inside LCO-10's 1 %/min
+  [PASS] K-41 §8.3 L1599 EDG at speed in 15 s = S-15 window L2598; first load step at 15 s
+
+====================================================================================================================
+§9 CROSS-REFERENCES FROM IN-SCOPE SECTIONS  (§9 has no subsections after 9.6)
+====================================================================================================================
+  [FAIL] C-21 §9.2 (Rev A4 text of F22): 'the 20%, 10% and 5% rows ... because 178, 86 and 42 MWe are under the 150 MWe minimum ... and their steam is below the reheat trip'
+         178 MWe on one turbine is above 150; the 20 % row's main steam is 440 °C (435 °C at the stop valve), above both the 430 °C main-steam trip and the 420 °C reheat trip the sentence cites
+         meanwhile two turbines cannot both reach 150 MWe below 32.8 %FP (gross 300 MWe), so the 30 % row, 'turbines on', is a one-turbine state
+  [PASS] K-42 §9.3 L1798 turbine-leads delay vs §5.1/§4.1 transport: cold leg 32 + buffer 17 + IHX 5 + 8 s + cold pool 52 s = 114 s = 1.9 min
+
+====================================================================================================================
+§10 CONTROL ROOMS, DESKS AND CREW  (lines 1998-2260)
+====================================================================================================================
+  [PASS] K-43 §10.2 desk counts match the plant: hydrogen meters 27, acoustic detectors 24, section isolations 24, condensate pumps 6, main feed pumps 4, startup feed pumps 2, DRACS dampers 8, IHX shutters 6, DND 6, rod positions 30, core map 331, separators 3
+  [PASS] K-44 §10.2 L2089 ≈ 180 trace-heating zones ≥ the 3 × 42 = 126 secondary zones (§5.1) and = §14.3's ≈ 180 heater zones
+  [PASS] K-45 §10.4 crew 3 / 8 / 13: standard = SS RO PO SGO TO-A TO-B EO field = 8, full = +5 = 13 = the eleven desks of §10.1 plus two field operators
+  [FAIL] C-22 §10.1 'no two desks that have to talk during a fault can see each other' vs the same table putting reactor + primary + SS in the MCR, secondary sodium + SG in the SGCR, turbine A + B in the TCR
+         reactor and primary desks share P/Q (§9.3) and talk in S-07; the rule can only mean rooms, not desks
+  [PASS] K-46 §10.5 L2180 regulating band mid to edge: 122.7 pcm at 0.75 pcm/min: computed 2.728 h vs spec 2.7 h (tolerance ±0.05, printed rounding)
+  [PASS] K-47 §10.3 90 s per damper, 8 dampers (L2110) = §4.5 handwheel 90 s each (L1175) and 4 loops × 2 dampers; all eight by hand = 12 min plus walking
+
+====================================================================================================================
+§11 GRID DISPATCHER  (lines 2271-2337)
+====================================================================================================================
+  [PASS] K-48 §11.1 'reduce 300 MWe within 10 min' (L2287) = 30 MWe/min = 3 %/min, LCO-10's approved maximum (L1985)
+  [FAIL] C-23 §11.1 a planned 200 MWe curtailment is announced one grid-hour = 5 min real ahead; 200 MWe takes 20 min at LCO-10's 1 %/min and 6.7 min at the approved 3 %/min
+         if the limit bites when announced, the crew must breach LCO-10 or take dispatch error; the deadline is not stated
+  [FAIL] C-24 §11.3 dispatch error has a 10 MW deadband, but contracted reserves move the plant further: FCR-N ±20 MWe, FCR-D 50 MWe, aFRR ±20 MWe for the plant (§8.4)
+         unless 'target' includes activated reserves (not stated), delivering a contract scores as a dispatch miss
+  [PASS] K-49 §11.2 L2303 the Ornstein-Uhlenbeck form has stationary SD exactly σ (variance σ²·(2/τ)·(τ/2))
+         Calm: σ 0.03 Hz -> outside 49.9-50.1 Hz 0.09 % of the time
+         Standard: σ 0.05 Hz -> outside 49.9-50.1 Hz 4.55 % of the time
+         Winter Peak: σ 0.07 Hz -> outside 49.9-50.1 Hz 15.31 % of the time
+  [PASS] K-50 §11.2 L2322 deepest nadir 49.55 Hz stays above the 48.8 Hz shedding
+  [FAIL] C-25 S-18's poor-crew outcome 'Under-frequency trip' needs < 47.5 Hz for 20 s (§7.2); the cue is 49.6 Hz, §11.2's events reach 49.55 Hz at most, and §8.4 sheds load from 48.8 Hz
+         no stated mechanism takes the frequency 2.1 Hz lower; nothing in the plant trips at 49.6 Hz
+
+====================================================================================================================
+§12 DAMAGE AND DEGRADATION  (lines 2339-2453)
+====================================================================================================================
+  [PASS] K-51 §12.1 upper internals: L²/(2α) with L 40 mm: computed 200 s vs spec 200 s (tolerance ±0.5, printed rounding)
+  [PASS] K-51 §12.1 IHX tubesheet: L²/(2α) with L 100 mm: computed 1,250 s vs spec 1,250 s (tolerance ±0.5, printed rounding)
+  [PASS] K-51 §12.1 SG inlet header: L²/(2α) with L 60 mm: computed 450 s vs spec 450 s (tolerance ±0.5, printed rounding)
+  [PASS] K-51 §12.1 hot-leg thermowells: L²/(2α) with L 25 mm: computed 78.13 s vs spec 80 s (tolerance ±5, printed rounding, '80' read as two figures)
+  [PASS] K-51 §12.1 diagrid: L²/(2α) with L 80 mm: computed 800 s vs spec 800 s (tolerance ±0.5, printed rounding)
+         note: for a wall heated on one face the first conduction mode is 4L²/(π²α) = 0.405 L²/α, the spec's L²/(2α) is 0.5 L²/α; a stated model, not flagged
+  [PASS] K-52 §12.1 L2406 hazard: U 0.5 -> 0.0402/grid day, 3.9%; U 1 -> 0.807/grid day, 55.4% (D-008)
+  [PASS] K-53 §12.1 L2347 two half-cycles at ΔT_ref charge 2 × 0.5 × 1³ / N_ref = 1/N_ref, one cycle's share of N_ref
+  [FAIL] C-26 §12.1 striping rate '1/5,000 per minute' names no clock, and 'adjacent assembly outlets' does not say whether the 30 rod positions of the 331-position map count
+         U 0 -> 1 in 83.3 h real if real time, 6.9 h real on the grid clock (F26 bound degradation to the grid clock)
+         a rod position gets 5.35 kg/s (§2.5) and needs 0.98 MW of its own heat to sit within 40 K of a 559 °C fuel neighbour;
+         the spec gives rod positions no heat, so read literally the rule charges damage continuously at power
+  [PASS] K-54 §12.2 creep at 650 °C: D = 1 after 100 grid h = 8.3 h real; it starts at §2.4's 650 °C cladding alarm (L715)
+  [FAIL] C-27 §12.2 random failure '× overpower multiplier': the phrase appears 1 time(s) in the spec and is never defined
+  [PASS] K-55 §12.2 open failure 8 grid-h = LCO-12's 8 h = S-22's window (L2647) = 40 min real
+  [FAIL] C-28 §12.2 fuel location scans 301/7 = 43 groups × 2 min = 86 min real (mean 44 min) against LCO-12's 8 grid-h = 40 min real to '≤ 30 %FP and locate'
+         the scan finds the failed assembly inside the completion time with probability 47%; '2 min' is unmarked, so §0.2 reads it as real time
+  [FAIL] C-29 §12.3 trace-heating failures are '1 per 2,000 zone-hours real', §0.2 puts 'heater failures' on ×360 (and src/shared/Config/Clocks.luau follows §0.2)
+         ≈ 180 zones: real time -> one failure every 11.1 h; ×360 -> 32.4 per real hour, one every 1.85 min
+  [PASS] K-56 §12.3 L2434 failure modes 60 + 30 + 10 = 100 %
+  [FAIL] C-30 S-13 'poor crew: LCO-6 derate' needs primary plugging temperature 125 -> 180 °C; §12.3 raises it 2 K per 10 % above 70 % loading: +6 K at 100 %
+         LCO-6 needs 345 % loading, the 150 °C primary alarm 195 %, the 160 °C secondary alarm 170 %;
+         no stated mechanism raises plugging temperature once the trap is full
+  [FAIL] C-31 §12.3 / S-12 'drained line ... to freezing': a drained line holds no sodium to freeze
+         the 40 min DN50 figure and the thaw rules need a filled line (or a drain line)
+  [FAIL] C-32 §12.4 small-leak times '10–30 min at 1 g/s, 1–3 min at 10 g/s' are unmarked; §0.2 binds §12.4 to the grid clock but reads unmarked windows as real time
+         grid reading: 50-150 s real at 1 g/s, 5-15 s real at 10 g/s; real reading: as printed (12× apart)
+  [PASS] K-57 §12.4 micro doubling 2-6 grid-h = 10-30 min real, so S-01's 20-60 min window (L2500) is two doublings, as F26 intended
+
+====================================================================================================================
+§13 SCENARIOS  (lines 2455-2692)
+====================================================================================================================
+  [PASS] K-58 §13.1 cost classes 10 + 10 + 8 cover S-01..S-28 once each
+  [PASS] K-59 §13.1 L2473 scaling brackets put §10.4's minimum, standard and full crews (3, 8, 13) in three different brackets: [0.5, 1.0, 1.5]
+  [PASS] K-60 S-16 window 6.5 h at ×10: computed 39 min vs spec 40 min (tolerance ±1, '≈ 40')
+  [PASS] K-61 S-12 40 min = §12.3 DN50; S-23 15 min = §3.2 vessel lag 900 s (L840); S-04 turbines to 67%; S-01 'trim reactor 4%' = one section of 24
+  [FAIL] C-33 S-16 at ×10: pool heatup runs ×10 (§0.2) but 'electrical' stays ×1, so batteries last 10× longer against the pool
+         ×1: UPS out at 2 h and DC at 4 h, before the 6.5 h pool limit; ×10: the pool limit comes at 39 min real and the 2 h UPS never runs out
+  [FAIL] C-34 S-06 'field hydraulic reset' and S-19 'kill drive power' name actions that §10.3 (local actions) and §10.2 (desk controls) do not list
+         the other scenarios' good-crew actions all map to listed controls or local actions
+  [FAIL] C-35 §13.1 frazil needs 'winter and open water' -> months [12]; §1.7 puts frazil risk 'from November' and §1.4 'before the ice forms' -> months [11, 12]
+
+====================================================================================================================
+FILE 16: ROBLOX IMPLEMENTATION AND APPENDICES B-C  (lines 2694-3002)
+====================================================================================================================
+  [PASS] K-62 §14.1 L2725 331 × 2 bytes = 662; u16 at 0.05 K spans 3,277 K
+  [PASS] K-63 §14.2 L2774 = §3.7's 469 × 14 × 4 = 26,264; × 4-8 sweeps × 2-3 passes = 210,112-630,336 node updates, 'a few hundred thousand'
+         ρ = 0.8β: held-n -11.4 %, fully implicit +15.3 %, linear-n +0.4 % growth-rate error
+         ρ = 0.9β: held-n -21.7 %, fully implicit +45.5 %, linear-n +2.2 % growth-rate error
+  [PASS] K-64 §14.2 comment 'runs 11% slow at 0.8 beta and 22% slow at 0.9 beta' for held n
+  [FAIL] C-36 §14.2 comment 'a fully implicit form errs the same amount the other way'
+         +15.3 % and +45.5 % against -11.4 % and -21.7 % (SPEC_REVIEW_AUDIT #24 has the same figures)
+  [FAIL] C-37 §14.2 snippet reads 'q' (an external source) that the spec never defines; 's[i] = beta[i]  n' is steady only with q = 0 at ρ = 0
+         lines defining q: none
+  [FAIL] C-38 §14.3 total of the listed blocks (fuel 6,020 + pools 3 + IHX 18 + SG 144 + turbines 4 + feed 10): computed 6,199 states vs spec 6,300 states (tolerance ±50, '≈ 6,300' read to two figures)
+  [FAIL] C-39 Appendix B: the glossary says shim rods are tagged 'SM', which is in neither code list; the 3 loop-outlet hydrogen meters (27 = 24 + 3) have no NN rule
+  [FAIL] C-40 Appendix C lists A5 before A4, and 7 file headers plus the README still say 'Rev A3' while the text carries A4/A5 changes
+
+====================================================================================================================
+ERRORS IN THE EARLIER AUDIT DOCUMENTS
+====================================================================================================================
+         250-750 band: one RR mid->edge 40.9 pcm = 55 min, full band 81.8 pcm = 109 min;
+         all three ganged mid->edge 122.7 pcm = 164 min, full band 327 min; old 400-700 band, one RR 550->700 mm: 25.2 pcm = 34 min
+  [FAIL] P-01 docs/DECISIONS.md D-028: 'ganging all three crosses the 250–750 mm band in about 33 minutes rather than 100'
+         33 min is one rod on the pre-A4 400-700 band (D-006); ganging is the SLOWER case (164 min mid-to-edge)
+  [FAIL] P-02 docs/DECISIONS.md F24 (and SPEC_REVIEW_AUDIT #10): 'independent hydraulic check ... ~14.5 MPa rise ... gives 9.1 MW per train'
+         file 20 and §7.5 give 1.0 -> 17.5 MPa = 16.5 MPa; the same check then gives 9.9 MW shaft, 10.3 MW electrical per train;
+         F24's conclusion (≈ 5 MW per pump, 12 MW motors wrong) stands
+
+====================================================================================================================
+SUMMARY
+====================================================================================================================
+  132 checks: 89 PASS, 43 FAIL
+  FAIL (findings reproduced): C-01, C-02, C-03, C-04, C-05, C-06, C-07, C-08, C-09, C-10, C-11, C-12, C-13, C-14, C-15, C-16, C-17, C-18, C-19, C-20, C-21, C-22, C-23, C-24, C-25, C-26, C-27, C-28, C-29, C-30, C-31, C-32, C-33, C-34, C-35, C-36, C-37, C-38, C-39, C-40, P-01, P-02
+  PASS (consistent): K-01, K-02, K-03a, K-03b, K-04, K-05, K-06, K-07, K-08, K-09, K-10, K-11, K-12a, K-12b, K-13a, K-13b, K-14a, K-14b, K-14c, K-15, K-16a, K-16b, K-17, K-18, K-19, K-20, K-21, K-22, K-23a, K-23b, K-23c, K-23d, K-23e, K-23f, K-24, K-25, K-26, K-27, K-28a, K-28b, K-29, K-30, K-31, K-32, K-33, K-34, K-35a, K-35b, K-35c, K-36, K-37, K-38, K-39, K-40, K-41, K-42, K-43, K-44, K-45, K-46, K-47, K-48, K-49, K-50, K-51, K-52, K-53, K-54, K-55, K-56, K-57, K-58, K-59, K-60, K-61, K-62, K-63, K-64
+  citations checked: all quoted lines match
+  unexpected outcomes (a K that failed or a C/P that passed): none
+
+====================================================================================================================
+APPENDIX: FILE-20 calc.py OUTPUT (RE-RUN, UNMODIFIED)
+====================================================================================================================
+TURBINE: We/kg=1142.8 kJ/kg  m_main/turbine=437.5 kg/s  heat/turbine=1194.5 MWt  eta_gross=41.86%
+ cold RH 292C, reheat frac 0.874, FW 239.6C, LP exhaust x=0.919, Tsat cond 32.9
+ extraction fractions m1..m7: [np.float64(0.0454), np.float64(0.0328), np.float64(0.037), np.float64(0.0528), np.float64(0.0289), np.float64(0.0972), np.float64(0.029)] cond flow frac 0.845
+ MFP power/train 9.8 MW
+PLANT: SG total 2389 MWt, per loop 796.3; reactor 2379 MWt; gross eta on reactor 42.04%
+ condenser duty/turbine 690 MWt, CW 15.3 m3/s at dT 11K
+SG/loop: steam 291.7 kg/s, EV 501.1 SH 169.9 RH 125.3 MW; Na 3112 kg/s; Tmid 445.1; EV exit 355.0C h=2756; pinch Na 360.2 vs sat 340.0 -> 20.2K
+ section: 99.5 MWt, steam 36.46 kg/s, RH steam 31.86 kg/s
+RH module UA 264 kW/K; check design T 505.0
+LOOP3 OUT split table (sB = share of loop2 steam to B):
+ sB=0.50 A   500 MWe RH 505.0C | B   167 MWe (steam-limited  167) RH 505.0C lim 100% | total   667
+ sB=0.60 A   467 MWe RH 508.1C | B   198 MWe (steam-limited  198) RH 494.6C lim 100% | total   665
+ sB=0.70 A   433 MWe RH 510.9C | B   229 MWe (steam-limited  229) RH 483.5C lim  94% | total   662
+ sB=0.75 A   417 MWe RH 512.2C | B   244 MWe (steam-limited  244) RH 478.0C lim  88% | total   660
+ sB=0.80 A   400 MWe RH 513.4C | B   259 MWe (steam-limited  259) RH 472.5C lim  83% | total   659
+ sB=0.90 A   367 MWe RH 515.5C | B   288 MWe (steam-limited  288) RH 462.0C lim  72% | total   655
+ sB=1.00 A   333 MWe RH 517.1C | B   311 MWe (steam-limited  317) RH 452.3C lim  62% | total   645
+PRIMARY flow 10694 kg/s, per pump 3565 kg/s = 4.13 m3/s; pump shaft 3.27 MW
+ fuel asm avg dT 183.7K outlet 558.7; hot asm inner 579, outer 583; LHR avg 27.7 kW/m
+ secondary per pump shaft 2.00 MW; vol 3.65 m3/s; pipe v DN900 5.9 m/s; hot leg delay 31s cold 32s
+POOL: V fp 1484 m3, V375 1448, V230 1395; level fp-230 0.64 m; fp-375 0.26 m; tau hot 58s cold 52s
+ cover gas at 230C (fixed moles): 0.074 MPa (gas 180C vs 300C)
+DECAY HEAT %: [(1, 6.35), (10, 3.92), (60, 2.66), (100, 2.38), (600, 1.59), (1800, 1.23), (3600, 1.04), (14400, 0.73), (28800, 0.6), (86400, 0.43), (259200, 0.3), (604800, 0.22)]
+SBO no heat sink: pool +200K after 4.9 h
+Na props T,rho,cp,k,mu(mPa s),psat(MPa):
+ 98 925.6 1.3831 89.4 0.688 1.602e-11
+ 150 914.1 1.3625 85.5 0.543 9.878e-10
+ 200 903.0 1.3434 81.9 0.452 2.199e-08
+ 250 891.8 1.3256 78.5 0.388 2.692e-07
+ 300 880.5 1.3094 75.4 0.341 2.121e-06
+ 375 863.5 1.2886 70.9 0.290 2.566e-05
+ 450 846.2 1.2722 66.8 0.254 1.841e-04
+ 520 830.0 1.2611 63.2 0.229 8.240e-04
+ 550 822.9 1.2576 61.8 0.220 1.447e-03
+ 600 811.2 1.2535 59.5 0.207 3.391e-03
+ 700 787.3 1.2517 55.3 0.186 1.426e-02
+ 800 763.0 1.2586 51.5 0.169 4.566e-02
+ 900 738.3 1.2743 48.0 0.156 1.195e-01
+ 950 725.7 1.2855 46.4 0.151 1.820e-01
+PART LOAD:
+ 100% Q100 out 550 Ns 320/520 ms 505 p 14.00 Tsat 337 fw 240 MWe 1000
+ 80% Q80 out 550 Ns 320/520 ms 505 p 14.00 Tsat 337 fw 231 MWe 783
+ 60% Q60 out 550 Ns 320/520 ms 505 p 14.00 Tsat 337 fw 222 MWe 573
+ 40% Q40 out 550 Ns 320/520 ms 505 p 14.00 Tsat 337 fw 210 MWe 371
+ 30% Q40 out 506 Ns 334/484 ms 472 p 14.00 Tsat 337 fw 204 MWe 273
+ 20% Q40 out 462 Ns 348/448 ms 440 p 11.50 Tsat 321 fw 197 MWe 178
+ 10% Q40 out 419 Ns 361/411 ms 408 p 9.00 Tsat 303 fw 188 MWe 86
+ 5% Q25 out 410 Ns 364/404 ms 401 p 7.75 Tsat 293 fw 182 MWe 42
+ROD S-curve (inserted frac -> worth frac): [(0.0, 0.0), (0.1, 0.006), (0.2, 0.049), (0.3, 0.149), (0.4, 0.306), (0.5, 0.5), (0.6, 0.694), (0.7, 0.851), (0.8, 0.951), (0.9, 0.994), (1.0, 1.0)]
+REACTIVITY: power defect -844 (Dop -680 ax -88 Na 37 pad -61 crdl -51); iso 230->375 -376; iso coeff@375 -2.41
+3 2 1.94 514.1 506.7
+3 1 3.04 513.8 510.1
+5 2 2.2 514.1 506.7
+5 1 3.42 510.6 506.9
+8 2 2.65 514.1 506.7
+8 1 4.08 505.8 502.1
+12 2 3.36 511.1 503.7
+12 1 5.12 499.3 495.6
+15 2 4.01 506.3 498.9
+15 1 6.05 494.4 490.7
+19 2 5.04 499.8 492.4
+19 1 7.5 487.8 484.1
