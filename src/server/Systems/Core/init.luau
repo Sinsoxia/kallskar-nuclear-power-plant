@@ -38,6 +38,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local System = require(script.Parent.Parent.Framework.System)
+local DecayHeat = require(script.Parent.DecayHeat)
 local Kinetics = require(script.Kinetics)
 local Mesh = require(script.Mesh)
 local Kallskar = ReplicatedStorage:WaitForChild("Kallskar")
@@ -57,10 +58,12 @@ local Core = System.extend({
 		"pools.hotPool_K",
 		"pools.coldPool_K",
 	},
-	readsLagged = { "fuel.coreAverage_K", "fuel.coreAverageSodium_K" },
+	-- decay heat is driven by this system's own power, so it arrives a tick late: 0.1 s against a 0.4 s fastest group
+	readsLagged = { "fuel.coreAverage_K", "fuel.coreAverageSodium_K", "decay.heat_W" },
 	writes = {
 		"core.power_pctFP",
 		"core.thermalPower_W",
+		"core.thermalPower_pctFP",
 		"core.k",
 		"core.rho_pcm",
 		"core.feedback_pcm",
@@ -165,17 +168,27 @@ function Core.init(self: any, ctx: any)
 	self.nFloor = cfg.Instruments.wideRange.span_pctFP[1] / 100
 	self.source = self.nFloor * (-shutdown_pcm / self.pcmPerUnit)
 
+	--[[
+		Thermal power is prompt fission heat plus decay heat (D-037). The prompt share is 1 − f_ref, the part of
+		fission energy that is not deferred into §3.6's decay groups at steady state on the reference history, so
+		that a plant seated there makes exactly its rated heat at n = 1.
+	]]
+	self.promptShare = 1 - DecayHeat.referenceFraction(cfg)
+	self.thermal_W = 0
+
 	self.worth0_pcm = nil -- latched on the first step, when RodDrives has published
 	self.n = 0
 	self.rho_pcm = 0
 	self.promptCritical = false
+	self:updateThermal()
 	self:publish()
 end
 
 function Core.publish(self: any)
 	local port = self.port
 	port:write("core.power_pctFP", self.n * 100)
-	port:write("core.thermalPower_W", self.n * self.rated_W)
+	port:write("core.thermalPower_W", self.thermal_W)
+	port:write("core.thermalPower_pctFP", self.thermal_W / self.rated_W * 100)
 	port:write("core.rho_pcm", self.rho_pcm)
 	port:write("core.feedback_pcm", (self.pk.feedback or 0) * self.pcmPerUnit)
 	-- ρ = (k − 1)/k, so k = 1/(1 − ρ)
@@ -244,9 +257,16 @@ function Core.readDrivers(self: any): Kinetics.Drivers
 	return drivers
 end
 
--- Spread the pin power over the mesh: assembly share × axial shape
+-- Thermal power: prompt fission heat plus the decay heat DecayHeat published last tick
+function Core.updateThermal(self: any)
+	local decay_W = self.port:read("decay.heat_W") or 0
+	self.thermal_W = self.n * self.rated_W * self.promptShare + decay_W
+end
+
+-- Spread the thermal power over the mesh: assembly share × axial shape. Decay heat goes where fission heat does.
 function Core.spreadPower(self: any)
-	local pinTotal = self.n * self.rated_W * self.pinShare
+	self:updateThermal()
+	local pinTotal = self.thermal_W * self.pinShare
 	local power, axial, L = self.pinPower, self.axial, self.L
 	for a = 1, self.NA do
 		local share = self.assemblies[a] * pinTotal
@@ -334,7 +354,7 @@ function Core.getState(self: any): { [string]: any }
 	local breakdown = self.pk:breakdown_pcm()
 	return {
 		power_pctFP = self.n * 100,
-		thermalPower_MWt = self.n * self.rated_W / 1e6,
+		thermalPower_MWt = self.thermal_W / 1e6,
 		rho_pcm = self.rho_pcm,
 		k = 1 / (1 - self.rho_pcm / self.pcmPerUnit),
 		rodWorth_pcm = self.worth0_pcm,

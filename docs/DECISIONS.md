@@ -564,3 +564,68 @@ regulating rod from a shut-down core**. That is a startup, and it has to be the 
 trip switches rod auto to manual (logged), and it stays there until someone puts it back in, as rod control does on
 real plants. A runback is different: rod auto stands down during it and takes over again afterwards. Flow auto is
 unaffected, because it only follows the §9.2 flow programme down to its floor.
+
+## D-036 The plant boots with beginning-of-cycle decay heat: 1.23 %, 29 MW — Proposed
+§14.6 returns the plant, at boot and on an owner reset, to "hot standby at beginning of cycle". Beginning of cycle
+is the state after §2.3's refuelling outage, following a 160 EFPD cycle, which is also §3.6's own reference history.
+§2.3 gives the outage as "Timed wait (OD-8), 30 min real", and §0.2 puts the physics on "×1 real time, always".
+**Decision:** boot with 160 EFPD at full power followed by 30 min of shutdown: **1.228 % of rated, 29.2 MW**
+(§3.6's 30 min row). It is the most literal reading, and it is the upper bound of the post-outage readings. The
+reset lands in Mode 3 at 375 °C, not Mode 5 at 230 °C, so any heat-up time would only lengthen it. See F34 for the
+alternatives.
+
+## D-037 Decay heat is 22 exponential groups driven by fission power, and thermal = prompt + decay — Proposed
+§3.6 gives decay heat after a trip from constant power. A plant needs it for any history. **Decision:**
+`Systems/DecayHeat` carries the formula as 22 groups, dHᵢ/dt = λᵢ(Eᵢ·P − Hᵢ), fitted to its kernel
+(0.0132·τ^−1.2) by non-negative least squares on a fixed 0.4-decade grid (`tools/derive/decay_heat.py`, 47/47
+checks). After a trip from 160 EFPD the groups reproduce every §3.6 table entry to its printed precision (within
+6·10⁻⁵ of the formula over 1 s–7 d). Every other history checked, 10 s to 640 EFPD, stays within 5.3·10⁻⁴,
+including seven it was not fitted to.
+- **Driver:** the fission power `core.power_pctFP`, which already contains the delayed-neutron tail. Nothing adds
+  a second one (§3.6).
+- **Energy:** Core's thermal power is n·rated·(1 − f_ref) + decay heat. f_ref = Σ Eᵢ(1 − e^(−λᵢ·160 EFPD)) = 9.28 %
+  is the decay share of steady power on the reference history, so a seated plant makes exactly its rated heat. It is
+  above §3.6's 6.35 % at 1 s because it includes the groups below 1 s, where the formula has no value.
+- **Split of power channels:** `core.power_pctFP` stays the neutron power, which Detectors, Protection's P/Q and
+  permissives, and flow auto read. `core.thermalPower_W` and `_pctFP` are the heat. The pins carry thermal power,
+  so decay heat reaches the fuel, coolant and pools by the same path as fission heat. §4.2's natural circulation now
+  reads thermal power: buoyancy comes from heat, and on the neutron power it collapsed within minutes of a trip.
+- **Clock:** the physics clock (§0.2), exact update per tick, so ×10 acceleration speeds it with everything else.
+- **Seat and persistence:** InitialConditions seats the groups on the reference history at the seated power. The
+  inventory is saved per §14.6. Offline time is not aged.
+
+## D-032 amendment — secondary flow follows the primary flow the pumps deliver
+Before decay heat existed it did not matter that the stand-in ran secondary flow on the load's programme. With
+decay heat, a trip with flow auto out left the secondary on its 25 % no-load flow against primary at 100 %. The
+primary barely cooled across the exchangers, and the whole pool had to rise to shed the heat. **Decision:** each
+loop's secondary flow is the primary flow's fraction of rated, times §4.3's 1,556 kg/s per unit. §9.2's table makes
+the two equal at every row (`tests/PartLoadSpec`), so nothing changes on the programme. **Known simplification:** a
+primary pump trip now slows the secondary too, which the real secondary pumps would not do. The real loops replace
+this stand-in.
+
+## F34 How long §2.3's refuelling outage lasts physically is not stated — Open
+"30 min real" is the player's timed wait (OD-8). What it stands for physically decides the decay heat at beginning of
+cycle, and so at every boot and reset:
+- ×1 physics (D-036): 1.23 %, 29 MW
+- ×10 acceleration: 0.68 %, 16 MW
+- ×12 grid clock: 0.65 %, 16 MW
+- ×360 slow-process clock, the one burnup runs on: 7.5 d, 0.21 %, 5 MW
+- a real weeks-long outage: about 0.1 %, 2.5 MW
+**For Aqua:** choose one. It is a single Config number (`DecayHeat.boot.shutdown_s`).
+
+## F35 Decay-heat history follows physics time, burnup follows the ×360 clock — Open
+Long-lived groups fill over days of physics time. One real hour at a new power moves them only an hour's worth,
+while burnup advances 15 EFPD in that same hour. The seat and the boot carry §3.6's full reference history, so
+trips from a seated plant follow §3.6 exactly. A plant run for hours of real time at a new power carries a long
+tail that still reflects its seated history. **For Aqua:** accept this, or have the slowest groups fill on the
+slow-process clock (which makes their post-trip decay ambiguous).
+
+## F36 The pool model has no steel heat capacity, so a pool with no sink heats 1.7× too fast — Open
+D-021 keeps only the sodium inventory: 1,262 t, which is 1,602 MJ/K at Appendix A's mean c_p over 375–575 °C.
+§4.1 gives "sodium plus internals ≈ 2,400 MJ/K", and §4.5's coping time integrates into it.
+`tools/derive/decay_heat.py` confirms the §3.6 curve delivers 477 GJ in 6.5 h, which is 2,386 MJ/K × 200 K. With
+decay heat now in the plant and no sink (a station blackout, S-15, S-16), the model's pool would rise 200 K in
+**3.8 h instead of 6.5 h** (the same integral, solved for 1,602 MJ/K). **To do before DRACS and the blackout
+scenarios:** add the internals' heat capacity to the pools without changing §4.1's mixing times. Two related effects
+remain unmodelled: §3.1's Np-239 +30 pcm over the week after shutdown, and §2.2 ring 15's stored assemblies, which
+hold a quarter of the vessel's decay heat outside the pins.

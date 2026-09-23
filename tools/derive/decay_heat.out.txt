@@ -1,0 +1,178 @@
+Decay heat, §3.6: P/P0 = 0.066 (t^-0.2 - (t + T_op)^-0.2) as exponential groups
+  relative tolerance from the table's finest entry: 0.005 / 6.35 = 7.874e-04
+
+1. The formula against the §3.6 table (T_op = 160 EFPD), within its printed rounding
+     t        formula %    table %   diff pp    formula MW  table MW
+     1 s        6.35373      6.35   +0.00373      151.22      151
+     10 s       3.91805      3.92   -0.00195       93.25       93
+     1 min      2.66387      2.66   +0.00387       63.40       63
+     10 min     1.58990      1.59   -0.00010       37.84       38
+     30 min     1.22771      1.23   -0.00229       29.22       29
+     1 h        1.03691      1.04   -0.00309       24.68       25
+     4 h        0.72624      0.73   -0.00376       17.28       17
+     1 d        0.43361      0.43   +0.00361       10.32       10
+     3 d        0.30017      0.30   +0.00017        7.14        7
+     7 d        0.21632      0.22   -0.00368        5.15        5
+  [ok] formula at 1 s    within ±0.005 pp of the table's 6.35 %
+  [ok] formula at 10 s   within ±0.005 pp of the table's 3.92 %
+  [ok] formula at 1 min  within ±0.005 pp of the table's 2.66 %
+  [ok] formula at 10 min within ±0.005 pp of the table's 1.59 %
+  [ok] formula at 30 min within ±0.005 pp of the table's 1.23 %
+  [ok] formula at 1 h    within ±0.005 pp of the table's 1.04 %
+  [ok] formula at 4 h    within ±0.005 pp of the table's 0.73 %
+  [ok] formula at 1 d    within ±0.005 pp of the table's 0.43 %
+  [ok] formula at 3 d    within ±0.005 pp of the table's 0.30 %
+  [ok] formula at 7 d    within ±0.005 pp of the table's 0.22 %
+  [ok] formula x 2,380 MWt within ±0.5 MW of every MW entry
+
+2. Choosing the lambda grid
+   Upper end: the fastest group has to resolve t = 1 s, the table's first point; anything much faster is not
+   constrained by the data at all and only adds to the t = 0+ value. Lower end: the (t + T_op)^-0.2 term is
+   carried by groups slower than 1 / (t + T_op); for the longest history (640 EFPD, §2.3) and t = 7 d that
+   is 1.789e-08 /s, so each grid runs down to its first point below it. Candidates are anchored on decades
+   (lambda = 10^(k s)); the choice is the smallest N whose worst error over the FITTED histories is under the
+   tolerance, ties to the lower upper end (less unconstrained sub-second content).
+     spacing   lambda_max   N   worst fitted   fRef
+     10^0.500     1.0000   17   4.43e-03      0.08037
+     10^0.500     3.1623   18   3.43e-03      0.09948
+     10^0.500    10.0000   19   3.43e-03      0.09948
+     10^0.400     1.0000   21   4.15e-03      0.08046
+     10^0.400     2.5119   22   5.15e-04  *   0.09280
+     10^0.400     6.3096   23   5.15e-04  *   0.10860
+     10^0.333     1.0000   25   3.49e-03      0.08090
+     10^0.333     2.1544   26   2.13e-04  *   0.09005
+     10^0.333     4.6416   27   6.68e-05  *   0.10318
+   (* = under 7.87e-04)  chosen: N = 22, lambda 2.5119 ... 1.0e-08 /s, ratio 2.5119 (10^0.4)
+  [ok] no grid whose fastest group is 1 /s meets the tolerance (t = 1 s needs faster groups)
+  [ok] N = 22 is within the tick budget of 12-24 groups
+   fRef across the passing grids: 0.0901, 0.0928, 0.1032, 0.1086 -- set by the grid's upper end,
+   not by the data: the formula has no finite value at t = 0 (see 6).
+
+3. The fit: NNLS on relative error, 117 times per history x 6 histories, reference weight 2.2361
+     i   lambda /s            1/lambda     E_i (fraction)         E_i (1 - e^-l T_ref)
+     1   2.511886431510e+00     0.398 s   1.665613225286e-02   1.665613225286e-02
+     2   1.000000000000e+00         1 s   1.310777467655e-02   1.310777467655e-02
+     3   3.981071705535e-01      2.51 s   1.105933697848e-02   1.105933697848e-02
+     4   1.584893192461e-01      6.31 s   9.140018973108e-03   9.140018973108e-03
+     5   6.309573444802e-02      15.8 s   7.630275380385e-03   7.630275380385e-03
+     6   2.511886431510e-02      39.8 s   6.331213332067e-03   6.331213332067e-03
+     7   1.000000000000e-02    1.67 min   5.275996797679e-03   5.275996797679e-03
+     8   3.981071705535e-03    4.19 min   4.380555373233e-03   4.380555373233e-03
+     9   1.584893192461e-03    10.5 min   3.650456859969e-03   3.650456859969e-03
+    10   6.309573444802e-04    26.4 min   3.030863066914e-03   3.030863066914e-03
+    11   2.511886431510e-04      1.11 h   2.524887478942e-03   2.524887478942e-03
+    12   1.000000000000e-04      2.78 h   2.096964612720e-03   2.096964612720e-03
+    13   3.981071705535e-05      6.98 h   1.747162688639e-03   1.747162688639e-03
+    14   1.584893192461e-05      17.5 h   1.449739480106e-03   1.449739480106e-03
+    15   6.309573444802e-06      1.83 d   1.211103683807e-03   1.211103683807e-03
+    16   2.511886431510e-06      4.61 d   9.980801167817e-04   9.980801167817e-04
+    17   1.000000000000e-06      11.6 d   8.463906012330e-04   8.463897619974e-04
+    18   3.981071705535e-07      29.1 d   6.785458107321e-04   6.757822541444e-04
+    19   1.584893192461e-07        73 d   6.028764999226e-04   5.354690181641e-04
+    20   6.309573444802e-08       183 d   4.378198183462e-04   2.548041041479e-04
+    21   2.511886431510e-08       461 d   4.188866755305e-04   1.228873312892e-04
+    22   1.000000000000e-08   1.16e+03 d   5.583063945272e-04   7.208313224854e-05
+   NNLS: 22 of 22 groups free; largest |gradient| on a free group 1.84e-15, Lawson-Hanson tolerance 3.02e-11
+  [ok] Lawson-Hanson optimality: no group held at zero has a positive gradient
+  [ok] Lawson-Hanson optimality: the gradient vanishes on every free group (to the algorithm's tolerance)
+
+4. The groups against the formula and the table, T_op = 160 EFPD
+     t        formula %    groups %   table %   groups - formula pp
+     1 s        6.35373     6.35334     6.35    -0.000384
+     10 s       3.91805     3.91795     3.92    -0.000092
+     1 min      2.66387     2.66382     2.66    -0.000048
+     10 min     1.58990     1.58993     1.59    +0.000032
+     30 min     1.22771     1.22770     1.23    -0.000006
+     1 h        1.03691     1.03692     1.04    +0.000015
+     4 h        0.72624     0.72622     0.73    -0.000015
+     1 d        0.43361     0.43361     0.43    -0.000008
+     3 d        0.30017     0.30016     0.30    -0.000007
+     7 d        0.21632     0.21632     0.22    -0.000002
+  [ok] groups at 1 s    within ±0.005 pp of the formula
+  [ok] groups at 10 s   within ±0.005 pp of the formula
+  [ok] groups at 1 min  within ±0.005 pp of the formula
+  [ok] groups at 10 min within ±0.005 pp of the formula
+  [ok] groups at 30 min within ±0.005 pp of the formula
+  [ok] groups at 1 h    within ±0.005 pp of the formula
+  [ok] groups at 4 h    within ±0.005 pp of the formula
+  [ok] groups at 1 d    within ±0.005 pp of the formula
+  [ok] groups at 3 d    within ±0.005 pp of the formula
+  [ok] groups at 7 d    within ±0.005 pp of the formula
+  [ok] groups also round to the table's printed value at all ten points
+  [ok] groups within 7.87e-04 of the formula everywhere in [1 s, 7 d] (max 6.05e-05)
+   beyond the fitted span (information): 14 d -4.6e-05, 30 d -4.3e-05, 90 d +4.0e-04, 160 d -1.6e-04, 365 d +1.8e-03
+
+5. Other histories: max relative error over [1 s, 7 d] against the tolerance 7.87e-04
+  [ok] T_op = 1 h       (fitted    ) max relative error 5.15e-04
+  [ok] T_op = 1 d       (fitted    ) max relative error 3.92e-04
+  [ok] T_op = 30 d      (fitted    ) max relative error 6.08e-05
+  [ok] T_op = 1 yr      (fitted    ) max relative error 6.02e-05
+  [ok] T_op = 640 EFPD  (fitted    ) max relative error 5.97e-05
+  [ok] T_op = 10 s      (not fitted) max relative error 5.30e-04
+  [ok] T_op = 1 min     (not fitted) max relative error 5.29e-04
+  [ok] T_op = 10 min    (not fitted) max relative error 5.15e-04
+  [ok] T_op = 4 h       (not fitted) max relative error 5.10e-04
+  [ok] T_op = 7 d       (not fitted) max relative error 1.35e-04
+  [ok] T_op = 90 d      (not fitted) max relative error 1.09e-04
+  [ok] T_op = 480 EFPD  (not fitted) max relative error 9.27e-05
+
+6. Stability, the tick update, and the decay fraction at t = 0+
+  [ok] every E_i >= 0 (NNLS), so decay power is never negative for P >= 0
+  [ok] every lambda_i > 0: each state is a decaying mode, eigenvalues -lambda_i < 0
+   exact update factors exp(-lambda dt): 0.7779 ... 0.999999999000 at 0.1 s; forward Euler: lambda_max dt = 0.251 at 0.1 s, 2.512 at the x10 clock
+  [ok] forward Euler would also be monotone at the 0.1 s tick (lambda_max dt < 1)
+   NOTE: at the §0.2 x10 clock (1 s of plant time per tick) Euler has lambda_max dt = 2.51 > 2 and diverges; use the exact update
+  [ok] tick-by-tick exact update (160 EFPD in 1 h steps, then 0.1 s ticks) matches the closed form: 4.9e-13 <= 1.8e-11
+   fRef = sum E_i (1 - exp(-lambda_i x 160 EFPD)) = 0.092797977354  (9.280 % of P0)
+   t = 0+ after 160 EFPD at P0: the groups give the same 9.280 %. The formula has no value there
+   (t^-0.2 -> infinity); t = 0+ lies below the table's 1 s start, where the formula is 6.354 %.
+   The groups' 0+ value equals the formula at t = 0.160 s; 1.666 %P0 of it sits in groups
+   faster than 1 s, which the table cannot constrain. Prompt heat scale for rated steady power: 1 - fRef = 0.907202022646
+  [ok] t = 0+ value is finite and above the formula at 1 s (the groups decay monotonically)
+
+7. §4.5 coping time: 'the pool rises 200 K in ~6.5 h ... (the §3.6 curve integrated into 1,250 t of sodium
+   and 1,500 t of steel)'. A consistency check on the spec, not an input to the model.
+   decay energy 0 -> 6.5 h: 200.5048 full-power s = 477.20 GJ, so the pool heat capacity the spec implies is 2,386.0 MJ/K
+  [ok] that agrees with §4.1's ~2,400 MJ/K to its two significant figures (2,386 vs 2,400 ± 50)
+  [ok] the groups reach that energy at 6.50026 h, within ±0.05 h of the formula's 6.5 h
+   sodium: 1,250 t from the mixed 466.7 °C to 666.7 °C, Appendix A mean c_p 1.2574 kJ/(kg K) = 1,571.8 MJ/K
+   steel c_p the spec's 6.5 h implies (1,500 t): 0.5428 kJ/(kg K)
+     over the ±0.05 h the printed 6.5 h allows: 0.5337 to 0.5519; sodium starting at 375 or 550 °C instead: 0.5330 to 0.5465
+   published: NIST SRM 316L (Pichler et al. 2020, Table 7) averages 0.5822 kJ/(kg K) over the same
+     467 -> 667 °C (0.5638 from 375 °C, 0.5972 from 550 °C); with it the curve gives 6.72 h.
+     The spec's own file-20 basis (1.27 and 0.55 kJ/(kg K)) gives 6.60 h (F17's 6.60 h).
+  [ok] implied steel c_p is an austenitic-stainless magnitude: inside 316L's measured 0.528-0.624 kJ/(kg K) (Table 7, 200-980 °C)
+   FINDING (consistency only, not a model input): the implied 0.543 is what 316L has near 340 °C, and
+     6.8 % below 316L at the transient's own temperatures; 316L would make the coping time 6.72 h rather than ~6.5 h.
+     The spec does not say what the 1,500 t of steel is (§4.1 vessel 316LN; §2.3 cladding 15-15Ti, wrappers
+     ferritic-martensitic), so this stays an inversion: '~6.5 h' holds to about 4 %, not to its ±0.05 h.
+
+8. Config-ready groups (Luau)
+	-- derived: tools/derive/decay_heat.py (fit to §3.6 over 1 s .. 7 d, T_op 1 h .. 640 EFPD)
+	groups = {
+		{ lambda_ps = 2.51188643150958, fraction = 0.016656132252857617 },   -- 1/lambda 0.398 s
+		{ lambda_ps = 1.0, fraction = 0.013107774676548778 },   -- 1/lambda 1 s
+		{ lambda_ps = 0.3981071705534972, fraction = 0.011059336978483162 },   -- 1/lambda 2.51 s
+		{ lambda_ps = 0.15848931924611134, fraction = 0.009140018973108179 },   -- 1/lambda 6.31 s
+		{ lambda_ps = 0.0630957344480193, fraction = 0.007630275380384767 },   -- 1/lambda 15.8 s
+		{ lambda_ps = 0.025118864315095794, fraction = 0.006331213332066559 },   -- 1/lambda 39.8 s
+		{ lambda_ps = 0.01, fraction = 0.005275996797679278 },   -- 1/lambda 1.67 min
+		{ lambda_ps = 0.003981071705534969, fraction = 0.004380555373232711 },   -- 1/lambda 4.19 min
+		{ lambda_ps = 0.0015848931924611126, fraction = 0.003650456859968945 },   -- 1/lambda 10.5 min
+		{ lambda_ps = 0.000630957344480193, fraction = 0.0030308630669138976 },   -- 1/lambda 26.4 min
+		{ lambda_ps = 0.00025118864315095795, fraction = 0.0025248874789420128 },   -- 1/lambda 1.11 h
+		{ lambda_ps = 0.0001, fraction = 0.0020969646127200954 },   -- 1/lambda 2.78 h
+		{ lambda_ps = 3.9810717055349695e-05, fraction = 0.00174716268863891 },   -- 1/lambda 6.98 h
+		{ lambda_ps = 1.5848931924611107e-05, fraction = 0.0014497394801063566 },   -- 1/lambda 17.5 h
+		{ lambda_ps = 6.30957344480193e-06, fraction = 0.0012111036838068784 },   -- 1/lambda 1.83 d
+		{ lambda_ps = 2.511886431509577e-06, fraction = 0.0009980801167816548 },   -- 1/lambda 4.61 d
+		{ lambda_ps = 1e-06, fraction = 0.000846390601233005 },   -- 1/lambda 11.6 d
+		{ lambda_ps = 3.981071705534969e-07, fraction = 0.00067854581073212 },   -- 1/lambda 29.1 d
+		{ lambda_ps = 1.584893192461111e-07, fraction = 0.0006028764999226125 },   -- 1/lambda 73 d
+		{ lambda_ps = 6.30957344480193e-08, fraction = 0.0004378198183462377 },   -- 1/lambda 183 d
+		{ lambda_ps = 2.511886431509577e-08, fraction = 0.0004188866755305189 },   -- 1/lambda 461 d
+		{ lambda_ps = 1e-08, fraction = 0.0005583063945271752 },   -- 1/lambda 1.16e+03 d
+	},
+	referenceFraction = 0.09279797735423127,   -- fRef: sum fraction (1 - exp(-lambda 160 EFPD))
+
+47/47 checks pass

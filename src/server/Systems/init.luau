@@ -16,7 +16,7 @@ local classes: { any } = {
 	require(script.Detectors),
 	require(script.Protection),
 	require(script.AutoControls),
-	-- DecayHeat joins here next
+	require(script.DecayHeat),
 }
 
 return classes

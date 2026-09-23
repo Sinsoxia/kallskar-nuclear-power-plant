@@ -234,7 +234,8 @@ button(controls, "RESET", function()
 end)
 
 local reactor = section("reactor")
-local vPower = row(reactor, "Power")
+local vPower = row(reactor, "Neutron power")
+local vThermal = row(reactor, "Thermal / decay heat")
 local vRho = row(reactor, "Reactivity ρ")
 local vK = row(reactor, "k effective")
 local vPeriod = row(reactor, "Period")
@@ -321,7 +322,9 @@ snapshotRemote.OnClientEvent:Connect(function(d)
 		banner.Text = string.format("  plant normal · %s · mode %d", power(d.power), d.mode)
 	end
 
-	vPower.Text = string.format("%s   (%.0f MWt)", power(d.power), d.mwt)
+	vPower.Text = power(d.power)
+	-- after a trip these part company: the neutrons are gone in minutes, the heat stays for hours (§3.6)
+	vThermal.Text = string.format("%.2f %%FP  %.0f MWt   (decay %.1f MW)", d.thermal, d.mwt, d.decayMW)
 	vRho.Text = string.format("%+.1f pcm", d.rho)
 	vRho.TextColor3 = if math.abs(d.rho) > 200 then WARN else INK
 	vK.Text = fmt(d.k, 5)

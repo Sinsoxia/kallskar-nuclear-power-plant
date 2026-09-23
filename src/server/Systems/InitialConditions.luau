@@ -11,7 +11,8 @@
 	So every state is seated, each against what the systems before it have published:
 
 	  1. the pumps at §9.2's flow for the power, and the heat sink at the same load
-	  2. the core at the power, so its pin powers are spread
+	  2. the decay heat on §3.6's reference history at that power (D-037), then the core at the power, so its
+	     pin powers are spread with the decay heat already in them
 	  3. the pools around §9.2's 375 °C core inlet, so the fuel sees its inlet
 	  4. the fuel settled to its exact steady state (FuelThermal.settle)
 	  5. the pools again, now mixing the settled fuel outlet into the hot pool
@@ -35,7 +36,7 @@ export type Seated = {
 	mode: number,
 }
 
-local REQUIRED = { "Core", "FuelThermal", "Pools", "PrimaryPumps", "IHX", "RodDrives" }
+local REQUIRED = { "Core", "FuelThermal", "Pools", "PrimaryPumps", "IHX", "RodDrives", "DecayHeat" }
 
 function InitialConditions.seatAtPower(
 	systems: { [string]: any },
@@ -59,12 +60,14 @@ function InitialConditions.seatAtPower(
 	local flow_pct = PartLoad.flow_pct(config, power_pctFP)
 	local inlet_K = config.Program.partLoad.coreInlet_C + config.Units.kelvinOffset_K
 
-	-- 1–2: the flow, the load and the power
+	-- 1–2: the flow, the load, the decay heat and the power. Decay heat first: thermal power is prompt fission
+	-- heat plus decay heat, and it balances the load only when the decay heat is the reference history's share.
 	local ok, why = pumps:seat(flow_pct)
 	if not ok then
 		return nil, why
 	end
 	ihx:setLoad(power_pctFP)
+	systems.DecayHeat:seat(power_pctFP / 100)
 	core:setPower(power_pctFP / 100)
 
 	-- 3–6: the thermal state, inlet first, then the fuel, then the hot pool it feeds

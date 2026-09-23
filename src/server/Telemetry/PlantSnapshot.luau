@@ -93,8 +93,10 @@ function PlantSnapshot.build(self: any): { [string]: any }
 		t = self.clock.sim,
 		mode = g("program.mode", 0),
 		-- reactor
-		power = g("core.power_pctFP", 0),
-		mwt = g("core.thermalPower_W", 0) / 1e6,
+		power = g("core.power_pctFP", 0), -- neutron (fission) power, what the instruments read
+		mwt = g("core.thermalPower_W", 0) / 1e6, -- heat: prompt fission plus decay (D-037)
+		thermal = g("core.thermalPower_pctFP", 0),
+		decayMW = g("decay.heat_W", 0) / 1e6,
 		rho = g("core.rho_pcm", 0),
 		k = g("core.k", 0),
 		period = g("detectors.periodMedian_s", 0),

@@ -38,10 +38,14 @@
 	The cold leg is kept inside what the steam plant can give. It is never colder than §9.2's programme cold leg
 	for the load (320 °C at full load, 348 °C at 20 %FP; Systems/PartLoad), never warmer than 375 °C, which is
 	the no-load programme and hot standby's own temperature, and never warmer than the pool it faces, because a
-	steam generator cannot heat sodium. Secondary flow follows §9.2's flow programme. The load moves at §7.1's
-	5 %/min, and at LCO-10's 1 %/min above 40 %. A per-loop command overrides the inlet or flow of one loop,
-	which is how inlet-temperature feedback and a lost loop are driven by hand; the programme loops then carry
-	whatever the held loop does not.
+	steam generator cannot heat sodium. Secondary flow follows the primary flow the pumps deliver, which §9.2's
+	table makes equal to it at every row (Systems/PartLoad); holding them together keeps each exchanger at its
+	design capacity ratio when the pumps are off the programme. On the programme alone, a trip with flow auto
+	out would leave the secondary on its 25 % no-load flow against primary at 100 %; the primary would then
+	barely cool across the exchangers, and the whole pool would have to rise to shed the decay heat. The load
+	moves at §7.1's 5 %/min, and at LCO-10's 1 %/min above 40 %. A per-loop command overrides the inlet or flow
+	of one loop, which is how inlet-temperature feedback and a lost loop are driven by hand; the programme loops
+	then carry whatever the held loop does not.
 
 	Why solve for the load rather than pin §9.2's cold leg (F33): with §4.3's UA held constant (D-022) the
 	exchangers are far more effective at part flow than §9.2's temperatures imply — its 40 % row repeats the
@@ -170,6 +174,7 @@ function IHX.init(self: any, ctx: any)
 	self.loadLimitAbove = loading.limitAbove_pct
 	self.rated_W = cfg.Units.ratedThermal_MWt * 1e6
 	self.warmest_K = cfg.Program.partLoad.coreInlet_C + self.kelvin -- the no-load programme: hot standby
+	self.ratedPrimary_kgps = cfg.Primary.pumps.ratedFlowTotal_kgps -- F30: the total is the authoritative figure
 	self.load = 0
 	self.loadDemand = 0
 	self.lastScram = "none"
@@ -211,7 +216,8 @@ end
 function IHX.solveAtProgramme(self: any)
 	local flow = PartLoad.flow_pct(self.config, self.load) / 100
 	local hotPool = PartLoad.outlet_C(self.config, self.load / 100, flow) + self.kelvin
-	self:solve(hotPool, self.cfg.primaryFlowEach_kgps * self.count * flow)
+	self:applyFlows(self.ratedPrimary_kgps * flow)
+	self:solve(hotPool, self.ratedPrimary_kgps * flow)
 end
 
 -- Solve again against the last hot pool and flow, so a command shows in the state at once rather than next tick
@@ -222,9 +228,15 @@ function IHX.resolve(self: any)
 	end
 end
 
--- Every loop's secondary flow from the programme, except where an override holds it by hand
-function IHX.applyFlows(self: any)
-	local flow = PartLoad.secondaryFlow_frac(self.config, self.load) * self.cfg.secondaryFlowEach_kgps
+--[[
+	Every loop's secondary flow, except where an override holds it by hand: the primary flow's fraction of rated,
+	applied to §4.3's secondary flow (see the header). With no primary flow given, as before the pools have
+	published, it is the programme's flow for the load, which is the same number on the programme.
+]]
+function IHX.applyFlows(self: any, primaryFlow_kgps: number?)
+	local fraction = if primaryFlow_kgps then primaryFlow_kgps / self.ratedPrimary_kgps
+		else PartLoad.secondaryFlow_frac(self.config, self.load)
+	local flow = fraction * self.cfg.secondaryFlowEach_kgps
 	for _, loop in self.loops do
 		loop.flowEach_kgps = loop.flowOverride_kgps or flow
 	end
@@ -301,7 +313,6 @@ end
 function IHX.setLoad(self: any, load_pct: number)
 	self.load = math.clamp(load_pct, 0, 100)
 	self.loadDemand = self.load
-	self:applyFlows()
 	self:solveAtProgramme()
 	self:publish()
 end
@@ -424,7 +435,7 @@ function IHX.step(self: any, dt: number)
 	end
 	self.lastScram = scram
 	self:rampLoad(dt)
-	self:applyFlows()
+	self:applyFlows(flow)
 	self:solve(hotPool, flow)
 	self:publish()
 end
@@ -493,7 +504,7 @@ IHX.commands = {
 			return { ok = false, reason = "secondary inlet must be between 150 and 500 °C" }
 		end
 		self.loops[l].inletOverride_K = value + self.kelvin
-		self:applyFlows()
+		self:applyFlows(self.lastFlow_kgps)
 		self:resolve()
 		if self.log then
 			self.log:record("loop.secondary.inlet", actor, `loop {l}`, string.format("%.0f °C", value), "override")
@@ -511,7 +522,7 @@ IHX.commands = {
 			return { ok = false, reason = "secondary flow must be a number, kg/s per unit" }
 		end
 		self.loops[l].flowOverride_kgps = value
-		self:applyFlows()
+		self:applyFlows(self.lastFlow_kgps)
 		self:resolve()
 		if self.log then
 			self.log:record("loop.secondary.flow", actor, `loop {l}`, string.format("%.0f kg/s per unit", value), "override")
@@ -530,7 +541,7 @@ IHX.commands = {
 		end
 		loop.inletOverride_K = nil
 		loop.flowOverride_kgps = nil
-		self:applyFlows()
+		self:applyFlows(self.lastFlow_kgps)
 		self:resolve()
 		if self.log then
 			self.log:record("loop.secondary.program", actor, `loop {l}`, nil, "on programme")

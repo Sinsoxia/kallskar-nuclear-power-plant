@@ -18,7 +18,8 @@
 
 	Pump heat into the sodium is the shaft power, which scales as N³ and totals the §4.2 figure of ≈ 10 MWt at rated.
 
-	Inputs:  core.power_pctFP        for the natural-circulation floor
+	Inputs:  core.thermalPower_pctFP for the natural-circulation floor: buoyancy comes from heat, so after a trip
+	                                 it is decay heat that keeps the sodium moving, not the neutron power
 	         pools.coverGas_MPa      start interlock (≥ 0.105 MPa)
 	         pools.coldPool_K        start interlock (sodium ≥ 180 °C)
 ]]
@@ -34,7 +35,7 @@ type CommandResult = Types.CommandResult
 local PrimaryPumps = System.extend({
 	name = "PrimaryPumps",
 	lane = "fast",
-	reads = { "core.power_pctFP", "pools.coverGas_MPa", "pools.coldPool_K" },
+	reads = { "core.thermalPower_pctFP", "pools.coverGas_MPa", "pools.coldPool_K" },
 	readsLagged = { "auto.flowOn", "auto.pumpSpeedDemand_pct" },
 	writes = {
 		"primary.coreFlow_kgps",
@@ -104,8 +105,9 @@ function PrimaryPumps.publish(self: any)
 			running += 1
 		end
 	end
-	-- natural circulation is a floor on the whole loop, not an extra pump (§4.2)
-	local power = self.port:read("core.power_pctFP") or 0
+	-- natural circulation is a floor on the whole loop, not an extra pump (§4.2), and heat drives it: on the
+	-- neutron power it would fall to almost nothing a few minutes after a trip, with decay heat still at 1 %
+	local power = self.port:read("core.thermalPower_pctFP") or 0
 	local ref = self.nc.referencePower_pctFP
 	local natural = self.ratedTotal * self.nc.coefficient_pct / 100 * (math.max(power, 0) / ref) ^ self.nc.exponent
 	self.naturalCirculation_kgps = natural

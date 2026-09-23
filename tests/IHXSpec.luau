@@ -112,10 +112,22 @@ return {
 	end,
 
 	["less primary flow means less duty but a colder primary outlet"] = function(t)
-		local design = make()
+		--[[
+			The exchanger's own physics, at §4.3's design secondary flow. The heat sink would otherwise bring the
+			secondary down with the primary (D-032), so each loop's flow is held at design by override, which is
+			the condition this test is about.
+		]]
+		local function atDesignSecondary(opts: { [string]: any }?)
+			local sys = make(opts)
+			for l = 1, 3 do
+				sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", tag = tostring(l), value = SPEC.secondaryFlowEach_kgps })
+			end
+			return sys
+		end
+		local design = atDesignSecondary()
 		design:step(DT)
 		local d = design:getState().units[1]
-		local half, _ = make({ flow = RATED / 2 })
+		local half = atDesignSecondary({ flow = RATED / 2 })
 		half:step(DT)
 		local h = half:getState().units[1]
 		t.ok(h.duty_MWt < d.duty_MWt, "half the flow carries less heat")
@@ -123,7 +135,7 @@ return {
 			"but each kilogram spends twice as long against the same area, so it leaves colder")
 		-- at the natural-circulation floor the exchanger stops being area-limited: the primary leaves at the
 		-- secondary inlet temperature, whatever UA is
-		local trickle = make({ flow = RATED * PRIMARY.naturalCirculation.coefficient_pct / 100 })
+		local trickle = atDesignSecondary({ flow = RATED * PRIMARY.naturalCirculation.coefficient_pct / 100 })
 		trickle:step(DT)
 		local n = trickle:getState().units[1]
 		t.near(n.primaryOutlet_K - KEL, SPEC.secondaryInlet_C, 1, "natural circulation: thermodynamically limited")
@@ -350,6 +362,18 @@ return {
 		ch:setExternal("protection.scram", "none") -- reset
 		run(sys, 60)
 		t.near(sys:getState().sinkLoad_pct, 0, 1e-12, "and a reset does not bring the load back by itself")
+	end,
+
+	["secondary flow follows the primary flow the pumps deliver (D-032)"] = function(t)
+		-- §9.2's table makes the two equal at every row; off the programme the heat sink keeps them together
+		for _, fraction in { 1, 2 / 3, 0.4, PRIMARY.naturalCirculation.coefficient_pct / 100 } do
+			local sys = make({ flow = RATED * fraction })
+			run(sys, 0.1)
+			for l, loop in sys:getState().loops do
+				t.near(loop.flowEach_kgps, SPEC.secondaryFlowEach_kgps * fraction, 1e-9,
+					string.format("loop %d on %.1f %% primary flow", l, fraction * 100))
+			end
+		end
 	end,
 
 	["an override holds one loop by hand until it is handed back to the programme"] = function(t)

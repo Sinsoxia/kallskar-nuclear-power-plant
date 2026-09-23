@@ -23,7 +23,8 @@ local OPERATOR = { kind = "player" :: any, name = "Aqua", userId = 1 }
 
 local function make(power_pctFP: number?)
 	local ch = Channels.new()
-	ch:declareExternal("core.power_pctFP", power_pctFP or 100)
+	-- natural circulation follows heat, so the floor reads thermal power (D-037)
+	ch:declareExternal("core.thermalPower_pctFP", power_pctFP or 100)
 	ch:declareExternal("pools.coverGas_MPa", Config.Primary.coverGas.setpoint_MPa)
 	ch:declareExternal("pools.coldPool_K", Config.Feedback.referenceTemperature_K)
 	local sys = System.new(PrimaryPumps)

@@ -3,8 +3,9 @@
 	Core verification (spec §3.1–§3.3, §2.4, §3.5, D-030).
 
 	The plant-level tests at the end are the ones that matter: the whole plant wired together holding hot standby,
-	a rod withdrawn at power and caught by its own Doppler feedback, a seat that holds §9.2's operating point, and
-	the reactor following the steam plant's load. Everything above them checks a piece of that.
+	a rod withdrawn at power and caught by its own Doppler feedback, a scram that leaves the decay heat on §3.6's
+	curve, a seat that holds §9.2's operating point, and the reactor following the steam plant's load. Everything
+	above them checks a piece of that.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -84,10 +85,9 @@ local function plant()
 	]]
 	local function advance(seconds: number)
 		for i = 1, math.floor(seconds / DT + 0.5) do
-			for _, sys in registry.systems do
-				if sys.spec.lane == "fast" then
-					sys:step(DT)
-				end
+			-- the resolved order, as the Scheduler runs it, so a readsLagged edge means here what it means live
+			for _, sys in registry.order.fast do
+				sys:step(DT)
 			end
 			if i % 100 == 0 then
 				task.wait()
@@ -238,8 +238,20 @@ return {
 		t.near(inlet1, inlet0, 1, "a minute of hot standby leaves the core inlet where it was")
 		local mode3 = Config.Program.modes[3].coreInlet_C
 		t.ok(inlet1 - KEL >= mode3[1] and inlet1 - KEL <= mode3[2], "inside §9.1's Mode 3 band")
-		t.ok(ihx:getState().total_MWt < Config.Primary.pumps.pumpHeatToSodium_MWt,
-			"and the IHXs carry no more than the pumps put in")
+		--[[
+			The boot has §14.6's beginning-of-cycle decay heat (D-036): §3.6's curve 30 min after 160 EFPD at full
+			power, and 65 s of plant time further down it by now. The tolerance is the derivation's acceptance, the
+			table's own precision at its finest entry (tests/DecayHeatSpec).
+		]]
+		local DH = Config.DecayHeat
+		local elapsed = DH.boot.shutdown_s + 65
+		local T_op = DH.referenceOperatingTime_EFPD * 86400
+		local expect = DH.coefficient * (elapsed ^ DH.exponent - (elapsed + T_op) ^ DH.exponent)
+		t.near(channels:get("decay.fraction"), expect, expect * 0.005 / DH.table.percent[1],
+			"beginning of cycle, on §3.6's curve")
+		local decay_MW = channels:get("decay.heat_W") / 1e6
+		t.ok(ihx:getState().total_MWt <= channels:get("primary.pumpHeat_MWt") + decay_MW,
+			"and the IHXs carry no more than the pumps and the decay heat put in")
 
 		--[[
 			At power, from a seat rather than from rods placed by hand (D-033). Placing the rods alone leaves the
@@ -271,6 +283,66 @@ return {
 		t.ok(math.abs(channels:get("core.rho_pcm")) < 0.5 * added,
 			"and caught it: the feedback has taken back most of what the rod added, so the core is not running away")
 		t.ok(not channels:get("protection.tripped"), "without a trip")
+	end,
+
+	["after a scram the neutrons go and the decay heat stays, on §3.6's curve (D-037)"] = function(t)
+		local _, channels, advance, byName = plant()
+		advance(1)
+		t.ok(InitialConditions.seatAtPower(byName, channels, Config, 20) ~= nil, "seated at 20 %FP")
+		t.near(channels:get("core.thermalPower_pctFP"), 20, 20 * 1e-9, "seated: heat equals the load exactly")
+		byName.Protection:applyCommand(OPERATOR, { kind = "reactor.trip.manual", tag = "BCR" })
+
+		--[[
+			Superposition, which is what makes the group model trustworthy for any history: the decay heat after
+			the trip is the seated history, closed off at the trip, plus whatever the fission tail since the trip
+			has added. The first part is closed-form; the second is a fresh DecayHeat fed the same fission power
+			tick by tick. Their sum must be the plant's to rounding, which says nothing else feeds decay heat —
+			no second delayed-neutron term (§3.6), no double count.
+		]]
+		local tail = System.new(require(Systems:WaitForChild("DecayHeat")) :: any)
+		local tailChannels = Channels.new()
+		tailChannels:declareExternal("core.power_pctFP", 0)
+		tail:init({ config = Config, channels = tailChannels:port(tail.spec), log = EventLog.new(Config, { sim = 0, grid = 0 }) })
+		tail:seatHistory(0, 0, 0)
+		local closed = System.new(require(Systems:WaitForChild("DecayHeat")) :: any)
+		local closedChannels = Channels.new()
+		closedChannels:declareExternal("core.power_pctFP", 0)
+		closed:init({ config = Config, channels = closedChannels:port(closed.spec), log = EventLog.new(Config, { sim = 0, grid = 0 }) })
+		local T_REF = Config.DecayHeat.referenceOperatingTime_EFPD * 86400
+		local since = 0
+		for _ = 1, 600 do -- 60 s of 0.1 s ticks
+			advance(DT)
+			since += DT
+			tailChannels:setExternal("core.power_pctFP", channels:get("core.power_pctFP"))
+			tail:step(DT)
+		end
+		-- the trip is commanded before the first tick after the seat, so every tick since belongs to the tail
+		closed:seatHistory(0.2, T_REF, since)
+		local plantDecay = channels:get("decay.fraction")
+		local superposed = closedChannels:get("decay.fraction") + tailChannels:get("decay.fraction")
+		t.near(plantDecay, superposed, superposed * 1e-9, "decay heat = the seated history + the fission tail, exactly")
+		local curve = 0.2 * Config.DecayHeat.coefficient * (60 ^ Config.DecayHeat.exponent - (60 + T_REF) ^ Config.DecayHeat.exponent)
+		t.log(string.format("60 s after the trip: neutron %.4f %%FP, thermal %.3f %%FP, decay %.3f %%FP (§3.6 for the history %.3f, tail %.4f)",
+			channels:get("core.power_pctFP"), channels:get("core.thermalPower_pctFP"), plantDecay * 100, curve * 100,
+			tailChannels:get("decay.fraction") * 100))
+		t.ok(plantDecay >= curve, "the tail only ever adds to the history's own curve")
+		t.ok(channels:get("decay.heat_W") > channels:get("core.power_pctFP") / 100 * 2380e6,
+			"a minute on, the heat is mostly decay heat rather than fission")
+
+		-- and the heat sink, with the turbines tripped, holds hot standby against it (D-032)
+		advance(240)
+		local inlet = channels:get("pools.coreInlet_K") - KEL
+		t.log(string.format("5 min after the trip: core inlet %.2f °C, hot pool %.2f °C, decay %.1f MW, IHX %.1f MW",
+			inlet, channels:get("pools.hotPool_K") - KEL, channels:get("decay.heat_W") / 1e6, channels:get("ihx.heatRemoved_W") / 1e6))
+		--[[
+			Five minutes on, the pools are still giving up the heat they held at 20 %FP: the exchangers carry more
+			than the decay heat, which is the plant cooling toward hot standby, and the inlet stays clear of §9.5's
+			390 °C alarm while it does. §9.1's 350–380 °C band is for hot standby once settled, not the approach.
+		]]
+		t.ok(channels:get("ihx.heatRemoved_W") > channels:get("decay.heat_W"), "the pools are cooling toward hot standby")
+		t.ok(inlet < Config.Protection.pss.coreInlet.alarmHigh_C, "with the inlet below §9.5's high alarm")
+		t.eq(channels:get("ihx.sinkLoad_pct"), 0, "the turbines tripped with the reactor")
+		t.eq(channels:get("protection.firstOut"), "MANUAL", "and nothing tripped after the manual trip")
 	end,
 
 	["seated at 20 %FP with both autos in, the whole plant holds §9.2's operating point"] = function(t)
