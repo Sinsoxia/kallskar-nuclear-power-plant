@@ -139,6 +139,14 @@ function DebugPanelServer.onAction(self: any, player: Player, kind: string, arg:
 		-- nudge one regulating rod, at its own §3.4 speed, through the same interlocks as any other move
 		local target = math.clamp((rods.drives[1].position_mm) + (tonumber(arg) or 0), 0, 1100)
 		rods:applyCommand(DEV, { kind = "rod.move", target = "RR1", value = target })
+	elseif kind == "bank" and rods and type(arg) == "table" then
+		-- nudge one shim bank at its §3.4 bank speed, through the same interlocks as any other move
+		local id, delta = arg.bank, tonumber(arg.delta)
+		local bank = (id == "A" or id == "B" or id == "C") and rods.banks[id]
+		if bank and delta then
+			local target = math.clamp(rods.drives[bank.members[1]].position_mm + delta, 0, rods.travel_mm)
+			rods:applyCommand(DEV, { kind = "rod.bank", target = id, value = target })
+		end
 	elseif kind == "pumpTrip" then
 		local pumps = self.systems.PrimaryPumps
 		if pumps then

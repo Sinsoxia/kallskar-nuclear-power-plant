@@ -192,7 +192,7 @@ bannerCorner.Parent = banner
 -- Controls, straight under the banner so they stay in reach however far the readings scroll -----------------
 local controls = Instance.new("Frame")
 controls.BackgroundTransparency = 1
-controls.Size = UDim2.new(1, 0, 0, 58)
+controls.Size = UDim2.new(1, 0, 0, 90) -- three rows of five buttons
 controls.LayoutOrder = nextOrder()
 controls.Parent = root
 local grid = Instance.new("UIGridLayout")
@@ -222,6 +222,20 @@ button(controls, "ROD OUT 50", function()
 end)
 button(controls, "ROD IN 50", function()
 	actionRemote:FireServer("rod", -50)
+end)
+-- Re-shimming is the crew's job: rod auto keeps to the regulating rods (§9.4), so when they drift out of their band
+-- (§10.5) a shim bank has to move. One bank is selected at a time, as §3.4 moves one bank at a time.
+local shimBank = "A"
+local bankButton: TextButton
+bankButton = button(controls, "SHIM BANK A", function()
+	shimBank = if shimBank == "A" then "B" elseif shimBank == "B" then "C" else "A"
+	bankButton.Text = `SHIM BANK {shimBank}`
+end)
+button(controls, "SHIM OUT 50", function()
+	actionRemote:FireServer("bank", { bank = shimBank, delta = 50 })
+end)
+button(controls, "SHIM IN 50", function()
+	actionRemote:FireServer("bank", { bank = shimBank, delta = -50 })
 end)
 button(controls, "TRIP PUMP", function()
 	actionRemote:FireServer("pumpTrip", 3)
