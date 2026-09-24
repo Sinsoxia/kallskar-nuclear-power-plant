@@ -3,7 +3,8 @@
 Nine findings from `docs/review/CODE_REVIEW.md` cannot be fixed until someone decides how the plant should behave.
 Each proposal below states what the code does today, what the spec says (section numbers only), the options, and a
 recommendation. One further item came up while fixing L1, and one test the review asked for under L12 is deferred;
-both are at the end. Two more came up later: D-046+ while implementing D-046, and M7+ in the review of PR #5.
+both are at the end. More came up later: D-046+ while implementing D-046, M7+ in the review of PR #5, and D-050+
+while implementing the amended D-050.
 
 | ID | Question | Recommendation |
 |---|---|---|
@@ -20,6 +21,7 @@ both are at the end. Two more came up later: D-046+ while implementing D-046, an
 | L12 (deferred) | Where can a whole-fast-lane P99 test run reliably? | In Studio, with the headless run logging it |
 | D-046+ | Why do the runbacks' own triggers still trip a full-power plant? | Flow auto holds its demand during a runback |
 | M7+ | Should the PROT-CHANNEL fault obey D-055's bypass limits? | No, but make it visible and keep its bypass its own |
+| D-050+ | Should the DNDs' alarm wait longer than 5 s before it goes out? | Yes, 10 s |
 
 ---
 
@@ -311,3 +313,23 @@ and §10.2 gives the shift supervisor's desk "authorisations for bypasses".
 
 **Recommendation.** C. It keeps the fault's point, a trip missing without anyone deciding so, and removes the two
 side effects a player can see.
+
+## D-050+: The DNDs under the amended deadband rule (found while implementing it)
+
+**Today.** The amended D-050 gives every channel with Gaussian noise a 3σ deadband and a 5 s off-delay.
+`tools/derive/alarm_deadband.py` finds each row's worst steady level. PR-HIGH flickers once every 4.5 h there. The
+DNDs flicker once every 50 min, at 89 cps (2.2 × background). The power range draws fresh noise every tick. The
+DNDs' ratemeter (a 1 s filter) carries each reading into the next, so six readings stay back past the deadband for
+5 s far more often than 50 fresh draws would. Only the DND-HIGH fault holds the DNDs near that level.
+
+**Spec.** §3.5 gives the DND background (about 40 cps) and §9.5 the ×3 alarm. D-025 gives the ratemeter's 2 s
+averaging.
+
+**Options.**
+- **A. Keep 5 s** for every Gaussian channel, as decided. The DNDs flicker once every 50 min, and only under a fault.
+- **B. An off-delay per row,** long enough that the DNDs match PR-HIGH. With the same deadband, the derivation gives
+  once every 4.0 h at 10 s, 20 h at 20 s and 53 h at 30 s.
+- **C. A wider DND deadband,** in place of a longer off-delay.
+
+**Recommendation.** B, with 10 s for the DNDs. It brings them in line with PR-HIGH without changing the deadband
+rule.

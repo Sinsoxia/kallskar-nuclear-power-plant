@@ -24,11 +24,16 @@
 	30 s rod block, so a session long enough will eventually see one sample dip under it. Rows may therefore
 	declare `persist_s`, and the period rod block requires the condition to hold rather than acting on one sample.
 
-	**Alarm deadband (D-050).** An alarm comes in at its setpoint and goes out only once the signal is back past the
-	setpoint by that channel's own noise, the row's `deadband`, so a noisy signal sitting at the setpoint does not
-	chatter in and out every tick. The deadband is always a figure the plant already has: §2.5's ±1 K for the
-	thermocouple, D-025's relative noise for the power range, the Poisson σ = √(R/τ) for the counting channels. A row
-	whose signal carries no modelled noise cannot chatter and has none.
+	**Alarm deadband (D-050, as amended).** An alarm comes in at its setpoint and goes out only once the signal is back
+	past the setpoint by the row's `deadband`, so a noisy signal sitting near the setpoint does not chatter in and out.
+	The deadband comes from the channel's own noise. A channel with bounded noise, the thermocouple's §2.5 ±1 K, gets
+	its full peak-to-peak span, 2 K: a steady signal then can never be both past the setpoint and back past the
+	deadband, so it cannot flicker at all. A channel with Gaussian noise gets 3σ of it at the setpoint (D-025's
+	relative noise for the power range, the Poisson σ = √(R/τ) for the DNDs), plus an off-delay, `offDelay_s`: the
+	alarm goes out only once every channel has stayed back past the deadband for 5 s. tools/derive/alarm_deadband.py
+	gives what is left at each row's worst steady level: PR-HIGH once every 4.5 h, the DNDs once every 50 min (their
+	ratemeter carries each reading into the next). A row whose signal carries no modelled noise cannot chatter and has
+	no deadband.
 
 	**Runbacks (D-046).** §9.5 gives each runback a target and a rate, and §3.4 the mechanism: the shims drive in at
 	10 mm/s. The rate is a demand, not a rod speed. A runback ramps a power demand from the neutron power at its start
@@ -151,6 +156,7 @@ local function buildMonitors(cfg: any): { any }
 	local vote3 = cfg.Protection.pssVoting.required
 	local votePR = cfg.Protection.powerRangeVoting.required
 	local noise = cfg.Instruments.noise
+	local gaussian = cfg.Protection.alarmDeadband
 	local dnd = cfg.Instruments.dndBackground_cps
 	local inhibit = cfg.Protection.coreInletLowInhibit
 
@@ -162,8 +168,9 @@ local function buildMonitors(cfg: any): { any }
 			end,
 			vote = votePR, alarm = pss.powerRangeHigh.alarm_pctFP, trip = pss.powerRangeHigh.trip_pctFP,
 			neutron = true, -- D-055: the pss.bypass command refuses it (the PROT-CHANNEL fault does not; see below)
-			-- D-050: one quadrant's D-025 noise at the alarm setpoint
-			deadband = noise.powerRangeRelative * pss.powerRangeHigh.alarm_pctFP,
+			-- D-050 as amended: Gaussian, so 3σ of one quadrant's D-025 noise at the alarm setpoint, and the off-delay
+			deadband = gaussian.gaussianSigmas * noise.powerRangeRelative * pss.powerRangeHigh.alarm_pctFP,
+			offDelay_s = gaussian.offDelay_s,
 		},
 		{
 			--[[
@@ -227,7 +234,8 @@ local function buildMonitors(cfg: any): { any }
 				return single((self.port:read("pools.mixedCoreOutletMeasured_K") or 0) - KELVIN)
 			end,
 			vote = 1, alarm = pss.coreOutletMixed.alarm_C, trip = pss.coreOutletMixed.trip_C,
-			deadband = cfg.Core.flow.thermocoupleNoise_K, -- D-050: the thermocouple's §2.5 ±1 K
+			-- D-050 as amended: bounded, so the full span of the thermocouple's §2.5 ±1 K, and no off-delay
+			deadband = 2 * cfg.Core.flow.thermocoupleNoise_K,
 		},
 		{
 			--[[
@@ -324,8 +332,10 @@ local function buildMonitors(cfg: any): { any }
 			vote = vote3,
 			alarm = dnd * pss.delayedNeutrons.alarmFactor,
 			trip = dnd * pss.delayedNeutrons.tripFactor,
-			-- D-050: a counting channel's own noise at the alarm setpoint, σ = √(R/τ) over D-025's ratemeter averaging
-			deadband = math.sqrt(dnd * pss.delayedNeutrons.alarmFactor / noise.ratemeterAveraging_s),
+			-- D-050 as amended: Gaussian, so 3σ of a counting channel's noise at the alarm setpoint, σ = √(R/τ) over
+			-- D-025's ratemeter averaging, and the off-delay
+			deadband = gaussian.gaussianSigmas * math.sqrt(dnd * pss.delayedNeutrons.alarmFactor / noise.ratemeterAveraging_s),
+			offDelay_s = gaussian.offDelay_s,
 		},
 		{
 			id = "PUMPS", label = "Primary pumps lost", system = "PSS", sense = "above",
@@ -406,7 +416,7 @@ function Protection.init(self: any, ctx: any)
 	self.monitors = buildMonitors(cfg)
 	self.state = {}
 	for _, m in self.monitors do
-		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0, runbackRan = false }
+		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0, backFor = 0, runbackRan = false }
 	end
 	self.power = 0
 	self.measured = 0
@@ -561,7 +571,7 @@ function Protection.step(self: any, dt: number)
 				self.bus:publish("Alarm", { tag = m.id, priority = 2, state = "out", text = m.label })
 			end
 			st.alarm, st.block, st.trip = false, false, false
-			st.blockFor, st.tripFor = 0, 0
+			st.blockFor, st.tripFor, st.backFor = 0, 0, 0
 			if why then
 				table.insert(inhibited, `{m.id}: {why}`)
 			end
@@ -570,16 +580,28 @@ function Protection.step(self: any, dt: number)
 		local values = m.signal(self)
 
 		if m.alarm then
-			-- One channel past an alarm setpoint is what an annunciator is for: only the TRIP waits for the
-			-- coincidence vote. An alarm that needed two channels would hide the first failing instrument.
-			-- Once in, it holds until every channel is back past the setpoint by the row's deadband (D-050).
-			local setpoint = m.alarm
-			if st.alarm and m.deadband then
-				setpoint = if m.sense == "above" then setpoint - m.deadband else setpoint + m.deadband
+			--[[
+				One channel past an alarm setpoint is what an annunciator is for: only the TRIP waits for the
+				coincidence vote. An alarm that needed two channels would hide the first failing instrument. Once in,
+				it holds while any channel is short of the row's deadband, and goes out once every channel has been
+				back past it for the row's off-delay (D-050 as amended). `backFor` is a sum of whole ticks, so it is
+				compared at the nearest tick: with no off-delay the alarm goes out on the first tick back.
+			]]
+			local hit
+			if not st.alarm then
+				hit = voted(values, m.sense, m.alarm, 1, m.inclusive)
+			else
+				local edge = m.alarm
+				if m.deadband then
+					edge = if m.sense == "above" then edge - m.deadband else edge + m.deadband
+				end
+				local held = voted(values, m.sense, edge, 1, m.inclusive)
+				st.backFor = if held then 0 else st.backFor + dt
+				hit = held or st.backFor < (m.offDelay_s or 0) - dt / 2
 			end
-			local hit = voted(values, m.sense, setpoint, 1, m.inclusive)
 			if hit ~= st.alarm then
 				st.alarm = hit
+				st.backFor = 0
 				if self.bus then
 					self.bus:publish("Alarm", {
 						tag = m.id,

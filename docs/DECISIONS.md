@@ -958,3 +958,33 @@ decision behind them. Both stay:
 
 `tests/TagsSpec` pins the exact set of extension codes, so adding another needs a decision of its own. C-39 (the
 glossary's `SM`, and the hydrogen meters' index rule) is separate and stays open.
+
+## Aqua's choices on the review of PR #5 (2026-09-24)
+The review of PR #5 raised three questions that needed Aqua. The amendments below record her choices.
+
+## D-050 amendment — bounded noise gets its full span; Gaussian noise gets 3σ and a 5 s off-delay
+The review showed that D-050's deadbands do not stop the chatter. With the signal steady just under its setpoint,
+CORE-OUT still flickers about 2.5 times a second, and PR-HIGH about 1.7 times a second at 104 %FP. A flicker is one
+change of state, in or out. **Decision (Aqua):**
+- **Bounded noise:** a channel whose noise is bounded gets its full peak-to-peak span as its deadband. For the
+  thermocouples that is 2 K, from §2.5's ±1 K. A steady signal can then never be past the setpoint and back past
+  the deadband at the same time, so it does not flicker at any level.
+- **Gaussian noise:** a channel with Gaussian noise (the power range and the DNDs) gets 3σ of its noise at the
+  setpoint as its deadband, plus a 5 s off-delay. The alarm goes out only once every channel has stayed back past
+  the deadband for 5 s. Both numbers are `decision` values in `Config.Protection.alarmDeadband`.
+
+`tools/derive/alarm_deadband.py` takes the 5 s as its engineering input. It derives the two-state alarm's flicker
+rate and finds the signal level where that rate is highest:
+- **PR-HIGH:** at the worst level, 102.56 %FP, once every 3.4 h with the noise's σ taken at the setpoint (Aqua's
+  estimate). With the noise relative to the power, as Detectors draws it, the figure is once every 4.5 h. The old
+  rule's worst was once every 0.43 s.
+- **CORE-OUT:** never.
+- **The DNDs:** once every 50 min, at 89 cps. That is 2.2 × background, which only the DND-HIGH fault reaches. The
+  ratemeter carries each reading into the next, so six readings stay back for 5 s far more often than 50 fresh
+  draws would. A 10 s off-delay would make it once every 4.0 h. Whether the DNDs should have a longer off-delay is
+  open for Aqua (docs/review/DECISIONS_NEEDED.md, D-050+).
+
+ProtectionSpec holds PR-HIGH for 600 s at each of two levels: the derived worst level, and the old rule's worst
+level, where the old rule flickered 1,353 times. It bounds the count from the derivation, using its expected counts
+and their Poisson tails at the one-sided chance of 5σ. The deterministic test D-050 had is gone. A new test checks
+the off-delay's timing, tick by tick.
