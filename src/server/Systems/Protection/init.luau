@@ -769,11 +769,13 @@ Protection.commands = {
 
 	--[[
 		A bypass is a deliberate, logged, visible act: §9.6's LCOs are written around which protection is
-		available, so a bypassed trip has to be something an auditor can find afterwards. D-055 limits it: the
-		command is a critical control (the §10.7 playtime, Access.criticalControls); at most bypassedRowsMax rows
-		are out of service at once; and the command refuses a row the neutron instruments drive (the power range
-		high and low setpoint, flux rate, period, and the SSS power range), because those are the trips that answer
-		a reactivity excursion. Once the desks exist a bypass will also need §10.2's shift-supervisor authorisation.
+		available, so a bypassed trip has to be something an auditor can find afterwards. D-055 limits it: taking a
+		row out is a critical control (the §10.7 playtime, Access.criticalControls), though putting one back, with
+		value 0, is not, because that is the safe direction (Access.criticalUnlessRestoring, D-055 as amended); at
+		most bypassedRowsMax rows are out of service at once; and the command refuses a row the neutron instruments
+		drive (the power range high and low setpoint, flux rate, period, and the SSS power range), because those are
+		the trips that answer a reactivity excursion. Once the desks exist a bypass will also need §10.2's
+		shift-supervisor authorisation.
 		These limits are the command's. The PROT-CHANNEL fault below bypasses a row without them, and restoring the
 		row here takes the fault's bypass away too (docs/review/DECISIONS_NEEDED.md, M7+).
 	]]

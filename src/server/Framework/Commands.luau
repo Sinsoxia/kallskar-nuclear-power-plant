@@ -153,6 +153,10 @@ function Commands.new(opts: {
 	for _, kind in access.criticalControls do
 		self.critical[kind] = true
 	end
+	self.restoring = {} :: { [string]: boolean }
+	for _, kind in access.criticalUnlessRestoring or {} do
+		self.restoring[kind] = true
+	end
 	self.panelPosition = opts.panelPosition or function(_tag: string): Vector3?
 		return nil
 	end
@@ -179,8 +183,10 @@ function Commands.new(opts: {
 	return self
 end
 
-function Commands.isCritical(self: any, kind: string): boolean
-	return self.critical[kind] == true
+-- Whether a command needs the critical playtime: a critical control, unless it is one whose value 0 restores and the
+-- value is exactly 0 (D-055 as amended). Any other value, or none, is the direction that needs it.
+function Commands.isCritical(self: any, kind: string, value: any?): boolean
+	return self.critical[kind] == true and not (self.restoring[kind] == true and value == 0)
 end
 
 local function takeToken(self: any, userId: number): boolean
@@ -243,7 +249,7 @@ local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolea
 	if distance > self.reach then
 		return false, string.format("out of reach (%.1f studs, limit %d)", distance, self.reach)
 	end
-	if self.critical[cmd.kind] then
+	if self:isCritical(cmd.kind, cmd.value) then
 		return Commands.criticalAccess(self.playtimeHours(player), self.requiredHours)
 	end
 	return true, nil

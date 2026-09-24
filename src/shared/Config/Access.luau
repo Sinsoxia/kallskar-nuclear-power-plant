@@ -21,6 +21,9 @@ return {
 		"pss.bypass",
 		"runback.clear",
 	},
+	-- Of those, the controls whose value 0 is the safe direction, which needs no playtime. D-055 as amended: putting a
+	-- bypassed row back in service (pss.bypass with value 0) is open to anyone at the desk; only taking one out is not.
+	criticalUnlessRestoring = { "pss.bypass" },
 
 	voteKick = tuning({ minimumVoters = 3, majorityOfOthers = true, onlyIfTripUnjustified = true }, "§10.7 (safeguard proposed, not confirmed)"),
 

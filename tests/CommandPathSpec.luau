@@ -147,6 +147,27 @@ return {
 		t.eq(byName.Protection.bypassed["COVER-GAS"], nil, "so nothing was bypassed")
 	end,
 
+	["restoring a bypassed row does not need the playtime; only taking one out does (D-055 as amended)"] = function(t)
+		local registry, byName, log, bus = plant()
+		local prot = byName.Protection
+		t.ok(intake(registry, log, bus):submit(PLAYER, { kind = "pss.bypass", target = "COVER-GAS", value = 1, panel = PANEL }).ok,
+			"a player with the playtime takes COVER-GAS out")
+		-- a player short of the playtime, at the same desk
+		local commands = intake(registry, log, bus, Config.Access.criticalMinimumPlaytime_h - 0.5)
+		local r = commands:submit(PLAYER, { kind = "pss.bypass", target = "COVER-GAS", value = 0, panel = PANEL })
+		t.ok(r.ok, `puts it back in service: the safe direction needs no playtime ({r.reason})`)
+		t.eq(prot.bypassed["COVER-GAS"], nil, "COVER-GAS is in service again")
+		for _, raw in {
+			{ kind = "pss.bypass", target = "COVER-GAS", value = 1, panel = PANEL },
+			{ kind = "pss.bypass", target = "COVER-GAS", panel = PANEL }, -- with no value it is a bypass: only 0 restores
+		} do
+			r = commands:submit(PLAYER, raw)
+			t.ok(not r.ok and string.find(r.reason or "", "playtime", 1, true) ~= nil,
+				`but cannot take it out again with value {tostring(raw.value)} ({r.reason})`)
+		end
+		t.eq(prot.bypassed["COVER-GAS"], nil, "so it stays in service")
+	end,
+
 	["a control is operated only from a desk that carries it (§10.2, D-054)"] = function(t)
 		local registry, byName, log, bus = plant()
 		local commands = intake(registry, log, bus)

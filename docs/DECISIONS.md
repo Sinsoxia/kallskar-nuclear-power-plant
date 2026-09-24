@@ -1016,3 +1016,12 @@ INLET-HIGH before RB-1 completes. That happens at 53.1 s and 72 %FP with flow au
 it out. The M1 heat sink has no secondary inventory, so a stopped loop's capacity goes at once, faster than 30 %/min
 can take the power off. The secondary loops' own model (their inventory and pump coastdown) is what fixes it, and it
 belongs to the steam-plant milestone.
+
+## D-055 amendment — putting a bypassed row back in service needs no playtime
+D-055 made `pss.bypass` a critical control, so both directions needed the §10.7 playtime: taking a row out, and
+putting it back. **Decision (Aqua):** putting a bypassed row back (`pss.bypass` with value 0) is the safe direction,
+so it no longer needs the critical playtime. Only taking a row out does. The command treats any value other than 0,
+including no value at all, as taking the row out, so only an exact 0 is exempt. `Config.Access.criticalUnlessRestoring`
+lists the controls this applies to; so far `pss.bypass` is the only one. `runback.clear` still needs the playtime.
+The rest of D-055 is unchanged: the one-row cap, the neutron rows, and the shift supervisor's authorisation once the
+desks exist.
