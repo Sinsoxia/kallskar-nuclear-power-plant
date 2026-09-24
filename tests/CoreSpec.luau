@@ -169,6 +169,32 @@ return {
 		t.ok(worst <= 1e-12, `the loaded core runs the trip of a core critical at {n0 * 100} %FP, tail and all (worst {worst})`)
 	end,
 
+	["a save taken partway down a trip's tail comes back on the same tail (D-053)"] = function(t)
+		--[[
+			An autosave or a server close can land on a trip's delayed-neutron tail, where the precursors hold the power
+			up and are far from βᵢ·n. Seated at βᵢ·n, the loaded core would take a second prompt drop, to about
+			β/(β − ρ) ≈ 0.09 of the saved power, and lose nearly all of the rest of the tail. A core that never stopped
+			is the oracle: the loaded core must follow it tick for tick, the same arithmetic on the same state.
+		]]
+		local before = make()
+		before:load({ power_pctFP = 30 }, 2) -- the trip from 30 %FP, as in the previous case
+		run(before, 30) -- 30 s down the tail
+		local saved = before:save()
+		t.ok(saved.precursors ~= nil and #saved.precursors == #BETAS, "the save carries all six precursor groups")
+
+		local after = make()
+		after:load(saved, 2)
+		local worst = 0
+		for _ = 1, math.floor(600 / DT + 0.5) do
+			before:step(DT)
+			after:step(DT)
+			worst = math.max(worst, math.abs(after.n - before.n) / before.n)
+		end
+		t.log(string.format("30 s after the trip the save holds %.3e FP; the loaded core follows the one that never stopped to %.1e",
+			saved.power_pctFP / 100, worst))
+		t.ok(worst <= 1e-12, `the loaded core carries on down the same tail (worst {worst})`)
+	end,
+
 	["withdrawing worth raises reactivity, and the core answers (§3.1)"] = function(t)
 		--[[
 			D-049: each reading waits five of its state's slowest periods, so what is left of the approach is known.
