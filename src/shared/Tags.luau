@@ -2,7 +2,8 @@
 --[[
 	Instrument and equipment tags. Spec Appendix B.
 	Format SYS-L-TYPE-NN, e.g. SG-2-HM-05 = loop 2, section 5 hydrogen meter. The tag is the Roblox instance name
-	and the replication key. L is a loop/train/division number, or 0 for plant-wide equipment.
+	and the replication key. L is a loop/train/division number, or 0 for plant-wide equipment. NN runs to three
+	digits from 100 (the 331-position core map), and every tag has exactly one spelling: the one format gives (D-058).
 ]]
 
 local SYSTEMS = table.freeze({
@@ -36,7 +37,7 @@ local TYPES = table.freeze({
 	TC = "thermocouple",
 	SPD = "speed",
 	RD = "rod",
-	-- Additions for M1 instruments not in the Appendix B list. Kept short and unambiguous.
+	-- Additions for M1 instruments not in the Appendix B list (D-058). tests/TagsSpec pins this exact set.
 	N = "neutron flux", -- SR / WR / PR channels
 	PER = "reactor period",
 	RHO = "reactivity",

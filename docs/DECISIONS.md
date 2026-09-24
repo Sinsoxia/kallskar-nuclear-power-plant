@@ -937,3 +937,16 @@ press is forgotten after the window. The BCR keeps its one button (§9.5).
 It is split between the hot and cold pools in proportion to each pool's sodium. How the steel couples to the sodium,
 so that §4.1's mixing times stay as they are while the hours-long heat-up uses all of it, is derived before it is
 built (`tools/derive/pool_steel.py`). It is needed before DRACS and the blackout scenarios.
+
+## D-058 Tags: three-digit indices and six M1 type codes (TagsSpec findings) — Accepted (Aqua, 2026-09-24)
+Appendix B's tag is `SYS-L-TYPE-NN`. Jules' TagsSpec (9ec03e3) found two extensions already in `Tags.luau` with no
+decision behind them. Both stay:
+- **Index:** two digits up to 99, and three from 100 to 999. The 331-position core map (§2.2, rings 0–10) needs
+  three, for example `RX-0-TC-331`. Each tag still has one spelling: `Tags.parse` rejects any spelling `Tags.format`
+  would not produce, so `RX-0-TC-05` is valid and `RX-0-TC-005` is not.
+- **Types:** `N` neutron flux (the SR, WR and PR channels), `PER` reactor period, `RHO` reactivity, `DND` delayed
+  neutron detector, `POS` position and `PQ` power-to-flow ratio. These are M1 instruments that Appendix B has no
+  code for.
+
+`tests/TagsSpec` pins the exact set of extension codes, so adding another needs a decision of its own. C-39 (the
+glossary's `SM`, and the hydrogen meters' index rule) is separate and stays open.
