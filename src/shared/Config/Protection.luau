@@ -7,6 +7,7 @@ return {
 	-- Primary shutdown system coincidence logic
 	pssVoting = spec({ required = 2, of = 3 }, "§9.5: PSS logic is 2-out-of-3 on independent channels"),
 	powerRangeVoting = decision({ required = 2, of = 4 }, "D-005: four PR quadrant channels"),
+	manualTripWindow_s = decision(2, "D-056: the MCR's two trip buttons count together only when pressed within 2 s of each other"),
 
 	pss = spec({
 		powerRangeHigh = { normal_pctFP = 100, alarm_pctFP = 105, trip_pctFP = 115 },

@@ -340,15 +340,35 @@ return {
 		t.eq(ch:get("protection.scram"), "SSR", "the secondary shutdown rods, not the PSS")
 	end,
 
-	["manual trip needs two buttons in the control room, or one in the backup"] = function(t)
+	["the MCR trip is MCR-1 and MCR-2 within 2 s of each other; the BCR is one button (§9.5, D-056)"] = function(t)
+		local window = Config.Protection.manualTripWindow_s
+		local function press(sys: any, button: string): any
+			return sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = button })
+		end
+
 		local sys, ch = make()
 		run(sys, 1)
-		local first = sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "MCR" })
-		t.ok(first.ok)
-		t.eq(ch:get("protection.scram"), "none", "§9.5: one button is not a trip")
-		sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "MCR" })
+		t.ok(press(sys, "MCR-1").ok and press(sys, "MCR-1").ok, "both presses taken")
 		run(sys, 0.1)
-		t.eq(ch:get("protection.firstOut"), "MANUAL", "two are")
+		t.eq(ch:get("protection.scram"), "none", "one button pressed twice is not a trip")
+
+		sys, ch = make()
+		run(sys, 1)
+		press(sys, "MCR-1")
+		run(sys, window + 0.5)
+		t.eq(next(sys:getState().manual), nil, "a single press is forgotten once the window has passed")
+		press(sys, "MCR-2")
+		run(sys, 0.1)
+		t.eq(ch:get("protection.scram"), "none", "so two presses further apart than the window are not a trip")
+
+		sys, ch = make()
+		run(sys, 1)
+		press(sys, "MCR-2")
+		run(sys, window - 0.5)
+		press(sys, "MCR-1")
+		run(sys, 0.1)
+		t.eq(ch:get("protection.firstOut"), "MANUAL", "MCR-1 and MCR-2 within the window trip the reactor")
+		t.ok(not press(sys, "MCR").ok, "a button the control room does not have is refused")
 
 		local backup, bch = make()
 		backup:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "BCR" })

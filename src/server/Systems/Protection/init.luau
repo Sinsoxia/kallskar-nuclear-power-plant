@@ -385,7 +385,9 @@ function Protection.init(self: any, ctx: any)
 	self.mode = 1
 	self.tripped = {}
 	self.firstOut = ""
-	self.manual = { mcr = 0, bcr = 0 }
+	self.pressed = {} :: { [string]: number } -- MCR trip button -> when it was pressed (D-056)
+	self.manualWindow = cfg.Protection.manualTripWindow_s
+	self.elapsed = 0
 	self.active = {}
 	self.inhibited = {}
 	self.runback = nil
@@ -475,6 +477,13 @@ end
 function Protection.step(self: any, dt: number)
 	local port = self.port
 	self.power = port:read("core.power_pctFP") or 0
+	-- D-056: an MCR trip button's press counts toward the trip only within the window
+	self.elapsed += dt
+	for button, at in self.pressed do
+		if self.elapsed - at > self.manualWindow then
+			self.pressed[button] = nil
+		end
+	end
 	self.mode = port:read("program.mode") or 1
 	local active, inhibited = {}, {}
 	local blocked = false
@@ -606,7 +615,7 @@ function Protection.reset(self: any, actor: Actor?): (boolean, string?)
 	end
 	self.tripped = {}
 	self.firstOut = ""
-	self.manual = { mcr = 0, bcr = 0 }
+	table.clear(self.pressed)
 	for _, st in self.state do
 		st.trip, st.tripFor = false, 0
 	end
@@ -619,18 +628,34 @@ end
 
 Protection.commands = {
 	--[[
-		§9.5: two buttons in the main control room, or one in the backup. Two means two separate presses, which is
-		why the count is held rather than a boolean — one operator leaning on one button does not trip the plant.
+		§9.5: two buttons in the main control room, or one in the backup. In the MCR they are two different
+		buttons, MCR-1 and MCR-2, pressed within D-056's window of each other: one operator leaning on one button
+		does not trip the plant, and nor do two presses that are not one act. A press older than the window is
+		forgotten (Protection.step). The BCR's one button trips on its own.
 	]]
 	["reactor.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local where = if cmd.target == "BCR" then "bcr" else "mcr"
-		self.manual[where] += 1
-		local needed = self.cfg.pss.manualButtons.mainControlRoom
-		if where == "bcr" or self.manual.mcr >= needed then
-			self:fire("MANUAL", `Manual trip ({string.upper(where)})`, "PSS", actor)
+		local button = cmd.target
+		if button == "BCR" then
+			self:fire("MANUAL", "Manual trip (BCR)", "PSS", actor)
 			return { ok = true }
 		end
-		return { ok = true, reason = `{self.manual.mcr} of {needed} buttons` }
+		local needed = self.cfg.pss.manualButtons.mainControlRoom
+		local index = if button then tonumber(string.match(button, "^MCR%-(%d+)$")) else nil
+		if index == nil or index < 1 or index > needed then
+			return { ok = false, reason = `no trip button '{tostring(button)}': MCR-1 to MCR-{needed}, or BCR` }
+		end
+		self.pressed[button :: string] = self.elapsed
+		local held = 0
+		for _, at in self.pressed do
+			if self.elapsed - at <= self.manualWindow then
+				held += 1
+			end
+		end
+		if held >= needed then
+			self:fire("MANUAL", "Manual trip (MCR)", "PSS", actor)
+			return { ok = true }
+		end
+		return { ok = true, reason = `{held} of {needed} buttons` }
 	end,
 
 	["sss.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
@@ -734,7 +759,7 @@ function Protection.getState(self: any): { [string]: any }
 		inhibited = table.clone(self.inhibited),
 		blocked = self.blocked == true,
 		runback = self.runback,
-		manual = table.clone(self.manual),
+		manual = table.clone(self.pressed),
 		curieTemp_C = self.curieTemp_C,
 	}
 end
