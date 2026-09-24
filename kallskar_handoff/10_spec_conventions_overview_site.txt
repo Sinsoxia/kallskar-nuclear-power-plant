@@ -1,4 +1,4 @@
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 1 of 7: conventions, decisions, plant overview, site, history, people, seasons
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 

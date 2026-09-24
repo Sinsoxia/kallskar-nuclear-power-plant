@@ -325,16 +325,30 @@ VERIFY = [
 ]
 
 
+# Checks whose text Rev A5 replaced on purpose. apply_rev_a5.py verifies what took their place, so here they are
+# reported as superseded, not wrong: a check that fails on a correct tree invites someone to "fix" the spec back.
+SUPERSEDED = {
+    "Rev A4 title": "Rev A5 retitled the spec",
+    "drift 2.5 h": "Rev A5 made the drift 2.7 h (F20)",
+    "LCO-7 scope": "Rev A5 added the idle-loop case (F27)",
+}
+
+
 def verify():
     html, txt = HTML.read_text(encoding="utf-8"), TXT.read_text(encoding="utf-8")
-    bad = 0
+    bad = superseded = 0
     for label, snippet, want_html, want_txt in VERIFY:
         gh, gt = html.count(snippet), txt.count(snippet)
         ok = (want_html is None or gh == want_html) and (want_txt is None or gt == want_txt)
+        if not ok and label in SUPERSEDED:
+            superseded += 1
+            print(f"   superseded {label}: {SUPERSEDED[label]}; apply_rev_a5.py checks it")
+            continue
         bad += not ok
         if not ok:
             print(f"   WRONG {label}: html {gh} (want {want_html}), text pack {gt} (want {want_txt})")
-    print(f"verify: {len(VERIFY) - bad}/{len(VERIFY)} checks pass")
+    print(f"verify: {len(VERIFY) - bad - superseded}/{len(VERIFY)} checks pass"
+          + (f", {superseded} superseded by Rev A5" if superseded else ""))
     return bad
 
 

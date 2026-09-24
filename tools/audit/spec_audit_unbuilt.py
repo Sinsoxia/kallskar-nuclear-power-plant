@@ -809,12 +809,14 @@ cite(2952, "shim rods are tagged SM")
 codes = " ".join(LINES[2930:2934])
 check("C-39", "Appendix B: the glossary says shim rods are tagged 'SM', which is in neither code list; the 3 loop-outlet "
                "hydrogen meters (27 = 24 + 3) have no NN rule", bool(re.search(r"\bSM\b", codes)))
-cite(2983, "* A5")
-cite(2991, "* A4")
-cite(10, "Design specification Rev A3")
-n_hdr = sum("SPECIFICATION, REV A3" in l for l in LINES)
-check("C-40", f"Appendix C lists A5 before A4, and {n_hdr} file headers plus the README still say 'Rev A3' while the text "
-               "carries A4/A5 changes", 2991 < 2983 and n_hdr == 0)
+# Fixed 2026-09-24 (tools/derive/apply_rev_a5.py, C-40): the log ran A3, A5, A4 and the README and seven file headers
+# said Rev A3. The check now reads the order from the text instead of comparing two fixed line numbers.
+cite(2983, "* A4")
+cite(2995, "* A5")
+cite(10, "Design specification Rev A5")
+n_old = sum("SPECIFICATION, REV A3" in l or "Design specification Rev A3" in l for l in LINES)
+check("C-40", f"Appendix C runs A3, A4, A5 in order, and {n_old} labels (README and file headers) still say 'Rev A3' "
+               "(fixed 2026-09-24)", LINES.index("* A3") < LINES.index("* A4") < LINES.index("* A5") and n_old == 0)
 
 # ================================================================================================= earlier documents
 section("ERRORS IN THE EARLIER AUDIT DOCUMENTS")
@@ -844,14 +846,18 @@ if CITE_ERRORS:
     print("  CITATION ERRORS:")
     for e_ in CITE_ERRORS:
         print("   ", e_)
+# Findings the spec has fixed since the audit: each now has to pass, and failing again would be a regression
+FIXED = {"C-40": "2026-09-24, tools/derive/apply_rev_a5.py"}
 ids_fail = sorted({cid for cid, ok in RESULTS if not ok})
 ids_pass = sorted({cid for cid, ok in RESULTS if ok} - set(ids_fail))
 print(f"  {len(RESULTS)} checks: {sum(ok for _, ok in RESULTS)} PASS, {sum(not ok for _, ok in RESULTS)} FAIL")
 print(f"  FAIL (findings reproduced): {', '.join(ids_fail)}")
-print(f"  PASS (consistent): {', '.join(ids_pass)}")
-unexpected = [c for c in ids_fail if c.startswith("K-")] + [c for c in ids_pass if c[0] in "CP"]
+print(f"  PASS (consistent): {', '.join(c for c in ids_pass if c not in FIXED)}")
+print(f"  PASS (fixed since the audit): {', '.join(f'{c} ({FIXED[c]})' for c in ids_pass if c in FIXED) or 'none'}")
+unexpected = ([c for c in ids_fail if c.startswith("K-") or c in FIXED]
+              + [c for c in ids_pass if c[0] in "CP" and c not in FIXED])
 print(f"  citations checked: {'all quoted lines match' if not CITE_ERRORS else f'{len(CITE_ERRORS)} MISMATCHED'}")
-print(f"  unexpected outcomes (a K that failed or a C/P that passed): {unexpected or 'none'}")
+print(f"  unexpected outcomes (a K that failed, a C/P that passed, or a fixed finding back): {unexpected or 'none'}")
 
 section("APPENDIX: FILE-20 calc.py OUTPUT (RE-RUN, UNMODIFIED)")
 print(CALC_OUT.rstrip())

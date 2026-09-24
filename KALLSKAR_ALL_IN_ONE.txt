@@ -7,7 +7,7 @@ Same content as the separate files, in reading order.
 ####################################################################################################
 
 KALLSKAR NUCLEAR POWER PLANT: CLAUDE CODE HANDOFF PACK
-Design specification Rev A3, 15 September 2026
+Design specification Rev A5, 21 September 2026
 Display name: Kallskär Nuclear Power Plant. Use ASCII "Kallskar" in code, instance names and DataStore keys.
 
 ====================================================================================================
@@ -358,7 +358,7 @@ reports, the IPFM report on fast reactor history (BN-600 and others), public EBR
 # FILE: 10_spec_conventions_overview_site.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 1 of 7: conventions, decisions, plant overview, site, history, people, seasons
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -609,7 +609,7 @@ The season follows the real-world calendar by default; a private server owner ca
 # FILE: 11_spec_core_and_physics.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 2 of 7: reactor core and reactor physics
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -1075,7 +1075,7 @@ Validation targets †
 # FILE: 12_spec_primary_secondary_steam_generators.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 3 of 7: primary system, secondary sodium loops, steam generators, splitter, reheat
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -1382,7 +1382,7 @@ Density-wave oscillation   : EV flow below 20% with EV sodium inlet above 400 °
 # FILE: 13_spec_turbines_feedwater_electrical.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 4 of 7: turbine-generators, condensers and seawater, feedwater, electrical, Nordic grid
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -1643,7 +1643,7 @@ Reactive capability       : +300 / −150 MVAr per unit at rated MW; less above 
 # FILE: 14_spec_control_protection_rooms_access.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 5 of 7: control, protection, limits, control rooms, desks, crew, anti-AFK, hybrid rooms, access, guides
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -2263,7 +2263,7 @@ date.
 # FILE: 15_spec_dispatcher_damage_scenarios.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 6 of 7: grid dispatcher, damage and degradation, scenario director, scenario library
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -2695,7 +2695,7 @@ S-27, S-28.
 # FILE: 16_spec_roblox_implementation_appendices.txt
 ####################################################################################################
 
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 7 of 7: Roblox implementation, persistence, modules, sodium properties, tags, glossary, revisions
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -2980,14 +2980,6 @@ APPENDIX C. REVISION LOG
     Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
       diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
       §14.2). Former lumped values became validation targets; point kinetics kept as fallback
-* A5
-    Date: 21 Sep 2026
-    Change: Refinements from the resolved decision log (docs/FINAL_DECISIONS_REV_A5.md), which accepted
-      every proposed decision. The hot-pin centreline (2,140 °C) and melting linear heat rate (≈ 57
-      kW/m) now carry the constant-gap pin model's own figures, so they are derived outputs rather than
-      independent checks (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5
-      core-inlet-low trip states its mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20).
-      LCO-7 gains the idle-loop case (F27)
 * A4
     Date: 21 Sep 2026
     Change: Corrections from the eight-reviewer audit, each recomputed from the spec's own data
@@ -3000,6 +2992,14 @@ APPENDIX C. REVISION LOG
       ×10 allowed in a blackout (§0.2, §12.2). Feed-pump power stated per train (§7.6). Amplitude
       update replaced with the linear-n form (§14.2). Check-valve and surviving-pump behaviour on a
       pump trip stated (§4.2)
+* A5
+    Date: 21 Sep 2026
+    Change: Refinements from the resolved decision log (docs/FINAL_DECISIONS_REV_A5.md), which accepted
+      every proposed decision. The hot-pin centreline (2,140 °C) and melting linear heat rate (≈ 57
+      kW/m) now carry the constant-gap pin model's own figures, so they are derived outputs rather than
+      independent checks (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5
+      core-inlet-low trip states its mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20).
+      LCO-7 gains the idle-loop case (F27)
 
 
 ####################################################################################################

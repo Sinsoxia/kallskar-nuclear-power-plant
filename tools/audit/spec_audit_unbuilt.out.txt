@@ -241,7 +241,7 @@ FILE 16: ROBLOX IMPLEMENTATION AND APPENDICES B-C  (lines 2694-3002)
          lines defining q: none
   [FAIL] C-38 §14.3 total of the listed blocks (fuel 6,020 + pools 3 + IHX 18 + SG 144 + turbines 4 + feed 10): computed 6,199 states vs spec 6,300 states (tolerance ±50, '≈ 6,300' read to two figures)
   [FAIL] C-39 Appendix B: the glossary says shim rods are tagged 'SM', which is in neither code list; the 3 loop-outlet hydrogen meters (27 = 24 + 3) have no NN rule
-  [FAIL] C-40 Appendix C lists A5 before A4, and 7 file headers plus the README still say 'Rev A3' while the text carries A4/A5 changes
+  [PASS] C-40 Appendix C runs A3, A4, A5 in order, and 0 labels (README and file headers) still say 'Rev A3' (fixed 2026-09-24)
 
 ====================================================================================================================
 ERRORS IN THE EARLIER AUDIT DOCUMENTS
@@ -257,11 +257,12 @@ ERRORS IN THE EARLIER AUDIT DOCUMENTS
 ====================================================================================================================
 SUMMARY
 ====================================================================================================================
-  132 checks: 89 PASS, 43 FAIL
-  FAIL (findings reproduced): C-01, C-02, C-03, C-04, C-05, C-06, C-07, C-08, C-09, C-10, C-11, C-12, C-13, C-14, C-15, C-16, C-17, C-18, C-19, C-20, C-21, C-22, C-23, C-24, C-25, C-26, C-27, C-28, C-29, C-30, C-31, C-32, C-33, C-34, C-35, C-36, C-37, C-38, C-39, C-40, P-01, P-02
+  132 checks: 90 PASS, 42 FAIL
+  FAIL (findings reproduced): C-01, C-02, C-03, C-04, C-05, C-06, C-07, C-08, C-09, C-10, C-11, C-12, C-13, C-14, C-15, C-16, C-17, C-18, C-19, C-20, C-21, C-22, C-23, C-24, C-25, C-26, C-27, C-28, C-29, C-30, C-31, C-32, C-33, C-34, C-35, C-36, C-37, C-38, C-39, P-01, P-02
   PASS (consistent): K-01, K-02, K-03a, K-03b, K-04, K-05, K-06, K-07, K-08, K-09, K-10, K-11, K-12a, K-12b, K-13a, K-13b, K-14a, K-14b, K-14c, K-15, K-16a, K-16b, K-17, K-18, K-19, K-20, K-21, K-22, K-23a, K-23b, K-23c, K-23d, K-23e, K-23f, K-24, K-25, K-26, K-27, K-28a, K-28b, K-29, K-30, K-31, K-32, K-33, K-34, K-35a, K-35b, K-35c, K-36, K-37, K-38, K-39, K-40, K-41, K-42, K-43, K-44, K-45, K-46, K-47, K-48, K-49, K-50, K-51, K-52, K-53, K-54, K-55, K-56, K-57, K-58, K-59, K-60, K-61, K-62, K-63, K-64
+  PASS (fixed since the audit): C-40 (2026-09-24, tools/derive/apply_rev_a5.py)
   citations checked: all quoted lines match
-  unexpected outcomes (a K that failed or a C/P that passed): none
+  unexpected outcomes (a K that failed, a C/P that passed, or a fixed finding back): none
 
 ====================================================================================================================
 APPENDIX: FILE-20 calc.py OUTPUT (RE-RUN, UNMODIFIED)

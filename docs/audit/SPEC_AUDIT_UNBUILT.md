@@ -23,7 +23,7 @@ flagged only where they contradict something else.
 own inputs or against physics. UNSUPPORTED means the spec relies on something it never defines, or on something
 that cannot happen under its own rules. CHECKED-CONSISTENT means the number holds.
 
-**Result:** 40 findings: 1 high, 15 medium, 24 low. There are also 2 errors in the earlier audit documents, and
+**Result:** 40 findings: 1 high, 15 medium, 24 low. C-40 has been fixed since (2026-09-24), and the script now checks that it stays fixed. There are also 2 errors in the earlier audit documents, and
 64 groups of checks (89 individual checks) that came out consistent.
 
 ## Summary
@@ -69,7 +69,7 @@ that cannot happen under its own rules. CHECKED-CONSISTENT means the number hold
 | C-37 | §14.2 L2740, L2757 | Snippet starts `num = q`; "initialise with s[i] = beta[i] n" | `q` (an external source) is never defined; that initialisation is steady only with q = 0 at ρ = 0 | UNSUPPORTED | low | Define q and the steady state with a source |
 | C-38 | §14.3 L2796 | ≈ 6,300 thermal states | The listed blocks sum to 6,199 | WRONG | low | ≈ 6,200 |
 | C-39 | App. B L2926–2933, L2952 | Shim rods tagged SM; SG-2-HM-05 | SM is in neither code list; the 3 loop-outlet meters (27 = 24 + 3) have no NN rule | UNSUPPORTED | low | Add SM, and an NN for loop meters |
-| C-40 | App. C L2983, L2991; headers L10, L361… | Revision log; "Rev A3" | A5 is listed before A4; the README and 7 file headers still say Rev A3 | INCONSISTENT | low | Reorder, and update the headers |
+| C-40 | App. C L2983, L2991; headers L10, L361… | Revision log; "Rev A3" | A5 is listed before A4; the README and 7 file headers still say Rev A3 | INCONSISTENT | low | Reorder, and update the headers. **Fixed 2026-09-24** (`tools/derive/apply_rev_a5.py`) |
 
 **Errors in the earlier audit documents**
 
@@ -279,7 +279,7 @@ the type code list (RD is the rod type). The example SG-2-HM-05 covers section m
 (§10.2 lists 27 = 24 + 3) have no stated NN.
 
 **C-40.** Appendix C runs A, A1, A2, A3, **A5, A4**. The README (L10, "Rev A3, 15 September 2026") and the seven
-spec-file headers ("SFR-1000 DESIGN SPECIFICATION, REV A3") predate the A4 and A5 changes the text now carries.
+spec-file headers ("SFR-1000 DESIGN SPECIFICATION, REV A3") predate the A4 and A5 changes the text now carries. **Fixed 2026-09-24:** the labels say Rev A5 and both logs run A3, A4, A5.
 
 **P-01.** On §3.4's S-curve, one 100 pcm rod from 500 to 750 mm is worth 40.9 pcm, 55 min at the ×360 drift of
 0.75 pcm per real minute; over the full 250–750 mm band it is worth 81.8 pcm, 109 min. Three ganged rods from

@@ -1,4 +1,4 @@
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A3
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
 Part 7 of 7: Roblox implementation, persistence, modules, sodium properties, tags, glossary, revisions
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -283,14 +283,6 @@ APPENDIX C. REVISION LOG
     Change: Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal
       diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7,
       §14.2). Former lumped values became validation targets; point kinetics kept as fallback
-* A5
-    Date: 21 Sep 2026
-    Change: Refinements from the resolved decision log (docs/FINAL_DECISIONS_REV_A5.md), which accepted
-      every proposed decision. The hot-pin centreline (2,140 °C) and melting linear heat rate (≈ 57
-      kW/m) now carry the constant-gap pin model's own figures, so they are derived outputs rather than
-      independent checks (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5
-      core-inlet-low trip states its mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20).
-      LCO-7 gains the idle-loop case (F27)
 * A4
     Date: 21 Sep 2026
     Change: Corrections from the eight-reviewer audit, each recomputed from the spec's own data
@@ -303,3 +295,11 @@ APPENDIX C. REVISION LOG
       ×10 allowed in a blackout (§0.2, §12.2). Feed-pump power stated per train (§7.6). Amplitude
       update replaced with the linear-n form (§14.2). Check-valve and surviving-pump behaviour on a
       pump trip stated (§4.2)
+* A5
+    Date: 21 Sep 2026
+    Change: Refinements from the resolved decision log (docs/FINAL_DECISIONS_REV_A5.md), which accepted
+      every proposed decision. The hot-pin centreline (2,140 °C) and melting linear heat rate (≈ 57
+      kW/m) now carry the constant-gap pin model's own figures, so they are derived outputs rather than
+      independent checks (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5
+      core-inlet-low trip states its mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20).
+      LCO-7 gains the idle-loop case (F27)

@@ -1,5 +1,5 @@
 KALLSKAR NUCLEAR POWER PLANT: CLAUDE CODE HANDOFF PACK
-Design specification Rev A3, 15 September 2026
+Design specification Rev A5, 21 September 2026
 Display name: Kallskär Nuclear Power Plant. Use ASCII "Kallskar" in code, instance names and DataStore keys.
 
 ====================================================================================================

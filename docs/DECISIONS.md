@@ -769,6 +769,13 @@ corrected above. **C-29 is the high one**, and I confirmed it against the text: 
 about 180 zones would fail every couple of minutes. Nothing in these sections is built yet, so none of this affects
 M1. **For Aqua:** review before the steam-plant milestone, starting with C-29 and the medium findings.
 
+**C-40 fixed (2026-09-24, Aqua's OK).** The text pack's README and seven spec-file headers said Rev A3, so a coding
+agent read it as older than the HTML, although all three copies carried the same A5 text. The labels now say Rev A5,
+and both revision logs run A3, A4, A5 (the text had A5 before A4, and the HTML table ran A5, A4, A3).
+`tools/derive/apply_rev_a5.py` makes the change and checks it: 31/31 checks, including that every handoff file is
+still verbatim in `KALLSKAR_ALL_IN_ONE.txt`. The audit script now expects C-40 to pass. `apply_rev_a4.py --check` now
+reports its three checks that A5 replaced as superseded, where before it called them wrong.
+
 ## D-045 The prompt-critical flag describes the core as it is now, not what happened this session — Accepted (2026-09-24)
 §14.2 has the amplitude hand over to a scripted core-damage event once ρ reaches 0.9β, "rather than integrating
 through it". Before PR #4, `Kinetics` set `amp.promptCritical` on the first crossing and never cleared it, although

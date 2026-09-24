@@ -10,6 +10,9 @@ every proposed decision and asked for five changes to the document itself:
   D-004  the §9.5 core-inlet-low trip states its permissive rather than leaving the gating implicit
   F20    the regulating-band drift time is 2.7 h, not the 2.5 h Rev A4 rounded to
   F27    the LCO-7 scope note gains the idle-loop case
+  C-40   (docs/audit/SPEC_AUDIT_UNBUILT.md, done 2026-09-24) the text pack says which revision it is: its README
+         and the seven spec-file headers move from Rev A3 to A5, and both revision logs run A3, A4, A5 in order
+         (the text had A5 before A4; the HTML table ran A5, A4, A3)
 
 Honest consequence of D-018, recorded here and in the derivation: the centreline and melting figures are now OUTPUTS
 of `tools/derive/pin_thermal.py`, not independent checks on it. After this revision the only §2.4/§3.2 figures the pin
@@ -24,6 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from apply_rev_a4 import HANDOFF, HTML, TXT, add_scope, apply  # noqa: E402
+from apply_rev_a4 import HTML_EDITS as A4_HTML_EDITS, TXT_EDITS as A4_TXT_EDITS  # noqa: E402
 
 HTML_EDITS = [
     ("rev", "SFR-1000 design specification, Rev A4", "SFR-1000 design specification, Rev A5", 1),
@@ -89,6 +93,40 @@ TXT_EDITS = [
     Date: 21 Sep 2026""", 1),
 ]
 
+
+def _entry(edits, finding: str) -> str:
+    """The text an insertion edit added: its replacement less the anchor it kept."""
+    _, old, new, _ = next(e for e in edits if e[0] == finding)
+    return new[len(old):] if new.startswith(old) else new[: len(new) - len(old)]
+
+
+# C-40: the log entries are taken from the edits that wrote them, so the swap moves exactly that text
+TXT_A4, TXT_A5 = _entry(A4_TXT_EDITS, "A4 log"), _entry(TXT_EDITS, "A5 log")
+HTML_A4, HTML_A5 = _entry(A4_HTML_EDITS, "A4 log"), _entry(HTML_EDITS, "A5 log")
+HTML_A3 = """            <tr>
+              <td>A3</td>
+              <td>15 Sep 2026</td>
+              <td>Reactor physics raised to real-time 3D multigroup space-time kinetics: hexagonal-Z nodal diffusion, improved quasi-static method, per-assembly thermal-hydraulic coupling (§3.7, §14.2). Former lumped values became validation targets; point kinetics kept as fallback</td>
+            </tr>
+"""
+README_LABEL = ("Design specification Rev A3, 15 September 2026", "Design specification Rev A5, 21 September 2026")
+HEADER_LABEL = ("SFR-1000 DESIGN SPECIFICATION, REV A3", "SFR-1000 DESIGN SPECIFICATION, REV A5")
+C40_HTML = [("C-40", HTML_A5 + HTML_A4 + HTML_A3, HTML_A3 + HTML_A4 + HTML_A5, 1)]
+
+
+def c40_txt(path: Path):
+    """C-40's edits for one text file, each with the number of times it must match there."""
+    whole, n = path == TXT, path.name[:2]
+    edits = []
+    if whole or n == "00":
+        edits.append(("C-40", *README_LABEL, 1))
+    if whole or "10" <= n <= "16":
+        edits.append(("C-40", *HEADER_LABEL, 7 if whole else 1))
+    if whole or n == "16":
+        edits.append(("C-40", TXT_A5 + TXT_A4, TXT_A4 + TXT_A5, 1))
+    return edits
+
+
 VERIFY = [
     ("Rev A5 title", "design specification, Rev A5", 1, 0),
     ("A5 changelog row", "<td>A5</td>", 1, None),
@@ -103,26 +141,41 @@ VERIFY = [
     ("old melting gone", "melting above ≈ 60", 0, 0),
     ("old drift gone", "≈ 2.5 h", 0, 0),
     ("old hazard wording gone", "about 80% at U = 1", 0, 0),
+    ("C-40 README label", README_LABEL[1], 0, 1),
+    ("C-40 spec-file headers", HEADER_LABEL[1], 0, 7),
+    ("C-40 no Rev A3 label left", "Design specification Rev A3", 0, 0),
+    ("C-40 no REV A3 header left", "SPECIFICATION, REV A3", 0, 0),
 ]
 
 
 def verify():
     html, txt = HTML.read_text(encoding="utf-8"), TXT.read_text(encoding="utf-8")
-    bad = 0
+    checks = []
     for label, snippet, want_html, want_txt in VERIFY:
         gh, gt = html.count(snippet), txt.count(snippet)
         ok = (want_html is None or gh == want_html) and (want_txt is None or gt == want_txt)
+        checks.append((ok, f"{label}: html {gh} (want {want_html}), text pack {gt} (want {want_txt})"))
+    # C-40: every revision log runs A3, A4, A5 in order, and every handoff file is still verbatim in the text pack
+    logs = [("HTML", html, "<td>{}</td>"), ("text pack", txt, "\n* {}\n")]
+    logs += [(f.name, f.read_text(encoding="utf-8"), "\n* {}\n") for f in HANDOFF if f.name.startswith("16_")]
+    for where, text, fmt in logs:
+        at = [text.find(fmt.format(r)) for r in ("A3", "A4", "A5")]
+        checks.append((-1 not in at and at == sorted(at), f"C-40 {where} log runs A3, A4, A5 (at {at})"))
+    for f in HANDOFF:
+        checks.append((f.read_text(encoding="utf-8") in txt, f"{f.name} is verbatim in the text pack"))
+    bad = 0
+    for ok, what in checks:
         bad += not ok
         if not ok:
-            print(f"   WRONG {label}: html {gh} (want {want_html}), text pack {gt} (want {want_txt})")
-    print(f"verify: {len(VERIFY) - bad}/{len(VERIFY)} checks pass")
+            print(f"   WRONG {what}")
+    print(f"verify: {len(checks) - bad}/{len(checks)} checks pass")
     return bad
 
 
 if __name__ == "__main__":
     check = "--check" in sys.argv
-    for path, edits in [(HTML, HTML_EDITS), (TXT, TXT_EDITS)] + [
-            (f, [e for e in TXT_EDITS if e[1] in f.read_text(encoding="utf-8")]) for f in HANDOFF]:
+    for path, edits in [(HTML, HTML_EDITS + C40_HTML), (TXT, TXT_EDITS + c40_txt(TXT))] + [
+            (f, [e for e in TXT_EDITS if e[1] in f.read_text(encoding="utf-8")] + c40_txt(f)) for f in HANDOFF]:
         if not edits:
             continue
         applied, already, missed = apply(path, edits, check)
