@@ -54,7 +54,7 @@ end
 	Commands as Main builds it, with the three services M1 has no instances for yet filled in: one panel, a player
 	standing beside it, and enough playtime for the critical controls.
 ]]
-local function intake(registry: any, log: any, bus: any)
+local function intake(registry: any, log: any, bus: any, hours: number?)
 	return Commands.new({
 		config = Config,
 		registry = registry,
@@ -67,7 +67,7 @@ local function intake(registry: any, log: any, bus: any)
 			return Vector3.new(1, 0, 0)
 		end,
 		playtimeHours = function(_player: Player): number?
-			return Config.Access.criticalMinimumPlaytime_h + 1
+			return hours or Config.Access.criticalMinimumPlaytime_h + 1
 		end,
 		now = function()
 			return 0
@@ -128,6 +128,19 @@ return {
 		r = commands:submit(PLAYER, { kind = "runback.clear", panel = PANEL })
 		t.ok(r.ok, `runback.clear refused: {r.reason}`)
 		t.eq(byName.Protection:getState().runback, nil, "the client's clear ends it")
+	end,
+
+	["bypassing a trip and clearing a runback need the critical-control playtime (D-055)"] = function(t)
+		local registry, byName, log, bus = plant()
+		local commands = intake(registry, log, bus, Config.Access.criticalMinimumPlaytime_h - 0.5)
+		for _, raw in {
+			{ kind = "pss.bypass", target = "COVER-GAS", value = 1, panel = PANEL },
+			{ kind = "runback.clear", panel = PANEL },
+		} do
+			local r = commands:submit(PLAYER, raw)
+			t.ok(not r.ok and string.find(r.reason or "", "playtime", 1, true) ~= nil, `{raw.kind} needs the playtime ({r.reason})`)
+		end
+		t.eq(byName.Protection.bypassed["COVER-GAS"], nil, "so nothing was bypassed")
 	end,
 
 	["a client's backup control room trip is one button (§9.5)"] = function(t)

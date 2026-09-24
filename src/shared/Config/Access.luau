@@ -17,6 +17,9 @@ return {
 		"loop.drain",
 		"sg.section.dump",
 		"plant.mode.change",
+		-- D-055: taking a trip out of service, or overriding a runback, is as consequential as a trip
+		"pss.bypass",
+		"runback.clear",
 	},
 
 	voteKick = tuning({ minimumVoters = 3, majorityOfOthers = true, onlyIfTripUnjustified = true }, "§10.7 (safeguard proposed, not confirmed)"),

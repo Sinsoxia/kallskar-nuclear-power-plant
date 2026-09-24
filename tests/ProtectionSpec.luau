@@ -376,6 +376,26 @@ return {
 		t.eq(bch:get("protection.scram"), "PSS", "one button in the backup control room is enough")
 	end,
 
+	["a bypass is one row at a time, and never a row the neutron instruments drive (D-055)"] = function(t)
+		local sys = make()
+		local function bypass(id: string, on: boolean): any
+			return sys:applyCommand(OPERATOR, { kind = "pss.bypass", target = id, value = if on then 1 else 0 })
+		end
+		for _, id in { "PR-HIGH", "PR-LOW-SP", "FLUX-RATE", "PERIOD", "SSS-FLUX" } do
+			local r = bypass(id, true)
+			t.ok(not r.ok, `{id} cannot be bypassed ({r.reason})`)
+			t.eq(sys:getState().monitors[id].bypassed, false)
+		end
+		t.ok(bypass("COVER-GAS", true).ok, "a process row can be")
+		local r = bypass("SEISMIC", true)
+		t.ok(not r.ok and string.find(r.reason or "", "COVER-GAS", 1, true) ~= nil,
+			`but only one at a time, and the refusal names the row to restore first ({r.reason})`)
+		t.eq(sys:getState().monitors["SEISMIC"].bypassed, false)
+		t.ok(bypass("COVER-GAS", true).ok, "bypassing the same row again changes nothing")
+		t.ok(bypass("COVER-GAS", false).ok, "restored")
+		t.ok(bypass("SEISMIC", true).ok, "and then another row can be bypassed")
+	end,
+
 	["a bypassed signal cannot trip, and the bypass is logged"] = function(t)
 		local sys, ch = make()
 		t.ok(sys:applyCommand(OPERATOR, { kind = "pss.bypass", target = "COVER-GAS", value = 1 }).ok)

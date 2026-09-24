@@ -142,6 +142,7 @@ local function buildMonitors(cfg: any): { any }
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
 			vote = votePR, alarm = pss.powerRangeHigh.alarm_pctFP, trip = pss.powerRangeHigh.trip_pctFP,
+			neutron = true, -- D-055: never bypassed
 		},
 		{
 			--[[
@@ -152,7 +153,7 @@ local function buildMonitors(cfg: any): { any }
 			signal = function(self)
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
-			vote = votePR, trip = pss.powerRangeLowSetpoint.trip_pctFP,
+			vote = votePR, trip = pss.powerRangeLowSetpoint.trip_pctFP, neutron = true,
 			armed = function(self)
 				return self.power < pss.powerRangeLowSetpoint.activeBelowPermissive_pctFP
 			end,
@@ -167,7 +168,7 @@ local function buildMonitors(cfg: any): { any }
 				end
 				return out
 			end,
-			vote = vote3, block = pss.period.rodBlockBelow_s, trip = pss.period.tripBelow_s,
+			vote = vote3, block = pss.period.rodBlockBelow_s, trip = pss.period.tripBelow_s, neutron = true,
 			blockPersist_s = 2, -- D-025: the channel's own noise touches 39 s at 4.5σ, so one sample is not enough
 			armed = function(self)
 				return self.power < pss.period.activeBelow_pctFP
@@ -186,7 +187,7 @@ local function buildMonitors(cfg: any): { any }
 				local down = rate / pss.fluxRate.tripFall_pctFPps
 				return { math.max(up, down) }
 			end,
-			vote = 1, trip = 1.0,
+			vote = 1, trip = 1.0, neutron = true,
 		},
 		{
 			id = "PQ", label = "Power to flow", system = "PSS", sense = "above",
@@ -338,7 +339,7 @@ local function buildMonitors(cfg: any): { any }
 			signal = function(self)
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
-			vote = votePR, trip = sss.powerRange_pctFP,
+			vote = votePR, trip = sss.powerRange_pctFP, neutron = true,
 		},
 		{
 			--[[
@@ -394,6 +395,11 @@ function Protection.init(self: any, ctx: any)
 	self.curieTemp_C = 0
 	self.curieStarted = false
 	self.bypassed = {} :: { [string]: boolean }
+	self.bypassedMax = cfg.Protection.bypassedRowsMax
+	self.neutronRow = {} :: { [string]: boolean }
+	for _, m in self.monitors do
+		self.neutronRow[m.id] = m.neutron == true
+	end
 	self.assySorted, self.assyDeviations = {}, {} -- ASSY-DEV's working buffers
 	self:publish()
 end
@@ -670,7 +676,11 @@ Protection.commands = {
 
 	--[[
 		A bypass is a deliberate, logged, visible act: §9.6's LCOs are written around which protection is
-		available, so a bypassed trip has to be something an auditor can find afterwards.
+		available, so a bypassed trip has to be something an auditor can find afterwards. D-055 limits it: the
+		command is a critical control (the §10.7 playtime, Access.criticalControls); at most bypassedRowsMax rows
+		are out of service at once; and a row the neutron instruments drive (the power range high and low setpoint,
+		flux rate, period, and the SSS power range) is never bypassed, because those are the trips that answer a
+		reactivity excursion. Once the desks exist a bypass will also need §10.2's shift-supervisor authorisation.
 	]]
 	["pss.bypass"] = function(self: any, actor: Actor, cmd: Command): CommandResult
 		local id = cmd.target
@@ -678,6 +688,19 @@ Protection.commands = {
 			return { ok = false, reason = `unknown protective signal '{tostring(id)}'` }
 		end
 		local on = cmd.value ~= 0
+		if on and not self.bypassed[id] then
+			if self.neutronRow[id] then
+				return { ok = false, reason = `{id} is a neutron trip and cannot be bypassed` }
+			end
+			local out = {}
+			for row in self.bypassed do
+				table.insert(out, row)
+			end
+			if #out >= self.bypassedMax then
+				table.sort(out)
+				return { ok = false, reason = `{table.concat(out, ", ")} is already bypassed; restore it first` }
+			end
+		end
 		self.bypassed[id] = on or nil
 		if self.log then
 			self.log:record("pss.bypass", actor, id, nil, if on then "BYPASSED" else "restored")
