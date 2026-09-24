@@ -459,8 +459,19 @@ function IHX.step(self: any, dt: number)
 	if runback ~= "" then
 		self.runbackTarget, self.runbackRate = target, perMinute / 60
 		self.loadDemand = math.min(self.loadDemand, target)
-	elseif self.runbackTarget and self.sinkLoad <= self.runbackTarget then
-		self.runbackTarget = nil -- the load has got there after the runback finished
+	elseif self.runbackTarget then
+		--[[
+			The runback is over, completed or cleared, and the steam plant's runback ends with it. The load reads
+			Protection a tick late, so a completed runback leaves it at most one tick of the ramp above the target,
+			and that tick is finished here. A cleared one leaves it anywhere above: the demand holds at the load,
+			for the operator to take from there at the operating rates.
+		]]
+		local step = self.runbackRate * dt
+		if self.sinkLoad - self.runbackTarget <= step then
+			self.sinkLoad = math.max(self.runbackTarget, self.sinkLoad - step)
+		end
+		self.loadDemand = self.sinkLoad
+		self.runbackTarget, self.runbackRate = nil, 0
 	end
 	self:rampLoad(dt)
 	self:applyFlows(flow)
