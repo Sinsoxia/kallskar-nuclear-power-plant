@@ -1,7 +1,13 @@
 --!strict
-local Tags = require(game.ReplicatedStorage.Kallskar.Tags)
+--[[
+	Checks instrument and equipment tags against spec Appendix B (KALLSKAR_ALL_IN_ONE.txt L2926).
+	Validates that Appendix B systems and types are present, exact extended types are known,
+	formatting/parsing logic is correct, and parsing respects canonical spelling for instance names.
+]]
+local Kallskar = game:GetService("ReplicatedStorage"):WaitForChild("Kallskar")
+local Tags = require((Kallskar :: any).Tags)
 
--- Appendix B (KALLSKAR_ALL_IN_ONE.txt L2921-2933)
+-- Appendix B (KALLSKAR_ALL_IN_ONE.txt L2926)
 -- "RX core; PN primary sodium; SN secondary sodium; SG steam generators; MS main steam; TG turbine-generator; CD condensate; FW feedwater; CW cooling water; EL electrical; DG diesels; DR DRACS; NS sodium services; CH chemistry; PR protection"
 local APPENDIX_B_SYSTEMS = {
 	{ code = "RX", meaning = "core" },
@@ -38,6 +44,15 @@ local APPENDIX_B_TYPES = {
 	{ code = "RD", meaning = "rod" },
 }
 
+local KNOWN_EXTENDED_TYPES = {
+	N = true,
+	PER = true,
+	RHO = true,
+	DND = true,
+	POS = true,
+	PQ = true,
+}
+
 return {
 	["Appendix B systems are present and correct"] = function(t)
 		for _, sys in APPENDIX_B_SYSTEMS do
@@ -53,25 +68,21 @@ return {
 		end
 	end,
 
-	["extended types do not collide with Appendix B types"] = function(t)
+	["exact set of extension codes is known (unrecorded extensions)"] = function(t)
 		local appBTypes = {}
 		for _, typ in APPENDIX_B_TYPES do
 			appBTypes[typ.code] = true
 		end
 
-		local extraCount = 0
-		for code, meaning in Tags.TYPES do
+		for code, _ in Tags.TYPES do
 			if not appBTypes[code] then
-				extraCount += 1
-				t.log(`Extended type added: {code} = {meaning}`)
-			else
-				-- If it is in appBTypes, we verified it in the previous test.
-				-- We just need to make sure the extended types don't accidentally reuse a key,
-				-- but since it's a Lua table, keys are unique.
-				-- We just log the extended types.
+				t.ok(KNOWN_EXTENDED_TYPES[code], `Unexpected extended type code found: {code}`)
 			end
 		end
-		t.ok(extraCount > 0, "Expected to find extended types")
+
+		for code, _ in KNOWN_EXTENDED_TYPES do
+			t.ok(Tags.TYPES[code], `Expected extended type code not found in Tags.TYPES: {code}`)
+		end
 	end,
 
 	["format, parse, isValid match spec example (SG-2-HM-05)"] = function(t)
@@ -89,7 +100,7 @@ return {
 		end
 	end,
 
-	["round trips across every system and type"] = function(t)
+	["round trips across every system and type (format -> parse)"] = function(t)
 		for sysCode, _ in Tags.SYSTEMS do
 			for typeCode, _ in Tags.TYPES do
 				local formatted = Tags.format(sysCode, 1, typeCode, 10)
@@ -106,17 +117,35 @@ return {
 		end
 	end,
 
+	["parse -> format round trips to reject non-canonical spelling"] = function(t)
+		-- "SG-2-HM-005" and "RX-0-TC-0331" have non-canonical padding that Tags.format wouldn't produce for those indices.
+		-- They must be rejected by Tags.parse because each tag needs exactly one spelling (it's the replication key).
+		t.eq(Tags.parse("SG-2-HM-005"), nil, "Must reject SG-2-HM-005 (non-canonical padding)")
+		t.eq(Tags.parse("RX-0-TC-0331"), nil, "Must reject RX-0-TC-0331 (non-canonical padding)")
+		t.eq(Tags.parse("SG-2-HM-5"), nil, "Must reject SG-2-HM-5 (non-canonical padding)")
+	end,
+
 	["edges of loop and index ranges"] = function(t)
 		-- Loop edges (0, 9)
 		local L0 = Tags.format("RX", 0, "T", 0)
 		t.eq(L0, "RX-0-T-00")
-		t.eq(Tags.parse(L0).loop, 0)
-		t.eq(Tags.parse(L0).index, 0)
+		local parsedL0 = Tags.parse(L0)
+		t.ok(parsedL0, "L0 should parse")
+		if parsedL0 then
+			t.eq(parsedL0.loop, 0)
+			t.eq(parsedL0.index, 0)
+		end
 
+		-- Finding: Appendix B says "NN" (2 digits), but Tags.format allows three-digit indices (100–999).
+		-- This is an unrecorded extension, but it's what the code does so we keep testing it here.
 		local L9 = Tags.format("RX", 9, "T", 999)
 		t.eq(L9, "RX-9-T-999")
-		t.eq(Tags.parse(L9).loop, 9)
-		t.eq(Tags.parse(L9).index, 999)
+		local parsedL9 = Tags.parse(L9)
+		t.ok(parsedL9, "L9 should parse")
+		if parsedL9 then
+			t.eq(parsedL9.loop, 9)
+			t.eq(parsedL9.index, 999)
+		end
 
 		t.throws(function() Tags.format("RX", -1, "T", 0) end, "tag loop must be an integer 0–9")
 		t.throws(function() Tags.format("RX", 10, "T", 0) end, "tag loop must be an integer 0–9")
@@ -145,12 +174,11 @@ return {
 	["property tests for validity (instance name / replication key)"] = function(t)
 		-- As instance name and replication key, a tag must be unique for unique inputs,
 		-- must roundtrip, and must only contain allowed characters (no spaces, control chars, etc.)
-		-- We tested roundtripping above. We also ensure no spaces or weird characters are generated.
 		local tag = Tags.format("SG", 2, "HM", 5)
 		t.eq(string.match(tag, "^[%w%-]+$"), tag, "Tag contains invalid characters for instance names / replication keys")
 
-		-- C-39 audit finding: Shim rods tagged SM but SM is not in system nor type lists
-		t.ok(not Tags.SYSTEMS["SM"], "Finding C-39: SM is missing from SYSTEMS")
-		t.ok(not Tags.TYPES["SM"], "Finding C-39: SM is missing from TYPES")
+		-- Note: There is an open audit finding (C-39) noting that shim rods are tagged SM in the spec's glossary,
+		-- but SM is missing from the system and type lists, and hydrogen meters have no NN rule.
+		-- This is for Aqua to decide, so no test assertions pin SM.
 	end,
 }

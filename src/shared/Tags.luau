@@ -65,11 +65,18 @@ function Tags.format(system: string, loop: number, kind: string, index: number):
 end
 
 function Tags.parse(tag: string): Tag?
-	local sys, loop, kind, idx = string.match(tag, "^(%u%u)%-(%d)%-(%u+)%-(%d%d%d?)$")
+	local sys, loopStr, kind, idxStr = string.match(tag, "^(%u%u)%-(%d)%-(%u+)%-(%d%d%d?)$")
 	if not sys or not SYSTEMS[sys] or not TYPES[kind :: string] then
 		return nil
 	end
-	return { system = sys :: string, loop = tonumber(loop) :: number, kind = kind :: string, index = tonumber(idx) :: number }
+	local loop = tonumber(loopStr) :: number
+	local idx = tonumber(idxStr) :: number
+
+	if Tags.format(sys :: string, loop, kind :: string, idx) ~= tag then
+		return nil
+	end
+
+	return { system = sys :: string, loop = loop, kind = kind :: string, index = idx }
 end
 
 function Tags.isValid(tag: string): boolean
