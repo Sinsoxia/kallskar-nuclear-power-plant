@@ -28,6 +28,8 @@ local OPERATOR = { kind = "player" :: any, name = "Aqua", userId = 1 }
 local function make(block: boolean?)
 	local ch = Channels.new()
 	ch:declareExternal("protection.rodWithdrawalBlock", block == true)
+	ch:declareExternal("protection.runback", "")
+	ch:declareExternal("protection.rodRunback", false)
 	local sys = System.new(RodDrives)
 	local bus = Bus.new()
 	sys:init({
@@ -267,6 +269,30 @@ return {
 		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.runback", value = 0 }).ok, "release it")
 		run(sys, 10)
 		t.near(find(sys, "SMA1").position_mm, 700, 1e-9, "the drive-in stops where it was released")
+	end,
+
+	["a Protection runback holds the operator off for its whole length, and drives in only when asked (D-046)"] = function(t)
+		local sys, ch = make()
+		place(sys, "RR", 800)
+		for _, drive in sys.drives do
+			if drive.system == "PSS" then
+				drive.position_mm, drive.demand_mm = 800, 800
+			end
+		end
+		ch:setExternal("protection.runback", "RB2")
+		ch:setExternal("protection.rodRunback", true)
+		run(sys, 1)
+		t.near(find(sys, "SMA1").position_mm, 800 - RODS.shim.speedRunbackDriveIn_mmps, 1e-9, "a second of drive-in")
+		-- a hold tick: the power is under the runback's demand, so the shims hold, and the runback is still on
+		ch:setExternal("protection.rodRunback", false)
+		run(sys, 1)
+		t.near(find(sys, "SMA1").position_mm, 800 - RODS.shim.speedRunbackDriveIn_mmps, 1e-9, "the shims hold")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 900 }).ok,
+			"and the operator is held off between drive-in ticks")
+		ch:setExternal("protection.runback", "")
+		run(sys, DT)
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 900 }).ok,
+			"once the runback is over the rods are the operator's again")
 	end,
 
 	["the regulating band is published for §9.5's rod block"] = function(t)
