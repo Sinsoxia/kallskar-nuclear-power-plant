@@ -87,6 +87,8 @@ local persistence = Persistence.new({
 	mode = if isPrivate then "private" else "public",
 	key = `plant/{game.PrivateServerId}`,
 	ownerUserId = game.PrivateServerOwnerId,
+	channels = channels, -- the external inputs, with the mode (D-053)
+	faults = faults, -- the active faults (D-053)
 })
 local okLoad, loadResult = pcall(persistence.load, persistence)
 if not okLoad then

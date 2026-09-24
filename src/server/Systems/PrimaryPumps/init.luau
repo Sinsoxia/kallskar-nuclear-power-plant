@@ -316,6 +316,42 @@ PrimaryPumps.faults = {
 	},
 }
 
+-- §14.6 (D-053): which pumps are stopped or tripped, their pony motors and speed demands. A pump that was coasting
+-- down carries on from where its coastdown had got to.
+function PrimaryPumps.save(self: any): any
+	local pumps = {}
+	for i, p in self.pumps do
+		pumps[i] = {
+			speed_pct = p.speed_pct,
+			demand_pct = p.demand_pct,
+			tripped = p.tripped,
+			pony = p.pony,
+			coastFlow0_kgps = p.coastFlow0_kgps,
+			coastTime_s = p.coastTime_s,
+		}
+	end
+	return { pumps = pumps }
+end
+
+function PrimaryPumps.load(self: any, data: any, _version: number)
+	if type(data.pumps) ~= "table" then
+		return
+	end
+	for i, p in self.pumps do
+		local s = data.pumps[i]
+		if type(s) == "table" then
+			for _, field in { "speed_pct", "demand_pct", "coastFlow0_kgps", "coastTime_s" } do
+				if type(s[field]) == "number" then
+					p[field] = s[field]
+				end
+			end
+			p.tripped = s.tripped == true
+			p.pony = s.pony == true
+		end
+	end
+	self:publish()
+end
+
 function PrimaryPumps.getState(self: any): { [string]: any }
 	local pumps = {}
 	for i, pump in self.pumps do

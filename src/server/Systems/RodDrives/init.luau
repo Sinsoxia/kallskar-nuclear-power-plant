@@ -578,6 +578,45 @@ RodDrives.faults = {
 	},
 }
 
+--[[
+	§14.6 (D-053): positions, stuck rods and the scram latches. A load is a plant coming back after its server closed,
+	which counts as a reactor trip: every PSS rod is in and the PSS scram latched, except a stuck rod, which stays
+	where it stuck (§3.4's margins are quoted for exactly that). A PSS trip does not move the SSRs, so they come back
+	where they were, unless their own scram had already put them in.
+]]
+function RodDrives.save(self: any): any
+	local positions, stuck = {}, {}
+	for _, drive in self.drives do
+		positions[drive.name] = drive.position_mm
+		if drive.stuck then
+			stuck[drive.name] = true
+		end
+	end
+	return { positions = positions, stuck = stuck, scrammed = table.clone(self.scrammed) }
+end
+
+function RodDrives.load(self: any, data: any, _version: number)
+	local positions = if type(data.positions) == "table" then data.positions else {}
+	local stuck = if type(data.stuck) == "table" then data.stuck else {}
+	local ssrIn = type(data.scrammed) == "table" and data.scrammed.SSR == true
+	for _, drive in self.drives do
+		local saved = positions[drive.name]
+		drive.stuck = stuck[drive.name] == true
+		if drive.stuck and type(saved) == "number" then
+			drive.position_mm = math.clamp(saved, 0, self.travel_mm)
+		elseif drive.system == "PSS" or ssrIn then
+			drive.position_mm = 0
+		elseif type(saved) == "number" then
+			drive.position_mm = math.clamp(saved, 0, self.travel_mm)
+		end
+		drive.demand_mm = drive.position_mm
+	end
+	self.scrammed = { PSS = true, SSR = if ssrIn then true else nil }
+	self.selection, self.autoSelection = nil, nil
+	self.runback, self.commandedRunback = false, false
+	self:publish()
+end
+
 function RodDrives.getState(self: any): { [string]: any }
 	local drives = {}
 	for i, drive in self.drives do

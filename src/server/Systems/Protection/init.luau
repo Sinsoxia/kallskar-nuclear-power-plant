@@ -821,6 +821,41 @@ Protection.faults = {
 	},
 }
 
+--[[
+	§14.6 (D-053): the trip bypasses, and the trip itself. A server close counts as a reactor trip, so a loaded plant
+	comes back with the PSS tripped: with the first out it had if it was already tripped, SERVER-CLOSE otherwise.
+	A bypass a fault holds is put back by the fault as well (Faults.restore).
+]]
+function Protection.save(self: any): any
+	local bypassed = {}
+	for id in self.bypassed do
+		table.insert(bypassed, id)
+	end
+	table.sort(bypassed)
+	return { bypassed = bypassed, tripped = table.clone(self.tripped), firstOut = self.firstOut }
+end
+
+function Protection.load(self: any, data: any, _version: number)
+	table.clear(self.bypassed)
+	if type(data.bypassed) == "table" then
+		for _, id in data.bypassed do
+			if type(id) == "string" and self.state[id] ~= nil then
+				self.bypassed[id] = true
+			end
+		end
+	end
+	local was = if type(data.tripped) == "table" then data.tripped else {}
+	self.tripped = { PSS = true, SSS = if was.SSS == true then true else nil }
+	self.firstOut = if type(data.firstOut) == "string" and data.firstOut ~= "" then data.firstOut else "SERVER-CLOSE"
+	if self.log and was.PSS ~= true then
+		self.log:record("reactor.trip", nil, "SERVER-CLOSE", "the server closed, which counts as a reactor trip (D-053)",
+			if self.firstOut == "SERVER-CLOSE" then "TRIP (first out)" else "TRIP")
+	end
+	self.runback = nil
+	table.clear(self.pressed)
+	self:publish()
+end
+
 function Protection.getState(self: any): { [string]: any }
 	local rows = {}
 	for _, m in self.monitors do

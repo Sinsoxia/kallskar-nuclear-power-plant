@@ -58,6 +58,27 @@ function Channels.resetExternals(self: any)
 	end
 end
 
+-- The external inputs' present values, for a save (D-053): the mode, and whatever else stands in for an unbuilt system
+function Channels.exportExternals(self: any): { [string]: any }
+	local out = {}
+	for name in self.externalInitial do
+		out[name] = self.values[name]
+	end
+	return out
+end
+
+-- Put saved external inputs back. Names this plant does not declare as external are ignored.
+function Channels.importExternals(self: any, saved: { [string]: any }?)
+	if type(saved) ~= "table" then
+		return
+	end
+	for name, value in saved do
+		if self.externalInitial[name] ~= nil and type(value) == type(self.externalInitial[name]) then
+			self.values[name] = value
+		end
+	end
+end
+
 function Channels.isDeclared(self: any, name: string): boolean
 	return self.owner[name] ~= nil
 end

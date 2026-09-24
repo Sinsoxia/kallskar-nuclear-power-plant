@@ -322,6 +322,21 @@ AutoControls.commands = {
 	end,
 }
 
+-- D-053: which controllers were in. A loaded plant is tripped, and a trip drops rod auto to manual (D-035).
+function AutoControls.save(self: any): any
+	return { rodOn = self.rodOn, flowOn = self.flowOn }
+end
+
+function AutoControls.load(self: any, data: any, _version: number)
+	self.flowOn = data.flowOn == true
+	if data.rodOn == true and self.log then
+		self.log:record("auto.rod", nil, "rod auto", "reactor trip (server close)", "manual")
+	end
+	self.rodOn = false
+	self.started = false -- flow auto's power filter starts again on the power it finds
+	self:publish()
+end
+
 function AutoControls.getState(self: any): { [string]: any }
 	return {
 		rodOn = self.rodOn,

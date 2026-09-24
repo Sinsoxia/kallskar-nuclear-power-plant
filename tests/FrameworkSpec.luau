@@ -988,17 +988,18 @@ return {
 		end
 		t.ok(restored, "event log restored")
 
-		-- a version-1 save migrated to a hypothetical version 3
+		-- the save as written, at this server's version, migrated to a hypothetical version two on
+		local v = Persistence.CURRENT_VERSION
 		local migrated = plant({ Keeper })
 		resolveAndInit(migrated)
 		local pers3 = persist(migrated, {
-			currentVersion = 3,
+			currentVersion = v + 2,
 			migrations = {
-				[1] = function(d)
+				[v] = function(d)
 					d.systems.Keeper.burnup += 1
 					return d
 				end,
-				[2] = function(d)
+				[v + 1] = function(d)
 					d.systems.Keeper.burnup *= 2
 					return d
 				end,
@@ -1006,8 +1007,8 @@ return {
 		})
 		t.eq(pers3:load(), "loaded")
 		t.eq(migrated.systems[1].burnup, (42.5 + 1) * 2, "migrations applied in order")
-		t.eq(migrated.systems[1].loadedAs, 3, "and the system is told the version its slice is now in, not the old one")
-		local gap = persist(plant({}), { currentVersion = 3, migrations = {} })
+		t.eq(migrated.systems[1].loadedAs, v + 2, "and the system is told the version its slice is now in, not the old one")
+		local gap = persist(plant({}), { currentVersion = v + 2, migrations = {} })
 		t.throws(function()
 			gap:load()
 		end, "no migration")

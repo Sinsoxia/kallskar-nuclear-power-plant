@@ -301,6 +301,19 @@ function Detectors.step(self: any, dt: number)
 	self:publish()
 end
 
+-- D-053: the 1/M reference the crew took. A failed or noisy channel is a fault, and comes back with it; the filters
+-- start again from the first reading rather than differentiating across the gap.
+function Detectors.save(self: any): any
+	return { reference_cps = self.reference_cps }
+end
+
+function Detectors.load(self: any, data: any, _version: number)
+	if type(data.reference_cps) == "number" then
+		self.reference_cps = data.reference_cps
+	end
+	self.started = false
+end
+
 Detectors.commands = {
 	--[[
 		Latch the count rate an approach to critical is measured against. The 1/M plot is CR₀/CR against rod

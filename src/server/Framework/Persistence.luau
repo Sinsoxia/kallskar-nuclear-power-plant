@@ -9,6 +9,10 @@
 	  chain, so any old plant can be brought forward.
 	- Each system saves its own slice via System.save()/load(); the framework adds clock and event log. load(slice,
 	  version) is given the slice after migration, so `version` is always CURRENT_VERSION.
+	- D-053: the slices hold §14.6's list (stuck rods, stopped pumps and loops, shutter demands, trip bypasses) and
+	  the thermal state the saved decay heat needs (pool, fuel and cover gas temperatures); the framework adds the
+	  active faults (Faults.export, re-armed on load) and the external inputs, which carry the mode. A server close
+	  counts as a reactor trip: the plant comes back tripped, rods in and scram latched (Protection, RodDrives, Core).
 	- Owner reset: requestReset(actor, phrase) checks the private server owner and the typed phrase
 	  (Engineering.resetConfirmationPhrase), then counts down Access.reset.countdown_s, announcing on the Bus; at zero
 	  it clears the save and publishes PlantReset (Main rebuilds the plant).
@@ -31,9 +35,22 @@ export type Store = {
 local Persistence = {}
 Persistence.__index = Persistence
 
-Persistence.CURRENT_VERSION = 1
--- MIGRATIONS[v] upgrades a version-v save to version v + 1. Empty until the save layout first changes.
-Persistence.MIGRATIONS = {} :: { [number]: (any) -> any }
+Persistence.CURRENT_VERSION = 2
+-- MIGRATIONS[v] upgrades a version-v save to version v + 1.
+Persistence.MIGRATIONS = {
+	--[[
+		1 → 2 (D-053): version 1 saved only the decay heat. The systems that bring a loaded plant back tripped are
+		given empty slices, so they load (rods in, scram latched, the core re-seated) and keep their boot state
+		for everything else.
+	]]
+	[1] = function(data: any): any
+		data.systems = data.systems or {}
+		for _, name in { "Protection", "RodDrives", "Core" } do
+			data.systems[name] = data.systems[name] or {}
+		end
+		return data
+	end,
+} :: { [number]: (any) -> any }
 
 -- Stores ---------------------------------------------------------------------------------------------------------
 
@@ -131,10 +148,14 @@ function Persistence.new(opts: {
 	ownerUserId: number,
 	migrations: { [number]: (any) -> any }?,
 	currentVersion: number?,
+	channels: any?,
+	faults: any?,
 })
 	local self = setmetatable({}, Persistence)
 	self.config = opts.config
 	self.registry = opts.registry
+	self.channels = opts.channels -- for the external inputs (D-053); optional in unit tests
+	self.faults = opts.faults -- for the active faults (D-053); optional in unit tests
 	self.log = opts.log
 	self.bus = opts.bus
 	self.clock = opts.clock
@@ -174,6 +195,8 @@ function Persistence.snapshot(self: any): any
 		savedAt = os.time(),
 		clock = { sim = self.clock.sim, grid = self.clock.grid, slow = self.clock.slow },
 		systems = systems,
+		faults = if self.faults then self.faults:export() else nil,
+		externals = if self.channels then self.channels:exportExternals() else nil,
 		eventLog = self.log:export(),
 	}
 end
@@ -253,13 +276,19 @@ function Persistence.load(self: any): string
 	self.clock.sim = data.clock and data.clock.sim or 0
 	self.clock.grid = data.clock and data.clock.grid or 0
 	self.clock.slow = data.clock and data.clock.slow or 0
+	self.log:import(data.eventLog)
+	if self.channels then
+		self.channels:importExternals(data.externals) -- before the systems, so a loading system sees the mode
+	end
 	for _, sys in self.registry.systems do
 		local slice = data.systems and data.systems[sys.spec.name]
 		if slice ~= nil then
 			sys:load(slice, self.currentVersion) -- the slice has been migrated to this version above
 		end
 	end
-	self.log:import(data.eventLog)
+	if self.faults then
+		self.faults:restore(data.faults) -- after the systems, so each fault's arm acts on the loaded state
+	end
 	self.log:record("load", nil, self.key, `save version {fromVersion} → {self.currentVersion}`, "ok")
 	self.writable = true
 	return "loaded"

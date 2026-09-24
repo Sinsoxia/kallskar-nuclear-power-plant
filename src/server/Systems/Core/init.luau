@@ -217,6 +217,25 @@ function Core.step(self: any, dt: number)
 	end
 
 	local drivers = self:readDrivers()
+	if self.reseat then
+		--[[
+			D-053: a loaded plant comes back tripped. The rods were latched just above as they now stand, so seat the
+			§3.2 feedback on the loaded temperatures and the amplitude at the equilibrium its source drives for the
+			reactivity that leaves: n = q/(−ρ), with every precursor group in equilibrium at it.
+		]]
+		self.reseat = false
+		self.pk:updateFeedback(0, drivers)
+		local rho = self.pk.external + self.pk.feedback
+		local amp = self.pk.amp
+		local n = if rho < 0 then self.source / -rho else self.nFloor
+		amp.n = n
+		for i = 1, #amp.s do
+			amp.s[i] = amp.beta[i] * n
+		end
+		amp.rho = rho
+		self.pk.rho = rho
+		self.n = n
+	end
 
 	-- withdrawing a rod REMOVES inserted worth, which is positive reactivity
 	local external_pcm = -(worth - self.worth0_pcm)
@@ -352,6 +371,21 @@ function Core.seatPower(self: any, n: number)
 	self.n = n
 	self:spreadPower()
 	self:publish()
+end
+
+--[[
+	D-053: nothing on §14.6's list is the core's, but a loaded plant comes back tripped, so the core is re-seated on
+	its first step after a load (Core.step): the rods latched as they stand, the feedback on the loaded temperatures,
+	and the source-driven equilibrium for that reactivity. The power it had is saved for the record.
+]]
+function Core.save(self: any): any
+	return { power_pctFP = self.n * 100 }
+end
+
+function Core.load(self: any, _data: any, _version: number)
+	self.worth0_pcm = nil -- latched again on the first step
+	self.reseat = true
+	self.promptCritical = false
 end
 
 function Core.getState(self: any): { [string]: any }

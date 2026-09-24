@@ -81,6 +81,43 @@ function Faults.arm(self: any, id: string, params: { [string]: any }?, actor: Ac
 	return { ok = true }
 end
 
+-- The active faults and what each was armed with, in id order, for a save (D-053)
+function Faults.export(self: any): { { id: string, params: any } }
+	local out = {}
+	for id, a in self.active do
+		table.insert(out, { id = id, params = a.params })
+	end
+	table.sort(out, function(x, y)
+		return x.id < y.id
+	end)
+	return out
+end
+
+--[[
+	Re-arm saved faults on a plant being loaded (D-053). Each fault's own arm puts its side back, with the params it
+	was armed with. There is no eligibility check: the fault was already in the plant when it was saved. A fault
+	this plant does not have is skipped and logged.
+]]
+function Faults.restore(self: any, saved: { { id: string, params: any } }?)
+	if type(saved) ~= "table" then
+		return
+	end
+	for _, s in saved do
+		local entry = type(s) == "table" and self.registry.faultIndex[s.id]
+		if not entry then
+			self.log:record("fault.restore", nil, tostring(type(s) == "table" and s.id), "no such fault in this plant", "skipped")
+		elseif not self.active[s.id] then
+			local ok, err = pcall(entry.fault.arm, entry.system, s.params)
+			if ok then
+				self.active[s.id] = { params = s.params, armedAt = self.log.clock.sim }
+				self.log:record("fault.restore", nil, s.id, entry.fault.label, "ok")
+			else
+				self.log:record("fault.restore", nil, s.id, tostring(err), "error")
+			end
+		end
+	end
+end
+
 --[[
 	Forget every active fault, for an owner reset (§14.6). The systems are re-initialised by the same reset, which
 	puts their side of each fault back, so the faults' own clear() is not called; each is still logged and announced.

@@ -675,6 +675,46 @@ IHX.faults = {
 	},
 }
 
+-- §14.6 (D-053): the shutter demands, and the secondary loops, stopped or running, with any overrides. The steam
+-- plant tripped with the reactor when the server closed, so the load comes back at nothing.
+function IHX.save(self: any): any
+	local units, loops = {}, {}
+	for i, u in self.units do
+		units[i] = { shutter = u.shutter, demand = u.demand }
+	end
+	for l, loop in self.loops do
+		loops[l] = {
+			running = loop.running,
+			inletOverride_K = loop.inletOverride_K,
+			flowOverride_kgps = loop.flowOverride_kgps,
+		}
+	end
+	return { units = units, loops = loops }
+end
+
+function IHX.load(self: any, data: any, _version: number)
+	if type(data.units) == "table" then
+		for i, u in self.units do
+			local s = data.units[i]
+			if type(s) == "table" and type(s.shutter) == "number" and type(s.demand) == "number" then
+				u.shutter, u.demand = s.shutter, s.demand
+			end
+		end
+	end
+	if type(data.loops) == "table" then
+		for l, loop in self.loops do
+			local s = data.loops[l]
+			if type(s) == "table" then
+				loop.running = s.running ~= false
+				loop.inletOverride_K = if type(s.inletOverride_K) == "number" then s.inletOverride_K else nil
+				loop.flowOverride_kgps = if type(s.flowOverride_kgps) == "number" then s.flowOverride_kgps else nil
+			end
+		end
+	end
+	self.sinkLoad, self.loadDemand, self.runbackTarget = 0, 0, nil
+	self.lastScram = "PSS"
+end
+
 function IHX.getState(self: any): { [string]: any }
 	local units = {}
 	for i, unit in self.units do

@@ -441,6 +441,62 @@ Pools.faults = {
 	},
 }
 
+-- §14.6 (D-053): the thermal state the saved decay heat lands in: the pool nodes, the transport line, the outlet
+-- thermocouple, and the cover gas with its controller. A cover gas leak is a fault, and comes back with it.
+function Pools.save(self: any): any
+	return {
+		hot = { self.hot[1], self.hot[2] },
+		cold = self.cold,
+		coreInlet = self.coreInlet,
+		ihxOutlet = self.ihxOutlet,
+		mixedOutlet = self.mixedOutlet,
+		measuredOutlet_K = self.measuredOutlet_K,
+		flowFraction = self.flowFraction,
+		buffer = table.clone(self.buffer),
+		head = self.head,
+		gas_mol = self.gas_mol,
+		auto = self.auto,
+		valve = self.valve,
+		correcting = self.correcting,
+		admitted_mol = self.admitted_mol,
+		vented_mol = self.vented_mol,
+	}
+end
+
+function Pools.load(self: any, data: any, _version: number)
+	local function num(v: any, default: number): number
+		return if type(v) == "number" and v == v then v else default
+	end
+	if type(data.hot) == "table" then
+		self.hot[1], self.hot[2] = num(data.hot[1], self.hot[1]), num(data.hot[2], self.hot[2])
+	end
+	self.cold = num(data.cold, self.cold)
+	self.coreInlet = num(data.coreInlet, self.coreInlet)
+	self.ihxOutlet = num(data.ihxOutlet, self.ihxOutlet)
+	self.mixedOutlet = num(data.mixedOutlet, self.mixedOutlet)
+	self.measuredOutlet_K = num(data.measuredOutlet_K, self.mixedOutlet)
+	self.reading_K = self.measuredOutlet_K
+	self.flowFraction = num(data.flowFraction, self.flowFraction)
+	-- the transport line as it was, or, from a save of another length, full of cold-pool sodium
+	if type(data.buffer) == "table" and #data.buffer == self.bufferN then
+		for i = 1, self.bufferN do
+			self.buffer[i] = num(data.buffer[i], self.cold)
+		end
+		self.head = num(data.head, self.head)
+	else
+		for i = 1, self.bufferN do
+			self.buffer[i] = self.cold
+		end
+	end
+	self.gas_mol = num(data.gas_mol, self.gas_mol)
+	self.auto = data.auto ~= false
+	self.valve = num(data.valve, 0)
+	self.correcting = data.correcting == true
+	self.admitted_mol = num(data.admitted_mol, 0)
+	self.vented_mol = num(data.vented_mol, 0)
+	self:publish()
+end
+
 function Pools.getState(self: any): { [string]: any }
 	return {
 		hotPool_K = self.hot[2],

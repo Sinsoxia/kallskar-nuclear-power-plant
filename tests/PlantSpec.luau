@@ -16,6 +16,9 @@ local Registry = require(Framework:WaitForChild("Registry")) :: any
 local Scheduler = require(Framework:WaitForChild("Scheduler")) :: any
 local EventLog = require(Framework:WaitForChild("EventLog")) :: any
 local Bus = require(Framework:WaitForChild("Bus")) :: any
+local Faults = require(Framework:WaitForChild("Faults")) :: any
+local Persistence = require(Framework:WaitForChild("Persistence")) :: any
+local Sodium = require(ReplicatedStorage:WaitForChild("Kallskar"):WaitForChild("Props"):WaitForChild("Sodium")) :: any
 local Systems = Root:WaitForChild("Systems")
 local InitialConditions = require(Systems:WaitForChild("InitialConditions")) :: any
 local Kinetics = require(Systems:WaitForChild("Core"):WaitForChild("Kinetics")) :: any
@@ -49,7 +52,16 @@ local function plant()
 	for _, sys in registry.systems do
 		byName[sys.spec.name] = sys
 	end
-	return { channels = channels, registry = registry, scheduler = scheduler, bus = bus, log = log, byName = byName }
+	local faults = Faults.new(registry, log, bus)
+	return {
+		channels = channels,
+		registry = registry,
+		scheduler = scheduler,
+		bus = bus,
+		log = log,
+		byName = byName,
+		faults = faults,
+	}
 end
 
 --[[
@@ -161,6 +173,139 @@ local function settled(t: any, p: any, target: number, id: string)
 end
 
 return {
+	["a private server saves §14.6's list and comes back tripped: all ten systems in one round trip (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		local function persistence(p: any): any
+			return Persistence.new({
+				config = Config,
+				registry = p.registry,
+				log = p.log,
+				bus = p.bus,
+				clock = p.scheduler.clock,
+				store = store,
+				mode = "private",
+				key = "plant/d053",
+				ownerUserId = 7,
+				channels = p.channels,
+				faults = p.faults,
+			})
+		end
+
+		-- a plant at 30 %FP with one of each §14.6 item in it
+		local a = plant()
+		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
+		run(a, 2)
+		local rods, pumps, ihx, prot = a.byName.RodDrives, a.byName.PrimaryPumps, a.byName.IHX, a.byName.Protection
+		t.ok(a.faults:arm("RD-STUCK", { rod = "SMA1" }, AUTO).ok, "a stuck rod (an active fault)")
+		t.ok(pumps:applyCommand(AUTO, { kind = "pump.stop", target = "PP3" }).ok, "a stopped pump")
+		t.ok(ihx:applyCommand(AUTO, { kind = "loop.stop", target = "2" }).ok, "a stopped loop")
+		t.ok(ihx:applyCommand(AUTO, { kind = "ihx.shutter", target = "1A", value = 0.5 }).ok, "a shutter demand")
+		t.ok(prot:applyCommand(AUTO, { kind = "pss.bypass", target = "COVER-GAS", value = 1 }).ok, "a trip bypass")
+		t.ok(a.byName.AutoControls:applyCommand(AUTO, { kind = "auto.flow", value = 1 }).ok, "flow auto in")
+		t.ok(a.byName.AutoControls:applyCommand(AUTO, { kind = "auto.rod", value = 1 }).ok, "rod auto in")
+		run(a, 1)
+		t.eq(a.channels:get("protection.tripped"), false, "still at power when the server closes")
+		local stuckAt = rods.drives[rods:indexOf("SMA1")].position_mm
+		local ssrAt = rods.drives[rods:indexOf("SSR1")].position_mm
+		local shutter = ihx.units[1].demand
+		local mode = a.channels:get("program.mode")
+		local pools, fuel, decay = a.byName.Pools, a.byName.FuelThermal, a.byName.DecayHeat
+		local hot1, cold, gas = pools.hot[1], pools.cold, pools.gas_mol
+		local Tf, H = table.clone(fuel.Tf), table.clone(decay.H)
+
+		t.ok((persistence(a):save()), "saved")
+		local saved = store.data["plant/d053"]
+		for _, sys in a.registry.systems do
+			t.ok(saved.systems[sys.spec.name] ~= nil, `{sys.spec.name} saves its slice`)
+		end
+
+		-- a new server, a fresh plant, the same store
+		local b = plant()
+		t.eq(persistence(b):load(), "loaded")
+		local rodsB, protB = b.byName.RodDrives, b.byName.Protection
+		-- a server close counts as a reactor trip: rods in, scram latched, in the mode it was in
+		t.ok(protB.tripped.PSS, "the reactor comes back tripped")
+		t.ok(protB.firstOut ~= "", `with a first out ({protB.firstOut})`)
+		t.ok(rodsB.scrammed.PSS, "the scram is latched")
+		for _, drive in rodsB.drives do
+			if drive.name == "SMA1" then
+				t.eq(drive.position_mm, stuckAt, "the stuck rod is where it stuck")
+				t.eq(drive.stuck, true)
+			elseif drive.system == "PSS" then
+				t.eq(drive.position_mm, 0, `{drive.name} is in`)
+			elseif drive.name == "SSR1" then
+				t.eq(drive.position_mm, ssrAt, "the secondary shutdown rods stay where they were: it is a PSS trip")
+			end
+		end
+		t.eq(b.channels:get("program.mode"), mode, "in the mode it was in")
+		-- §14.6's list
+		t.eq(b.byName.PrimaryPumps.pumps[3].tripped, true, "the stopped pump is stopped")
+		t.eq(b.byName.IHX.loops[2].running, false, "the stopped loop is stopped")
+		t.eq(b.byName.IHX.units[1].demand, shutter, "the shutter demand is kept")
+		t.eq(protB.bypassed["COVER-GAS"], true, "the bypass is kept")
+		t.ok(b.faults:isActive("RD-STUCK"), "the active fault is active")
+		t.eq(b.byName.AutoControls.flowOn, true, "flow auto stays in")
+		t.eq(b.byName.AutoControls.rodOn, false, "rod auto drops to manual on the trip (D-035)")
+		t.eq(b.byName.IHX.sinkLoad, 0, "and the turbines tripped with the reactor")
+		-- the thermal state the decay heat needs, with it
+		t.eq(b.byName.Pools.hot[1], hot1, "the hot pool")
+		t.eq(b.byName.Pools.cold, cold, "the cold pool")
+		t.eq(b.byName.Pools.gas_mol, gas, "the cover gas")
+		local fuelOff, decayOff = 0, 0
+		for i, v in b.byName.FuelThermal.Tf do
+			fuelOff = math.max(fuelOff, math.abs(v - Tf[i]))
+		end
+		for i, v in b.byName.DecayHeat.H do
+			decayOff = math.max(decayOff, math.abs(v - H[i]))
+		end
+		t.eq(fuelOff, 0, "the fuel temperatures")
+		t.eq(decayOff, 0, "and the decay heat (D-037)")
+
+		-- and the loaded plant runs on, shut down, from where it was: over its first tick no heat flow in the plant
+		-- exceeds rated power, so the hot pool's first node moves by no more than that could move it
+		run(b, DT)
+		local node = b.byName.Pools.hotMass[1] * Sodium.specificHeat(hot1)
+		local oneTick = Config.Units.ratedThermal_MWt * 1e6 * DT / node
+		t.ok(math.abs(b.byName.Pools.hot[1] - hot1) <= oneTick,
+			string.format("the hot pool carries on from its saved temperature (moved %.3f K, bound %.3f K)", b.byName.Pools.hot[1] - hot1, oneTick))
+		run(b, 10)
+		t.ok(protB.tripped.PSS, "still tripped")
+		t.ok(b.channels:get("core.k") < 1, "subcritical")
+		t.ok(b.channels:get("core.power_pctFP") < Config.Instruments.sourceRangeHighVoltageOffAbove_pctFP,
+			"down in the source range, where a shut-down core belongs (§3.5)")
+	end,
+
+	["a version-1 save, from before D-053, also comes back tripped (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		-- version 1 saved the decay heat and nothing else of the plant
+		local a = plant()
+		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
+		store:set("plant/v1", {
+			version = 1,
+			clock = { sim = 0, grid = 0, slow = 0 },
+			systems = { DecayHeat = a.byName.DecayHeat:save() },
+			eventLog = {},
+		})
+		local b = plant()
+		local pers = Persistence.new({
+			config = Config,
+			registry = b.registry,
+			log = b.log,
+			bus = b.bus,
+			clock = b.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/v1",
+			ownerUserId = 7,
+			channels = b.channels,
+			faults = b.faults,
+		})
+		t.eq(pers:load(), "loaded")
+		t.ok(b.byName.Protection.tripped.PSS and b.byName.RodDrives.scrammed.PSS, "tripped, with the scram latched")
+		run(b, 1)
+		t.ok(b.channels:get("core.k") < 1, "and shut down")
+	end,
+
 	["RB-2 runs a full-power plant back to 60 %FP at 60 %/min and settles there (§9.5, D-046)"] = function(t)
 		local p, target = runback(t, "RB2")
 		settled(t, p, target, "RB2")
