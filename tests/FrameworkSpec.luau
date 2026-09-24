@@ -432,14 +432,20 @@ return {
 		local p = plant({})
 		resolveAndInit(p)
 		local done, result = false, nil
+		-- each stretch between two budget checks is timed, so the overrun bound comes from the task itself (D-049)
+		local longest, mark = 0, 0
 		local started = p.scheduler:runSliced("work", function(budget, n)
 			local acc = 0
+			mark = os.clock()
 			for i = 1, n do
 				acc += math.sqrt(i)
 				if i % 1000 == 0 then
+					longest = math.max(longest, os.clock() - mark)
 					budget:check()
+					mark = os.clock()
 				end
 			end
+			longest = math.max(longest, os.clock() - mark)
 			return acc
 		end, function(ok, r)
 			done, result = ok, r
@@ -456,8 +462,11 @@ return {
 		t.ok(frames > 1, `work was spread over frames ({frames})`)
 		local budgetMs = Config.Clocks.shapeSliceBudget_s * 1000
 		local worst = p.scheduler.stats.frameSliced:max() * 1000
-		t.log(string.format("frames=%d worst slice=%.2f ms (budget %.1f ms)", frames, worst, budgetMs))
-		t.ok(worst < budgetMs * 3, "a slice never runs far past its budget")
+		t.log(string.format("frames=%d worst slice=%.2f ms (budget %.1f ms, longest piece %.3f ms)",
+			frames, worst, budgetMs, longest * 1000))
+		-- D-049, as IQSSpec: one piece past the budget if the deadline falls inside it, and at most one more for the
+		-- scheduler's own resume and yield around it
+		t.ok(worst <= budgetMs + 2 * longest * 1000, "a slice runs past its budget by at most the piece it is in")
 		t.ok(not p.scheduler:isSlicedRunning("work"))
 	end,
 
@@ -716,6 +725,63 @@ return {
 		t.ok(written <= bound, `a minute of routed commands wrote {written} records, not at most {bound}`)
 	end,
 
+	["on a live server nobody has developer powers, not the private server's owner nor the creator (D-052)"] = function(t)
+		local Desk = System.extend({ name = "Desk", lane = "fast", reads = {}, writes = {} })
+		Desk.commands = {
+			["rod.move"] = function()
+				return { ok = true }
+			end,
+			["reactor.trip.manual"] = function()
+				return { ok = true }
+			end,
+		}
+		function Desk:step() end
+		local p = plant({ Desk })
+		resolveAndInit(p)
+		local standing = Vector3.new(Config.Access.panelReach_studs + 5, 0, 0)
+		local cmds = Commands.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			panelPosition = function(tag)
+				return if tag == "MCR-RO-1" then Vector3.zero else nil
+			end,
+			characterPosition = function()
+				return standing
+			end,
+			playtimeHours = function()
+				return 0
+			end,
+			now = function()
+				return 0
+			end,
+		})
+		local OWNER = 7
+		local owner = { Name = "Owner", UserId = OWNER } :: any
+		-- a private server whose owner also made the place: both of Main's old exemptions at once
+		local gate = Commands.devGate({
+			isStudio = false,
+			isPrivateServer = true,
+			privateServerOwnerId = OWNER,
+			creatorIsUser = true,
+			creatorId = OWNER,
+		})
+		t.eq(gate(owner), false, "the owner and creator is not a developer on a live server")
+		t.eq(Commands.devGate({ isStudio = true })(owner), true, "in Studio everyone is")
+
+		-- as the client sends it, through the remote
+		local remote = {} :: any
+		cmds:bindRemote(remote, gate)
+		local r = remote.OnServerInvoke(owner, { kind = "rod.move", panel = "MCR-RO-1", args = { dev = true } })
+		t.ok(not r.ok and string.find(r.reason, "not available", 1, true) ~= nil, "a dev-panel command from the owner is refused")
+		r = remote.OnServerInvoke(owner, { kind = "rod.move", panel = "MCR-RO-1" })
+		t.ok(not r.ok and string.find(r.reason, "out of reach", 1, true) ~= nil, `an ordinary one meets the reach rule ({r.reason})`)
+		standing = Vector3.new(1, 0, 0)
+		r = remote.OnServerInvoke(owner, { kind = "reactor.trip.manual", panel = "MCR-RO-1" })
+		t.ok(not r.ok and string.find(r.reason, "playtime", 1, true) ~= nil, `and a critical one the playtime rule ({r.reason})`)
+	end,
+
 	["critical access policy when the playtime lookup fails"] = function(t)
 		local required = Config.Access.criticalMinimumPlaytime_h
 		t.eq(Commands.criticalAccess(required, required), true)
@@ -922,17 +988,18 @@ return {
 		end
 		t.ok(restored, "event log restored")
 
-		-- a version-1 save migrated to a hypothetical version 3
+		-- the save as written, at this server's version, migrated to a hypothetical version two on
+		local v = Persistence.CURRENT_VERSION
 		local migrated = plant({ Keeper })
 		resolveAndInit(migrated)
 		local pers3 = persist(migrated, {
-			currentVersion = 3,
+			currentVersion = v + 2,
 			migrations = {
-				[1] = function(d)
+				[v] = function(d)
 					d.systems.Keeper.burnup += 1
 					return d
 				end,
-				[2] = function(d)
+				[v + 1] = function(d)
 					d.systems.Keeper.burnup *= 2
 					return d
 				end,
@@ -940,8 +1007,8 @@ return {
 		})
 		t.eq(pers3:load(), "loaded")
 		t.eq(migrated.systems[1].burnup, (42.5 + 1) * 2, "migrations applied in order")
-		t.eq(migrated.systems[1].loadedAs, 3, "and the system is told the version its slice is now in, not the old one")
-		local gap = persist(plant({}), { currentVersion = 3, migrations = {} })
+		t.eq(migrated.systems[1].loadedAs, v + 2, "and the system is told the version its slice is now in, not the old one")
+		local gap = persist(plant({}), { currentVersion = v + 2, migrations = {} })
 		t.throws(function()
 			gap:load()
 		end, "no migration")

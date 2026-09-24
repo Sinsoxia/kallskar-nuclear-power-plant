@@ -25,8 +25,12 @@ local function make(power_pctFP: number?)
 	local ch = Channels.new()
 	-- natural circulation follows heat, so the floor reads thermal power (D-037)
 	ch:declareExternal("core.thermalPower_pctFP", power_pctFP or 100)
+	-- the neutron power arms §4.2's survivor hold, as it arms §9.5's P/Q trip; held at the thermal power here
+	ch:declareExternal("core.power_pctFP", power_pctFP or 100)
 	ch:declareExternal("pools.coverGas_MPa", Config.Primary.coverGas.setpoint_MPa)
 	ch:declareExternal("pools.coldPool_K", Config.Feedback.referenceTemperature_K)
+	ch:declareExternal("protection.runback", "")
+	ch:declareExternal("protection.tripped", false)
 	local sys = System.new(PrimaryPumps)
 	local log = EventLog.new(Config, { sim = 0, grid = 0 })
 	local bus = Bus.new()
@@ -67,8 +71,85 @@ return {
 		t.near(sys:getState().pumps[1].speed_pct, 60, 1e-9, "and stops there")
 	end,
 
-	["coastdown follows Q₀/(1 + t/10 s)"] = function(t)
+	["on a pump trip the survivors ramp to 105 % and hold for D-046's minimum and while RB-2 runs (§4.2)"] = function(t)
+		local top, minimum = P.speedRange_pct[2], Config.Primary.survivorHold.minimum_s
+		local function speed(sys: any): any
+			return sys:applyCommand(OPERATOR, { kind = "pump.speed", target = "PP1", value = 80 })
+		end
+
+		-- RB-2 by command, with every pump running, is no pump trip: nothing to make up
+		local sys, ch = make()
+		ch:setExternal("protection.runback", "RB2")
+		run(sys, 1)
+		t.eq(sys.pumps[1].demand_pct, 100, "no hold without a pump down")
+		t.ok(sys:tripPump(3, "test"), "PP3 trips")
+		run(sys, 1)
+		for i = 1, 2 do
+			t.near(sys.pumps[i].speed_pct, 100 + P.maxRamp_pctps, 1e-9, `PP{i} ramps at {P.maxRamp_pctps} %/s`)
+		end
+		run(sys, 2)
+		for i = 1, 2 do
+			t.near(sys.pumps[i].speed_pct, top, 1e-9, `PP{i} reaches {top} % and stops there`)
+		end
+		-- RB-2 ends early, as it does from part power: the hold still runs its minimum from the trip
+		ch:setExternal("protection.runback", "")
+		run(sys, minimum - 3 - DT)
+		local r = speed(sys)
+		t.ok(not r.ok, `a tick before the minimum the drives still hold ({r.reason})`)
+		run(sys, DT)
+		t.eq(sys.pumps[1].demand_pct, top, "with flow auto out the survivors stay where the hold left them")
+		t.ok(speed(sys).ok, `and once the minimum has passed the operator takes them ({minimum} s after the trip)`)
+
+		-- RB-2 still running past the minimum keeps the hold until it ends
+		sys, ch = make()
+		ch:setExternal("protection.runback", "RB2")
+		sys:tripPump(3, "test")
+		run(sys, minimum + 5)
+		t.ok(not speed(sys).ok, "RB-2 still running past the minimum keeps the hold")
+		ch:setExternal("protection.runback", "")
+		run(sys, DT)
+		t.ok(speed(sys).ok, "and it lets go on the tick RB-2 ends")
+	end,
+
+	["only a trip starts the survivor hold, only at power, and a reactor trip ends it (§4.2, D-046)"] = function(t)
+		-- an operator's deliberate stop is not a pump trip (§4.2 says "on a pump trip")
 		local sys = make()
+		t.ok(sys:applyCommand(OPERATOR, { kind = "pump.stop", target = "PP3" }).ok, "PP3 stopped by the operator")
+		run(sys, 5)
+		t.eq(sys.pumps[1].demand_pct, 100, "the survivors are left where they were")
+
+		-- below §9.5's 5 %FP P/Q permissive there is no P/Q trip for the hold to protect against
+		sys = make(Config.Protection.pss.powerToFlow.activeAbove_pctFP - 1)
+		sys:tripPump(3, "test")
+		run(sys, 5)
+		t.eq(sys.pumps[1].demand_pct, 100, "a trip below the permissive starts no hold")
+
+		-- a reactor trip ends the hold on the tick Protection reports it, and the operator has the pumps back
+		local ch
+		sys, ch = make()
+		ch:setExternal("protection.runback", "RB2")
+		sys:tripPump(3, "test")
+		run(sys, 3)
+		t.ok(sys.holding, "holding after the pump trip")
+		ch:setExternal("protection.tripped", true)
+		run(sys, DT)
+		t.ok(not sys.holding, "the reactor trip ends the hold at once, RB-2 or not")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "pump.speed", target = "PP1", value = 80 }).ok, "the operator's speed is accepted")
+
+		-- a pump started during a hold is not a survivor, and is not pulled to the top of its range
+		sys, ch = make()
+		ch:setExternal("protection.runback", "RB2")
+		sys:tripPump(3, "test")
+		sys:tripPump(3, "test") -- already down: refused, and no new hold
+		run(sys, 1)
+		t.ok(sys:applyCommand(OPERATOR, { kind = "pump.start", target = "PP3" }).ok, "PP3 restarted during the hold")
+		run(sys, 1)
+		t.ok(sys.pumps[3].demand_pct < P.speedRange_pct[2], "the restarted pump is not held at the top of its range")
+	end,
+
+	["coastdown follows Q₀/(1 + t/10 s)"] = function(t)
+		-- below §9.5's 5 %FP P/Q permissive, so §4.2's survivor hold leaves the other two pumps alone
+		local sys = make(Config.Protection.pss.powerToFlow.activeAbove_pctFP - 1)
 		sys:step(DT)
 		local q0 = sys:getState().pumps[1].flow_kgps
 		t.ok(sys:tripPump(1, "test"), "trip accepted")

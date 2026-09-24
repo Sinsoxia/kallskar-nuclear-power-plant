@@ -322,6 +322,28 @@ AutoControls.commands = {
 	end,
 }
 
+--[[
+	D-053: which controllers were in, and flow auto's speed demand, which the pumps read a tick late: without it the
+	first tick after a load would publish the boot default of 100 % and every running pump would step toward it. A
+	loaded plant is tripped, and a trip drops rod auto to manual (D-035).
+]]
+function AutoControls.save(self: any): any
+	return { rodOn = self.rodOn, flowOn = self.flowOn, speedDemand = self.speedDemand }
+end
+
+function AutoControls.load(self: any, data: any, _version: number)
+	self.flowOn = data.flowOn == true
+	if type(data.speedDemand) == "number" then
+		self.speedDemand = data.speedDemand
+	end
+	if data.rodOn == true and self.log then
+		self.log:record("auto.rod", nil, "rod auto", "reactor trip (server close)", "manual")
+	end
+	self.rodOn = false
+	self.started = false -- flow auto's power filter starts again on the power it finds
+	self:publish()
+end
+
 function AutoControls.getState(self: any): { [string]: any }
 	return {
 		rodOn = self.rodOn,

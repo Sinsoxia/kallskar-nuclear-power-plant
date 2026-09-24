@@ -68,14 +68,15 @@ return {
 			local sys, ch = make(power)
 			ch:setExternal("primary.flowFraction", flow / 100)
 			run(sys, 1)
-			t.near(ch:get("auto.coreOutletSetpoint_C"), TABLE.coreOutlet_C[i], 1.5,
+			-- D-049: §9.2 prints whole degrees, so a row is only good to its 0.5 K rounding
+			t.near(ch:get("auto.coreOutletSetpoint_C"), TABLE.coreOutlet_C[i], 0.5,
 				string.format("%d %%FP on %d %% flow", power, flow))
 		end
 		-- the rows that matter: below 40 %FP the programme is NOT 550, which is finding F3
 		local low, lch = make(30)
 		lch:setExternal("primary.flowFraction", 0.40)
 		run(low, 1)
-		t.near(lch:get("auto.coreOutletSetpoint_C"), 506, 1.5, "§9.2: 506 °C at 30 %FP, not 550")
+		t.near(lch:get("auto.coreOutletSetpoint_C"), 506, 0.5, "§9.2: 506 °C at 30 %FP, not 550")
 		t.ok(lch:get("auto.coreOutletSetpoint_C") < 545, "a controller holding 550 here would fight the programme")
 	end,
 
@@ -344,13 +345,24 @@ return {
 		t.near(s.pumps[1].speed_pct, 60, 0.5, "the pumps follow the auto's demand")
 		t.near(s.flowFraction, 0.6, 0.01, "so flow is 60 %")
 
-		-- §9.4: it ignores a pump trip. The demand does not rise to make up the lost flow.
+		--[[
+			§9.4: it ignores a pump trip. Its demand does not rise to make up the lost flow. §4.2's drives do answer the
+			trip: they hold the survivors at 105 % for D-046's hold (no RB-2 runs here, so its minimum), and then
+			flow auto has them back at its unchanged demand, each way at §4.2's 2 %/s.
+		]]
 		pumps:tripPump(3, "test")
-		for _ = 1, 400 do
+		local P = Config.Primary.pumps
+		local top, hold = P.speedRange_pct[2], Config.Primary.survivorHold.minimum_s
+		local ramp = (top - 60) / P.maxRamp_pctps
+		for _ = 1, math.floor((ramp + 1) / DT + 0.5) do
+			pumps:step(DT)
+		end
+		t.near(pumps:getState().pumps[1].speed_pct, top, 1e-9, `the drives hold the survivors at {top} % (§4.2)`)
+		for _ = 1, math.floor((hold - (ramp + 1) + ramp + 1) / DT + 0.5) do
 			pumps:step(DT)
 		end
 		local after = pumps:getState()
-		t.near(after.pumps[1].speed_pct, 60, 0.5, "the survivors stay exactly where they were")
+		t.near(after.pumps[1].speed_pct, 60, 0.5, "after the hold the survivors are back on flow auto's demand")
 		t.ok(after.flowFraction < 0.45, "so the plant simply has less flow, which is the stated weakness")
 		t.log(string.format("one pump lost under flow auto: flow %.0f %% of rated, and the demand still reads %.0f %%",
 			after.flowFraction * 100, after.pumps[1].speed_pct))

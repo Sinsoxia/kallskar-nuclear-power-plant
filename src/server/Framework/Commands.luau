@@ -7,8 +7,9 @@
 	  1. rate limit — token bucket per player (Engineering.commandRate_perSecond / commandBurst), before any other work
 	  2. sanitise   — copy the client's table into a fresh Command, rejecting wrong types, oversized strings, NaN/inf
 	  3. route      — the system that declared this command kind (Registry), or refuse
-	  4. access     — players only: within reach of the panel (Access.panelReach_studs) and, for critical controls,
-	                  the minimum total playtime (Access.criticalMinimumPlaytime_h)
+	  4. access     — players only: on a panel of a desk that carries the control (Config.Desks, §10.2, D-054),
+	                  within reach of it (Access.panelReach_studs) and, for critical controls, the minimum total
+	                  playtime (Access.criticalMinimumPlaytime_h)
 	  5. apply      — system:applyCommand(actor, cmd)
 	  6. log        — every control attempt that reaches a system's desk, accepted or refused, goes to the EventLog
 	                  with the actor's name (§10.7). A player's commands refused before that (throttled, malformed,
@@ -19,10 +20,12 @@
 	                  1 / commandRefusalNote_s
 
 	Actors of kind "auto" and "scenario" are server-internal and skip reach/playtime. "dev" actors come only from the
-	Studio/owner-gated debug panel and skip reach (there are no physical panels yet in M1).
+	debug panel, which is Studio only (D-052, devGate), and skip reach (there are no physical panels yet in M1).
 
 	Pluggable services (so tests and later milestones can swap them):
 	  panelPosition(panelTag) -> Vector3?      where the control panel is (nil = unknown panel)
+	  panelHosts(panel, kind, target) -> bool  whether that panel's desk carries the control: by default Config.Desks,
+	                                           with the desk read from the tag (desk-n), until panels are instances
 	  characterPosition(player) -> Vector3?    where the player is standing
 	  playtimeHours(player) -> number?         total playtime; nil when the lookup failed
 ]]
@@ -129,6 +132,7 @@ function Commands.new(opts: {
 	log: any,
 	bus: any?,
 	panelPosition: ((string) -> Vector3?)?,
+	panelHosts: ((string, string, string?) -> boolean)?,
 	characterPosition: ((Player) -> Vector3?)?,
 	playtimeHours: ((Player) -> number?)?,
 	now: (() -> number)?,
@@ -149,8 +153,22 @@ function Commands.new(opts: {
 	for _, kind in access.criticalControls do
 		self.critical[kind] = true
 	end
+	self.restoring = {} :: { [string]: boolean }
+	for _, kind in access.criticalUnlessRestoring or {} do
+		self.restoring[kind] = true
+	end
 	self.panelPosition = opts.panelPosition or function(_tag: string): Vector3?
 		return nil
+	end
+	local desks = opts.config.Desks
+	self.panelHosts = opts.panelHosts or function(panel: string, kind: string, target: string?): boolean
+		local desk = string.match(panel, "^(.-)%-%d+$")
+		local button = if target then desks.buttons[target] else nil
+		if kind == "reactor.trip.manual" and button then
+			return desk == button -- a trip button is on one desk, the MCR's or the BCR's
+		end
+		local carriers = desks.controls[kind] or desks.placed[kind]
+		return desk ~= nil and carriers ~= nil and table.find(carriers, desk) ~= nil
 	end
 	self.characterPosition = opts.characterPosition or function(player: Player): Vector3?
 		local character = player.Character
@@ -165,8 +183,10 @@ function Commands.new(opts: {
 	return self
 end
 
-function Commands.isCritical(self: any, kind: string): boolean
-	return self.critical[kind] == true
+-- Whether a command needs the critical playtime: a critical control, unless it is one whose value 0 restores and the
+-- value is exactly 0 (D-055 as amended). Any other value, or none, is the direction that needs it.
+function Commands.isCritical(self: any, kind: string, value: any?): boolean
+	return self.critical[kind] == true and not (self.restoring[kind] == true and value == 0)
 end
 
 local function takeToken(self: any, userId: number): boolean
@@ -218,6 +238,9 @@ local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolea
 	if not panelPos then
 		return false, `unknown panel '{cmd.panel}'`
 	end
+	if not self.panelHosts(cmd.panel, cmd.kind, cmd.target) then
+		return false, `{cmd.kind}{if cmd.target then " " .. cmd.target else ""} is not on the desk of panel '{cmd.panel}'`
+	end
 	local pos = self.characterPosition(player)
 	if not pos then
 		return false, "no character"
@@ -226,7 +249,7 @@ local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolea
 	if distance > self.reach then
 		return false, string.format("out of reach (%.1f studs, limit %d)", distance, self.reach)
 	end
-	if self.critical[cmd.kind] then
+	if self:isCritical(cmd.kind, cmd.value) then
 		return Commands.criticalAccess(self.playtimeHours(player), self.requiredHours)
 	end
 	return true, nil
@@ -276,6 +299,19 @@ function Commands.submit(self: any, actor: Actor, raw: any): CommandResult
 		self.bus:publish("CommandApplied", { actor = actor.name, kind = cmd.kind, target = cmd.target, result = result })
 	end
 	return result
+end
+
+--[[
+	Who may send dev-panel commands (args.dev == true): everyone in Studio, and nobody on a live server (D-052). The
+	place's creator and a private server's owner are ordinary players there. The owner's one extra power is the
+	§14.6 reset, which Persistence.requestReset checks for itself, and neither gets any exemption from the panel
+	reach or the critical-control playtime.
+]]
+function Commands.devGate(place: { isStudio: boolean }): (Player) -> boolean
+	local isStudio = place.isStudio
+	return function(_player: Player): boolean
+		return isStudio
+	end
 end
 
 --[[

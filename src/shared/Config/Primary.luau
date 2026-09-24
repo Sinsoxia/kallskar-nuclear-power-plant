@@ -60,6 +60,12 @@ return {
 		startInterlocks = { coverGasMin_MPa = 0.105, sodiumMin_C = 180 },
 		pumpHeatToSodium_MWt = 10,
 	}, "§4.2"),
+	--[[
+		How long §4.2's survivor ramp holds after a pump trip: at least this long, and for as long as RB-2 still runs.
+		40 s is RB-2 from full power, §9.5's 40 %FP (100 to 60) at 60 %/min, so the crew has the same window whatever
+		the power was when the pump tripped.
+	]]
+	survivorHold = decision({ minimum_s = 40 }, "D-046 (amended 2026-09-24): the survivors hold for RB-2's full-power length at any power"),
 	-- Q_nc ≈ coefficient × (P / referencePower)^(1/3), no pumps running. Rev A4 fixed the reference from 1 %FP to
 	-- 100 %FP: as written the formula gave 16 % rated flow at full power.
 	naturalCirculation = tuning({ coefficient_pct = 3.5, exponent = 1 / 3, referencePower_pctFP = 100 }, "§4.2"),
