@@ -33,6 +33,9 @@
 
 	Inputs:  core.power_pctFP   the true power, which the instruments measure imperfectly
 	         core.k             multiplication factor, for the source range's subcritical count rate
+	Both are ordinary reads (D-048), so Detectors runs after Core and measures this tick's power. A fission chamber
+	answers at neutron speed; the only delays these channels have are D-025's filters. Read lagged, every neutron
+	trip reached the rods a tick late, at t + 0.2 s rather than t + 0.1 s.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -47,8 +50,7 @@ type CommandResult = Types.CommandResult
 local Detectors = System.extend({
 	name = "Detectors",
 	lane = "fast",
-	reads = {},
-	readsLagged = { "core.power_pctFP", "core.k" },
+	reads = { "core.power_pctFP", "core.k" },
 	writes = {
 		"detectors.sr_cps",
 		"detectors.srMedian_cps",
