@@ -31,6 +31,9 @@ local OPERATOR = { kind = "player" :: any, name = "Aqua", userId = 1 }
 	its instruments is describing a plant whose PR channels have all failed high, which trips on PR-HIGH before
 	it reaches whatever the test meant to check.
 ]]
+-- The real-time clock Protection times the MCR trip buttons on (D-056), which the tests move by hand
+local realNow = 0
+
 local function make(power: number?)
 	local pctFP = power or 100
 	local ch = Channels.new()
@@ -64,6 +67,9 @@ local function make(power: number?)
 		channels = ch:port(Protection.spec),
 		log = EventLog.new(Config, { sim = 0, grid = 0 }),
 		bus = bus,
+		realTime = function()
+			return realNow
+		end,
 	})
 	return sys, ch, bus
 end
@@ -476,7 +482,8 @@ return {
 		sys, ch = make()
 		run(sys, 1)
 		press(sys, "MCR-1")
-		run(sys, window + 0.5)
+		realNow += window + 0.5
+		run(sys, 0.1)
 		t.eq(next(sys:getState().manual), nil, "a single press is forgotten once the window has passed")
 		press(sys, "MCR-2")
 		run(sys, 0.1)
@@ -485,7 +492,7 @@ return {
 		sys, ch = make()
 		run(sys, 1)
 		press(sys, "MCR-2")
-		run(sys, window - 0.5)
+		realNow += window - 0.5
 		press(sys, "MCR-1")
 		run(sys, 0.1)
 		t.eq(ch:get("protection.firstOut"), "MANUAL", "MCR-1 and MCR-2 within the window trip the reactor")
@@ -495,6 +502,30 @@ return {
 		backup:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "BCR" })
 		run(backup, 0.1)
 		t.eq(bch:get("protection.scram"), "PSS", "one button in the backup control room is enough")
+	end,
+
+	["the MCR trip window is real time, so a faster plant clock does not shrink it (D-056)"] = function(t)
+		local window = Config.Protection.manualTripWindow_s
+		local function press(sys: any, button: string): any
+			return sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = button })
+		end
+		-- the plant clock at ×10: five plant seconds pass while two people take half a real second
+		local sys, ch = make()
+		run(sys, 1)
+		press(sys, "MCR-1")
+		realNow += 0.5
+		run(sys, 5)
+		press(sys, "MCR-2")
+		run(sys, 0.1)
+		t.eq(ch:get("protection.firstOut"), "MANUAL", "half a second apart is one act, however far the plant ran")
+		-- and a slow pair of presses is two acts, however little plant time passed between them
+		sys, ch = make()
+		run(sys, 1)
+		press(sys, "MCR-1")
+		realNow += window + 0.5
+		press(sys, "MCR-2")
+		run(sys, 0.1)
+		t.eq(ch:get("protection.scram"), "none", `{window + 0.5} real seconds apart is not a trip`)
 	end,
 
 	["a bypass is one row at a time, and never a row the neutron instruments drive (D-055)"] = function(t)

@@ -416,7 +416,9 @@ function Protection.init(self: any, ctx: any)
 	self.firstOut = ""
 	self.pressed = {} :: { [string]: number } -- MCR trip button -> when it was pressed (D-056)
 	self.manualWindow = cfg.Protection.manualTripWindow_s
-	self.elapsed = 0
+	-- the buttons are two people's hands, so their window is real time, not plant time (which runs at the clock
+	-- rate); ctx.realTime lets a test drive it
+	self.realTime = ctx.realTime or os.clock
 	self.active = {}
 	self.inhibited = {}
 	self.runback = nil
@@ -536,10 +538,10 @@ function Protection.step(self: any, dt: number)
 	local port = self.port
 	self.power = port:read("core.power_pctFP") or 0
 	self.measured = port:read("detectors.prMean_pctFP") or self.power -- the neutron power a runback follows (D-046)
-	-- D-056: an MCR trip button's press counts toward the trip only within the window
-	self.elapsed += dt
+	-- D-056: an MCR trip button's press counts toward the trip only within the window, in real time
+	local now = self.realTime()
 	for button, at in self.pressed do
-		if self.elapsed - at > self.manualWindow then
+		if now - at > self.manualWindow then
 			self.pressed[button] = nil
 		end
 	end
@@ -703,8 +705,9 @@ Protection.commands = {
 	--[[
 		§9.5: two buttons in the main control room, or one in the backup. In the MCR they are two different
 		buttons, MCR-1 and MCR-2, pressed within D-056's window of each other: one operator leaning on one button
-		does not trip the plant, and nor do two presses that are not one act. A press older than the window is
-		forgotten (Protection.step). The BCR's one button trips on its own.
+		does not trip the plant, and nor do two presses that are not one act. The window is real time, since it is
+		about two people's hands; plant time runs at the clock rate. A press older than the window is forgotten
+		(Protection.step). The BCR's one button trips on its own.
 	]]
 	["reactor.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
 		local button = cmd.target
@@ -717,10 +720,11 @@ Protection.commands = {
 		if index == nil or index < 1 or index > needed then
 			return { ok = false, reason = `no trip button '{tostring(button)}': MCR-1 to MCR-{needed}, or BCR` }
 		end
-		self.pressed[button :: string] = self.elapsed
+		local now = self.realTime()
+		self.pressed[button :: string] = now
 		local held = 0
 		for _, at in self.pressed do
-			if self.elapsed - at <= self.manualWindow then
+			if now - at <= self.manualWindow then
 				held += 1
 			end
 		end

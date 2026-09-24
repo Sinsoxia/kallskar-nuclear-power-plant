@@ -8,7 +8,7 @@ return {
 	pssVoting = spec({ required = 2, of = 3 }, "§9.5: PSS logic is 2-out-of-3 on independent channels"),
 	powerRangeVoting = decision({ required = 2, of = 4 }, "D-005: four PR quadrant channels"),
 	bypassedRowsMax = decision(1, "D-055: at most one §9.5 row may be bypassed at once"),
-	manualTripWindow_s = decision(2, "D-056: the MCR's two trip buttons count together only when pressed within 2 s of each other"),
+	manualTripWindow_s = decision(2, "D-056: the MCR's two trip buttons count together only when pressed within 2 s of each other, in real time"),
 
 	pss = spec({
 		powerRangeHigh = { normal_pctFP = 100, alarm_pctFP = 105, trip_pctFP = 115 },
