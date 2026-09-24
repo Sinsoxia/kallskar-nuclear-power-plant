@@ -335,6 +335,39 @@ return {
 		t.eq(b.byName.Detectors.pr[2], frozen, "a tick later PR2 still reads what it froze at")
 	end,
 
+	["flow auto's demand comes back with it, so the pumps do not reach for 100 % on the first tick (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		local function persistence(p: any): any
+			return Persistence.new({
+				config = Config,
+				registry = p.registry,
+				log = p.log,
+				bus = p.bus,
+				clock = p.scheduler.clock,
+				store = store,
+				mode = "private",
+				key = "plant/flow",
+				ownerUserId = 7,
+				channels = p.channels,
+				faults = p.faults,
+			})
+		end
+		local a = plant()
+		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
+		t.ok(a.byName.AutoControls:applyCommand(AUTO, { kind = "auto.flow", value = 1 }).ok, "flow auto in")
+		run(a, 5)
+		local demand = a.byName.PrimaryPumps.pumps[1].demand_pct
+		t.ok(demand < 100, `the programme holds the pumps below full speed at 30 %FP ({demand} %)`)
+		t.ok((persistence(a):save()), "saved")
+
+		local b = plant()
+		t.eq(persistence(b):load(), "loaded")
+		run(b, DT)
+		for _, pump in b.byName.PrimaryPumps.pumps do
+			t.eq(pump.demand_pct, demand, `{pump.name}'s demand is still the programme's on the first tick`)
+		end
+	end,
+
 	["a version-1 save, from before D-053, also comes back tripped (D-053)"] = function(t)
 		local store = Persistence.MemoryStore.new()
 		-- version 1 saved the decay heat and nothing else of the plant
