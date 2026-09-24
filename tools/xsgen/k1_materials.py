@@ -9,6 +9,7 @@ Units: atom densities in atoms/(b·cm), lengths in cm, temperatures in K, mass d
 Needs OpenMC (for atomic masses), so run it inside the kallskar-xs environment.
 """
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -60,7 +61,9 @@ def rod_layout() -> list[dict]:
 def pu_fraction() -> dict:
     m = re.search(r"plutoniumFraction\s*=\s*\{\s*inner\s*=\s*([\d.]+),\s*outer\s*=\s*([\d.]+)\s*\}", _luau("Core"))
     assert m, "Config.Core.fuel.plutoniumFraction not found"
-    return {"inner": float(m.group(1)), "outer": float(m.group(2))}
+    # a D-051 search trial moves both zones by the same number of percentage points
+    shift = float(os.environ.get("KALLSKAR_PU_SHIFT_PCT") or 0) / 100
+    return {"inner": float(m.group(1)) + shift, "outer": float(m.group(2)) + shift}
 
 
 def spec_geometry() -> dict:

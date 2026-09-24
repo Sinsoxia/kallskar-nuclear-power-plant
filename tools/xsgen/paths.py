@@ -15,6 +15,12 @@ CROSS_SECTIONS = NUCDATA / "endfb-viii.1-hdf5" / "cross_sections.xml"
 CHAIN_FAST = NUCDATA / "chain_endfb81_fast.xml"
 RUNS = DATA_ROOT / "xs-runs"
 RESULTS = REPO / "tools" / "xsgen" / "results"  # small, committed summaries of runs
+# A variant (e.g. one trial of the D-051 Pu search) gets runs and results of its own, so it never touches the
+# committed reference results. Its results folder is git-ignored.
+VARIANT = os.environ.get("KALLSKAR_VARIANT")
+if VARIANT:
+    RUNS = RUNS / "variants" / VARIANT
+    RESULTS = RESULTS / "variants" / VARIANT
 
 # KALLSKAR_THREADS caps the OpenMC threads (e.g. to keep a machine cooler on long runs); default: every CPU
 THREADS = int(os.environ.get("KALLSKAR_THREADS") or os.cpu_count() or 1)

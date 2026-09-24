@@ -6,6 +6,7 @@ references/
 
 # OpenMC run output lives in WSL (~/kallskar-xs-runs); guard against strays
 tools/xsgen/runs/
+tools/xsgen/results/variants/
 *.h5
 *.xml.gz
 statepoint.*.h5
