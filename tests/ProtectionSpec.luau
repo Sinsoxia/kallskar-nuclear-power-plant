@@ -220,6 +220,71 @@ return {
 		t.eq(#sys:getState().active, 0)
 	end,
 
+	["an alarm goes out only once its signal is back past the setpoint by the channel's own noise (D-050)"] = function(t)
+		local noise = Config.Instruments.noise
+		local dndAlarm = DND * PSS.delayedNeutrons.alarmFactor
+		local rows = {
+			{
+				-- one power range quadrant: D-025's relative noise, taken at the alarm setpoint
+				id = "PR-HIGH", alarm = PSS.powerRangeHigh.alarm_pctFP,
+				band = noise.powerRangeRelative * PSS.powerRangeHigh.alarm_pctFP,
+				set = function(ch: any, v: number)
+					ch:setExternal("detectors.pr_pctFP", { v, 100, 100, 100 })
+				end,
+			},
+			{
+				-- the mixed outlet thermocouple: §2.5's ±1 K
+				id = "CORE-OUT", alarm = PSS.coreOutletMixed.alarm_C, band = Config.Core.flow.thermocoupleNoise_K,
+				set = function(ch: any, v: number)
+					ch:setExternal("pools.mixedCoreOutletMeasured_K", v + KEL)
+				end,
+			},
+			{
+				-- one DND: Poisson, σ = √(R/τ) at the setpoint over D-025's ratemeter averaging time
+				id = "DND", alarm = dndAlarm, band = math.sqrt(dndAlarm / noise.ratemeterAveraging_s),
+				set = function(ch: any, v: number)
+					ch:setExternal("detectors.dnd_cps", { v, DND, DND, DND, DND, DND })
+				end,
+			},
+			{
+				-- the cover gas pressure has no modelled noise, so it cannot chatter and has no deadband
+				id = "COVER-GAS", alarm = PSS.coverGas.alarm_MPa, band = 0,
+				set = function(ch: any, v: number)
+					ch:setExternal("pools.coverGas_MPa", v)
+				end,
+			},
+		}
+		for _, row in rows do
+			local sys, ch, bus = make()
+			local states = {}
+			bus:subscribe("Alarm", function(a)
+				if a.tag == row.id then
+					table.insert(states, a.state)
+				end
+			end)
+			local nudge = if row.band > 0 then row.band / 2 else 1e-6 * row.alarm
+			row.set(ch, row.alarm + nudge)
+			run(sys, 0.1)
+			t.eq(states[#states], "in", `{row.id} comes in at its setpoint`)
+			-- noise around the setpoint: back under it, but by less than the channel's noise
+			for _ = 1, 5 do
+				row.set(ch, row.alarm - nudge)
+				run(sys, 0.1)
+				row.set(ch, row.alarm + nudge)
+				run(sys, 0.1)
+			end
+			if row.band > 0 then
+				t.eq(#states, 1, `{row.id} stays in while the signal is within its noise of the setpoint`)
+				row.set(ch, row.alarm - 1.5 * row.band)
+				run(sys, 0.1)
+				t.eq(states[#states], "out", `{row.id} goes out once the signal is back past the setpoint by its noise`)
+				t.eq(#states, 2, `{row.id}: one in and one out`)
+			else
+				t.eq(#states, 11, `{row.id} goes out on every crossing: with no noise there is no deadband`)
+			end
+		end
+	end,
+
 	["the 25 %FP low setpoint protects a startup and bypasses itself above the permissive"] = function(t)
 		local sys, ch = make(2)
 		run(sys, 1)

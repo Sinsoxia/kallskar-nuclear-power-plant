@@ -24,6 +24,12 @@
 	30 s rod block, so a session long enough will eventually see one sample dip under it. Rows may therefore
 	declare `persist_s`, and the period rod block requires the condition to hold rather than acting on one sample.
 
+	**Alarm deadband (D-050).** An alarm comes in at its setpoint and goes out only once the signal is back past the
+	setpoint by that channel's own noise, the row's `deadband`, so a noisy signal sitting at the setpoint does not
+	chatter in and out every tick. The deadband is always a figure the plant already has: §2.5's ±1 K for the
+	thermocouple, D-025's relative noise for the power range, the Poisson σ = √(R/τ) for the counting channels. A row
+	whose signal carries no modelled noise cannot chatter and has none.
+
 	**First-out.** The first monitor to reach its trip level latches, and stays latched through the reset, because
 	the question after a trip is always which signal went first. Later trips are recorded but do not overwrite it.
 
@@ -132,6 +138,7 @@ local function buildMonitors(cfg: any): { any }
 	local sss = cfg.Protection.sss
 	local vote3 = cfg.Protection.pssVoting.required
 	local votePR = cfg.Protection.powerRangeVoting.required
+	local noise = cfg.Instruments.noise
 	local dnd = cfg.Instruments.dndBackground_cps
 	local inhibit = cfg.Protection.coreInletLowInhibit
 
@@ -143,6 +150,8 @@ local function buildMonitors(cfg: any): { any }
 			end,
 			vote = votePR, alarm = pss.powerRangeHigh.alarm_pctFP, trip = pss.powerRangeHigh.trip_pctFP,
 			neutron = true, -- D-055: never bypassed
+			-- D-050: one quadrant's D-025 noise at the alarm setpoint
+			deadband = noise.powerRangeRelative * pss.powerRangeHigh.alarm_pctFP,
 		},
 		{
 			--[[
@@ -206,6 +215,7 @@ local function buildMonitors(cfg: any): { any }
 				return single((self.port:read("pools.mixedCoreOutletMeasured_K") or 0) - KELVIN)
 			end,
 			vote = 1, alarm = pss.coreOutletMixed.alarm_C, trip = pss.coreOutletMixed.trip_C,
+			deadband = cfg.Core.flow.thermocoupleNoise_K, -- D-050: the thermocouple's §2.5 ±1 K
 		},
 		{
 			--[[
@@ -302,6 +312,8 @@ local function buildMonitors(cfg: any): { any }
 			vote = vote3,
 			alarm = dnd * pss.delayedNeutrons.alarmFactor,
 			trip = dnd * pss.delayedNeutrons.tripFactor,
+			-- D-050: a counting channel's own noise at the alarm setpoint, σ = √(R/τ) over D-025's ratemeter averaging
+			deadband = math.sqrt(dnd * pss.delayedNeutrons.alarmFactor / noise.ratemeterAveraging_s),
 		},
 		{
 			id = "PUMPS", label = "Primary pumps lost", system = "PSS", sense = "above",
@@ -517,7 +529,12 @@ function Protection.step(self: any, dt: number)
 		if m.alarm then
 			-- One channel past an alarm setpoint is what an annunciator is for: only the TRIP waits for the
 			-- coincidence vote. An alarm that needed two channels would hide the first failing instrument.
-			local hit = voted(values, m.sense, m.alarm, 1, m.inclusive)
+			-- Once in, it holds until every channel is back past the setpoint by the row's deadband (D-050).
+			local setpoint = m.alarm
+			if st.alarm and m.deadband then
+				setpoint = if m.sense == "above" then setpoint - m.deadband else setpoint + m.deadband
+			end
+			local hit = voted(values, m.sense, setpoint, 1, m.inclusive)
 			if hit ~= st.alarm then
 				st.alarm = hit
 				if self.bus then
