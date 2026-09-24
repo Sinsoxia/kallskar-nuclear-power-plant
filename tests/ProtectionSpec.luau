@@ -308,6 +308,12 @@ return {
 			than Binomial(n, p): expected count n·p. An out ends a run of r back ticks that follows a tick not back,
 			with chance (1 − q)·qʳ a tick: expected count n(1 − q)qʳ. Each count is held to its Poisson tail at 5σ's
 			one-sided chance, as D-025 bounds noise.
+
+			False failure: a level can exceed its bound only if the count the bound was taken from (the ins, or the
+			outs) exceeds its tail, which has chance at most ε = 1 − Φ(5) ≈ 2.9 × 10⁻⁷. Two levels are checked, so a
+			correct Protection fails this case with probability at most 2ε ≈ 5.7 × 10⁻⁷. The seeds are fixed, so the
+			case is deterministic: that is the chance a given seed is unlucky, which matters when a seed or the noise
+			model changes.
 		]]
 		local n = math.floor(600 / DT + 0.5)
 		local eps = upper(5)
@@ -400,7 +406,9 @@ return {
 					table.insert(states, a.state)
 				end
 			end)
-			local inside, back = row.alarm - row.band / 2, row.alarm - 1.01 * row.band
+			-- Just inside the deadband's edge and just outside it, 1 % either way. Held any further in, a deadband
+			-- narrower than the rule's would still keep the alarm in and pass: at band/2, anything from 1.5σ to 3σ did.
+			local inside, back = row.alarm - 0.99 * row.band, row.alarm - 1.01 * row.band
 			row.set(ch, row.alarm + row.band / 2)
 			run(sys, DT)
 			t.eq(states[#states], "in", `{row.id} comes in at its setpoint`)
