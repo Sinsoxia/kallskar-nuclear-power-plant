@@ -24,6 +24,28 @@
 	30 s rod block, so a session long enough will eventually see one sample dip under it. Rows may therefore
 	declare `persist_s`, and the period rod block requires the condition to hold rather than acting on one sample.
 
+	**Alarm deadband (D-050, as amended).** An alarm comes in at its setpoint and goes out only once the signal is back
+	past the setpoint by the row's `deadband`, so a noisy signal sitting near the setpoint does not chatter in and out.
+	The deadband comes from the channel's own noise. A channel with bounded noise, the thermocouple's §2.5 ±1 K, gets
+	its full peak-to-peak span, 2 K: a steady signal then can never be both past the setpoint and back past the
+	deadband, so it cannot flicker at all. A channel with Gaussian noise gets 3σ of it at the setpoint (D-025's
+	relative noise for the power range, the Poisson σ = √(R/τ) for the DNDs), plus an off-delay, `offDelay_s`: the
+	alarm goes out only once every channel has stayed back past the deadband for 5 s. tools/derive/alarm_deadband.py
+	gives what is left at each row's worst steady level: PR-HIGH once every 4.5 h, the DNDs once every 50 min (their
+	ratemeter carries each reading into the next). A row whose signal carries no modelled noise cannot chatter and has
+	no deadband.
+
+	**Runbacks (D-046).** §9.5 gives each runback a target and a rate, and §3.4 the mechanism: the shims drive in at
+	10 mm/s. The rate is a demand, not a rod speed. A runback ramps a power demand from the neutron power at its start
+	down to its target at its table rate, and asks for the shim drive-in (`protection.rodRunback`) only while the
+	measured power, the PR median, is above that demand, so the shims follow the ramp rather than running the core
+	down into a shutdown. The steam plant runs back alongside: IHX reads the target and rate and ramps its load the
+	same way. Rod auto stands down while a runback runs (AutoControls). The runback is complete once the demand has
+	reached the target and the measured power is at or below the target plus one PR channel's D-025 noise there; rod
+	auto, if it was in auto, then takes over at the new load. The pump and loop rows start their runback on the
+	alarm's rising edge, so a runback that has been cleared or has finished does not restart until the trigger has
+	reset and come back; one refused because a deeper runback was running starts once that one is out of the way. RB-3's target, "bypass-limited", is not a number yet, so RB-3 is refused (M3).
+
 	**First-out.** The first monitor to reach its trip level latches, and stays latched through the reset, because
 	the question after a trip is always which signal went first. Later trips are recorded but do not overwrite it.
 
@@ -62,6 +84,7 @@ local Protection = System.extend({
 		"primary.pumpSpeed_pct",
 		"ihx.loopsRunning",
 		"core.power_pctFP",
+		"detectors.prMean_pctFP",
 		"program.mode",
 		"site.seismic_g",
 		"electrical.boards11kV",
@@ -132,6 +155,8 @@ local function buildMonitors(cfg: any): { any }
 	local sss = cfg.Protection.sss
 	local vote3 = cfg.Protection.pssVoting.required
 	local votePR = cfg.Protection.powerRangeVoting.required
+	local noise = cfg.Instruments.noise
+	local gaussian = cfg.Protection.alarmDeadband
 	local dnd = cfg.Instruments.dndBackground_cps
 	local inhibit = cfg.Protection.coreInletLowInhibit
 
@@ -142,6 +167,10 @@ local function buildMonitors(cfg: any): { any }
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
 			vote = votePR, alarm = pss.powerRangeHigh.alarm_pctFP, trip = pss.powerRangeHigh.trip_pctFP,
+			neutron = true, -- D-055: the pss.bypass command refuses it (the PROT-CHANNEL fault does not; see below)
+			-- D-050 as amended: Gaussian, so 3σ of one quadrant's D-025 noise at the alarm setpoint, and the off-delay
+			deadband = gaussian.gaussianSigmas * noise.powerRangeRelative * pss.powerRangeHigh.alarm_pctFP,
+			offDelay_s = gaussian.offDelay_s,
 		},
 		{
 			--[[
@@ -152,7 +181,7 @@ local function buildMonitors(cfg: any): { any }
 			signal = function(self)
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
-			vote = votePR, trip = pss.powerRangeLowSetpoint.trip_pctFP,
+			vote = votePR, trip = pss.powerRangeLowSetpoint.trip_pctFP, neutron = true,
 			armed = function(self)
 				return self.power < pss.powerRangeLowSetpoint.activeBelowPermissive_pctFP
 			end,
@@ -167,7 +196,7 @@ local function buildMonitors(cfg: any): { any }
 				end
 				return out
 			end,
-			vote = vote3, block = pss.period.rodBlockBelow_s, trip = pss.period.tripBelow_s,
+			vote = vote3, block = pss.period.rodBlockBelow_s, trip = pss.period.tripBelow_s, neutron = true,
 			blockPersist_s = 2, -- D-025: the channel's own noise touches 39 s at 4.5σ, so one sample is not enough
 			armed = function(self)
 				return self.power < pss.period.activeBelow_pctFP
@@ -186,7 +215,7 @@ local function buildMonitors(cfg: any): { any }
 				local down = rate / pss.fluxRate.tripFall_pctFPps
 				return { math.max(up, down) }
 			end,
-			vote = 1, trip = 1.0,
+			vote = 1, trip = 1.0, neutron = true,
 		},
 		{
 			id = "PQ", label = "Power to flow", system = "PSS", sense = "above",
@@ -205,6 +234,8 @@ local function buildMonitors(cfg: any): { any }
 				return single((self.port:read("pools.mixedCoreOutletMeasured_K") or 0) - KELVIN)
 			end,
 			vote = 1, alarm = pss.coreOutletMixed.alarm_C, trip = pss.coreOutletMixed.trip_C,
+			-- D-050 as amended: bounded, so the full span of the thermocouple's §2.5 ±1 K, and no off-delay
+			deadband = 2 * cfg.Core.flow.thermocoupleNoise_K,
 		},
 		{
 			--[[
@@ -301,6 +332,10 @@ local function buildMonitors(cfg: any): { any }
 			vote = vote3,
 			alarm = dnd * pss.delayedNeutrons.alarmFactor,
 			trip = dnd * pss.delayedNeutrons.tripFactor,
+			-- D-050 as amended: Gaussian, so 3σ of a counting channel's noise at the alarm setpoint, σ = √(R/τ) over
+			-- D-025's ratemeter averaging, and the off-delay
+			deadband = gaussian.gaussianSigmas * math.sqrt(dnd * pss.delayedNeutrons.alarmFactor / noise.ratemeterAveraging_s),
+			offDelay_s = gaussian.offDelay_s,
 		},
 		{
 			id = "PUMPS", label = "Primary pumps lost", system = "PSS", sense = "above",
@@ -309,6 +344,7 @@ local function buildMonitors(cfg: any): { any }
 				return single(if running then 3 - running else 0)
 			end,
 			vote = 1, inclusive = true, alarm = pss.primaryPumpsLost.runback, trip = pss.primaryPumpsLost.trip,
+			runback = "RB2", -- §9.5's "alarm or first action" column
 		},
 		{
 			id = "LOOPS", label = "Secondary loops lost", system = "PSS", sense = "above",
@@ -317,6 +353,7 @@ local function buildMonitors(cfg: any): { any }
 				return single(if running then 3 - running else 0)
 			end,
 			vote = 1, inclusive = true, alarm = pss.secondaryLoopsLost.runback, trip = pss.secondaryLoopsLost.trip,
+			runback = "RB1",
 		},
 		{
 			id = "SEISMIC", label = "Seismic", system = "PSS", sense = "above",
@@ -338,7 +375,7 @@ local function buildMonitors(cfg: any): { any }
 			signal = function(self)
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
-			vote = votePR, trip = sss.powerRange_pctFP,
+			vote = votePR, trip = sss.powerRange_pctFP, neutron = true,
 		},
 		{
 			--[[
@@ -379,19 +416,30 @@ function Protection.init(self: any, ctx: any)
 	self.monitors = buildMonitors(cfg)
 	self.state = {}
 	for _, m in self.monitors do
-		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0 }
+		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0, backFor = 0, runbackRan = false }
 	end
 	self.power = 0
+	self.measured = 0
+	self.prNoise = cfg.Instruments.noise.powerRangeRelative -- a runback ends within one PR channel's noise (D-046)
 	self.mode = 1
 	self.tripped = {}
 	self.firstOut = ""
-	self.manual = { mcr = 0, bcr = 0 }
+	self.pressed = {} :: { [string]: number } -- MCR trip button -> when it was pressed (D-056)
+	self.manualWindow = cfg.Protection.manualTripWindow_s
+	-- the buttons are two people's hands, so their window is real time, not plant time (which runs at the clock
+	-- rate); ctx.realTime lets a test drive it
+	self.realTime = ctx.realTime or os.clock
 	self.active = {}
 	self.inhibited = {}
 	self.runback = nil
 	self.curieTemp_C = 0
 	self.curieStarted = false
 	self.bypassed = {} :: { [string]: boolean }
+	self.bypassedMax = cfg.Protection.bypassedRowsMax
+	self.neutronRow = {} :: { [string]: boolean }
+	for _, m in self.monitors do
+		self.neutronRow[m.id] = m.neutron == true
+	end
 	self.assySorted, self.assyDeviations = {}, {} -- ASSY-DEV's working buffers
 	self:publish()
 end
@@ -440,8 +488,8 @@ function Protection.fire(self: any, id: string, label: string, system: string, a
 end
 
 --[[
-	Start a runback (§9.5). A more severe one replaces a milder one; the same one twice does nothing. RB-1 also
-	drives the shim banks in at 10 mm/s, which is why it carries `driveIn`.
+	Start a runback (§9.5, D-046). A more severe one replaces a milder one; the same one twice does nothing. Its power
+	demand starts at the measured neutron power, and `driveIn` is set each tick while the power is above it.
 ]]
 function Protection.startRunback(self: any, id: string, actor: Actor?)
 	local spec = self.cfg.runbacks[id]
@@ -456,7 +504,8 @@ function Protection.startRunback(self: any, id: string, actor: Actor?)
 		id = id,
 		target = spec.target_pctFP,
 		rate = spec.rate_pctpmin,
-		driveIn = spec.shimDriveIn_mmps ~= nil,
+		demand = self.measured,
+		driveIn = false,
 	}
 	if self.log then
 		self.log:record("runback", actor, id, spec.trigger, `to {spec.target_pctFP} %FP at {spec.rate_pctpmin} %/min`)
@@ -472,9 +521,40 @@ function Protection.startRunback(self: any, id: string, actor: Actor?)
 	return true
 end
 
+--[[
+	One tick of a running runback (D-046): ramp the demand toward the target at the table rate, ask for the shim
+	drive-in while the measured power is above the demand, and finish once the demand is at the target and the power
+	is within one PR channel's noise of it.
+]]
+function Protection.followRunback(self: any, dt: number)
+	local rb = self.runback
+	if rb == nil then
+		return
+	end
+	if rb.demand > rb.target then
+		rb.demand = math.max(rb.target, rb.demand - rb.rate / 60 * dt)
+	end
+	local measured = self.measured
+	rb.driveIn = measured > rb.demand
+	if rb.demand <= rb.target and measured <= rb.target * (1 + self.prNoise) then
+		if self.log then
+			self.log:record("runback", nil, rb.id, string.format("%.1f %%FP", measured), "complete")
+		end
+		self.runback = nil
+	end
+end
+
 function Protection.step(self: any, dt: number)
 	local port = self.port
 	self.power = port:read("core.power_pctFP") or 0
+	self.measured = port:read("detectors.prMean_pctFP") or self.power -- the neutron power a runback follows (D-046)
+	-- D-056: an MCR trip button's press counts toward the trip only within the window, in real time
+	local now = self.realTime()
+	for button, at in self.pressed do
+		if now - at > self.manualWindow then
+			self.pressed[button] = nil
+		end
+	end
 	self.mode = port:read("program.mode") or 1
 	local active, inhibited = {}, {}
 	local blocked = false
@@ -491,7 +571,7 @@ function Protection.step(self: any, dt: number)
 				self.bus:publish("Alarm", { tag = m.id, priority = 2, state = "out", text = m.label })
 			end
 			st.alarm, st.block, st.trip = false, false, false
-			st.blockFor, st.tripFor = 0, 0
+			st.blockFor, st.tripFor, st.backFor = 0, 0, 0
 			if why then
 				table.insert(inhibited, `{m.id}: {why}`)
 			end
@@ -500,11 +580,28 @@ function Protection.step(self: any, dt: number)
 		local values = m.signal(self)
 
 		if m.alarm then
-			-- One channel past an alarm setpoint is what an annunciator is for: only the TRIP waits for the
-			-- coincidence vote. An alarm that needed two channels would hide the first failing instrument.
-			local hit = voted(values, m.sense, m.alarm, 1, m.inclusive)
+			--[[
+				One channel past an alarm setpoint is what an annunciator is for: only the TRIP waits for the
+				coincidence vote. An alarm that needed two channels would hide the first failing instrument. Once in,
+				it holds while any channel is short of the row's deadband, and goes out once every channel has been
+				back past it for the row's off-delay (D-050 as amended). `backFor` is a sum of whole ticks, so it is
+				compared at the nearest tick: with no off-delay the alarm goes out on the first tick back.
+			]]
+			local hit
+			if not st.alarm then
+				hit = voted(values, m.sense, m.alarm, 1, m.inclusive)
+			else
+				local edge = m.alarm
+				if m.deadband then
+					edge = if m.sense == "above" then edge - m.deadband else edge + m.deadband
+				end
+				local held = voted(values, m.sense, edge, 1, m.inclusive)
+				st.backFor = if held then 0 else st.backFor + dt
+				hit = held or st.backFor < (m.offDelay_s or 0) - dt / 2
+			end
 			if hit ~= st.alarm then
 				st.alarm = hit
+				st.backFor = 0
 				if self.bus then
 					self.bus:publish("Alarm", {
 						tag = m.id,
@@ -542,13 +639,22 @@ function Protection.step(self: any, dt: number)
 			end
 		end
 
-		-- §9.5's "alarm or first action" column is a runback for the pump and loop rows
-		if m.id == "PUMPS" and st.alarm then
-			self:startRunback("RB2")
-		elseif m.id == "LOOPS" and st.alarm then
-			self:startRunback("RB1")
+		--[[
+			§9.5's "alarm or first action" column is a runback for the pump and loop rows. Once a row's runback has
+			run, cleared or finished, it waits for the trigger to reset and come back (D-046). One refused because a
+			deeper runback was already running has not run, so it starts once that one is out of the way, if its
+			trigger is still there.
+		]]
+		if m.runback then
+			if not st.alarm then
+				st.runbackRan = false
+			elseif not st.runbackRan and self:startRunback(m.runback) then
+				st.runbackRan = true
+			end
 		end
 	end
+
+	self:followRunback(dt)
 
 	-- §9.5's other rod withdrawal blocks, which are conditions rather than measured signals
 	--[[
@@ -606,7 +712,7 @@ function Protection.reset(self: any, actor: Actor?): (boolean, string?)
 	end
 	self.tripped = {}
 	self.firstOut = ""
-	self.manual = { mcr = 0, bcr = 0 }
+	table.clear(self.pressed)
 	for _, st in self.state do
 		st.trip, st.tripFor = false, 0
 	end
@@ -619,18 +725,36 @@ end
 
 Protection.commands = {
 	--[[
-		§9.5: two buttons in the main control room, or one in the backup. Two means two separate presses, which is
-		why the count is held rather than a boolean — one operator leaning on one button does not trip the plant.
+		§9.5: two buttons in the main control room, or one in the backup. In the MCR they are two different
+		buttons, MCR-1 and MCR-2, pressed within D-056's window of each other: one operator leaning on one button
+		does not trip the plant, and nor do two presses that are not one act. The window is real time, since it is
+		about two people's hands; plant time runs at the clock rate. A press older than the window is forgotten
+		(Protection.step). The BCR's one button trips on its own.
 	]]
 	["reactor.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local where = if cmd.target == "BCR" then "bcr" else "mcr"
-		self.manual[where] += 1
-		local needed = self.cfg.pss.manualButtons.mainControlRoom
-		if where == "bcr" or self.manual.mcr >= needed then
-			self:fire("MANUAL", `Manual trip ({string.upper(where)})`, "PSS", actor)
+		local button = cmd.target
+		if button == "BCR" then
+			self:fire("MANUAL", "Manual trip (BCR)", "PSS", actor)
 			return { ok = true }
 		end
-		return { ok = true, reason = `{self.manual.mcr} of {needed} buttons` }
+		local needed = self.cfg.pss.manualButtons.mainControlRoom
+		local index = if button then tonumber(string.match(button, "^MCR%-(%d+)$")) else nil
+		if index == nil or index < 1 or index > needed then
+			return { ok = false, reason = `no trip button '{tostring(button)}': MCR-1 to MCR-{needed}, or BCR` }
+		end
+		local now = self.realTime()
+		self.pressed[button :: string] = now
+		local held = 0
+		for _, at in self.pressed do
+			if now - at <= self.manualWindow then
+				held += 1
+			end
+		end
+		if held >= needed then
+			self:fire("MANUAL", "Manual trip (MCR)", "PSS", actor)
+			return { ok = true }
+		end
+		return { ok = true, reason = `{held} of {needed} buttons` }
 	end,
 
 	["sss.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
@@ -645,7 +769,15 @@ Protection.commands = {
 
 	--[[
 		A bypass is a deliberate, logged, visible act: §9.6's LCOs are written around which protection is
-		available, so a bypassed trip has to be something an auditor can find afterwards.
+		available, so a bypassed trip has to be something an auditor can find afterwards. D-055 limits it: taking a
+		row out is a critical control (the §10.7 playtime, Access.criticalControls), though putting one back, with
+		value 0, is not, because that is the safe direction (Access.criticalUnlessRestoring, D-055 as amended); at
+		most bypassedRowsMax rows are out of service at once; and the command refuses a row the neutron instruments
+		drive (the power range high and low setpoint, flux rate, period, and the SSS power range), because those are
+		the trips that answer a reactivity excursion. Once the desks exist a bypass will also need §10.2's
+		shift-supervisor authorisation.
+		These limits are the command's. The PROT-CHANNEL fault below bypasses a row without them, and restoring the
+		row here takes the fault's bypass away too (docs/review/DECISIONS_NEEDED.md, M7+).
 	]]
 	["pss.bypass"] = function(self: any, actor: Actor, cmd: Command): CommandResult
 		local id = cmd.target
@@ -653,6 +785,19 @@ Protection.commands = {
 			return { ok = false, reason = `unknown protective signal '{tostring(id)}'` }
 		end
 		local on = cmd.value ~= 0
+		if on and not self.bypassed[id] then
+			if self.neutronRow[id] then
+				return { ok = false, reason = `{id} is a neutron trip and cannot be bypassed` }
+			end
+			local out = {}
+			for row in self.bypassed do
+				table.insert(out, row)
+			end
+			if #out >= self.bypassedMax then
+				table.sort(out)
+				return { ok = false, reason = `{table.concat(out, ", ")} is already bypassed; restore it first` }
+			end
+		end
 		self.bypassed[id] = on or nil
 		if self.log then
 			self.log:record("pss.bypass", actor, id, nil, if on then "BYPASSED" else "restored")
@@ -698,6 +843,12 @@ Protection.faults = {
 		--[[
 			A protective signal left bypassed — the way a real plant finds out it has been running without a trip
 			is usually the surveillance that trips over it, not the event itself.
+
+			The fault sets the bypass directly, not through pss.bypass, so none of D-055's limits applies to it: it
+			is not counted against bypassedRowsMax (though a row it holds does count against the operator's next
+			bypass), it bypasses a neutron row as readily as any other, and with no `signal` it bypasses PR-HIGH,
+			which is a neutron row. Its clear removes the row's bypass whoever set it. Whether that is right is open
+			for Aqua (docs/review/DECISIONS_NEEDED.md, M7+); until then the behaviour is left as it is.
 		]]
 		arm = function(self: any, params: { [string]: any }?)
 			local id = (params and params.signal) or "PR-HIGH"
@@ -712,6 +863,42 @@ Protection.faults = {
 		end,
 	},
 }
+
+--[[
+	§14.6 (D-053): the trip bypasses, and the trip itself. A server close counts as a reactor trip, so a loaded plant
+	comes back with the PSS tripped: with the first out it had if it was already tripped, SERVER-CLOSE otherwise.
+	A bypass the PROT-CHANNEL fault holds is in the slice like any other; Faults.restore marks the fault active and
+	does not bypass the row again.
+]]
+function Protection.save(self: any): any
+	local bypassed = {}
+	for id in self.bypassed do
+		table.insert(bypassed, id)
+	end
+	table.sort(bypassed)
+	return { bypassed = bypassed, tripped = table.clone(self.tripped), firstOut = self.firstOut }
+end
+
+function Protection.load(self: any, data: any, _version: number)
+	table.clear(self.bypassed)
+	if type(data.bypassed) == "table" then
+		for _, id in data.bypassed do
+			if type(id) == "string" and self.state[id] ~= nil then
+				self.bypassed[id] = true
+			end
+		end
+	end
+	local was = if type(data.tripped) == "table" then data.tripped else {}
+	self.tripped = { PSS = true, SSS = if was.SSS == true then true else nil }
+	self.firstOut = if type(data.firstOut) == "string" and data.firstOut ~= "" then data.firstOut else "SERVER-CLOSE"
+	if self.log and was.PSS ~= true then
+		self.log:record("reactor.trip", nil, "SERVER-CLOSE", "the server closed, which counts as a reactor trip (D-053)",
+			if self.firstOut == "SERVER-CLOSE" then "TRIP (first out)" else "TRIP")
+	end
+	self.runback = nil
+	table.clear(self.pressed)
+	self:publish()
+end
 
 function Protection.getState(self: any): { [string]: any }
 	local rows = {}
@@ -734,7 +921,7 @@ function Protection.getState(self: any): { [string]: any }
 		inhibited = table.clone(self.inhibited),
 		blocked = self.blocked == true,
 		runback = self.runback,
-		manual = table.clone(self.manual),
+		manual = table.clone(self.pressed),
 		curieTemp_C = self.curieTemp_C,
 	}
 end

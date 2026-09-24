@@ -36,6 +36,9 @@ local function make(opts: { [string]: any }?)
 	ch:declareExternal("pools.hotPool_K", (o.hotPool_C or SPEC.primaryInlet_C) + KEL)
 	ch:declareExternal("primary.coreFlow_kgps", o.flow or RATED)
 	ch:declareExternal("protection.scram", "none")
+	ch:declareExternal("protection.runback", "")
+	ch:declareExternal("protection.runbackTarget_pctFP", 100)
+	ch:declareExternal("protection.runbackRate_pctpmin", 0)
 	ch:declareExternal("primary.pumpHeat_MWt", if o.pumpHeat ~= nil then o.pumpHeat else PRIMARY.pumps.pumpHeatToSodium_MWt)
 	local sys = System.new(IHX)
 	local bus = Bus.new()
@@ -78,7 +81,8 @@ return {
 		t.near(u.primaryOutlet_K - KEL, SPEC.primaryOutlet_C, 1, "§4.3: 375 °C primary out")
 		t.near(u.secondaryOutlet_K - KEL, SPEC.secondaryOutlet_C, 1, "§4.3: 520 °C secondary out")
 		t.near(u.lmtd_K, SPEC.lmtd_K, 0.5, "§4.3: LMTD ≈ 41 K")
-		t.near(s.total_MWt, Config.Units.ratedThermal_MWt, 30, "six of them carry the core")
+		-- D-049: six times the 2 MW each unit is checked to above
+		t.near(s.total_MWt, Config.Units.ratedThermal_MWt, 6 * 2, "six of them carry the core")
 		t.near(ch:get("ihx.heatRemoved_W"), s.total_MWt * 1e6, 1e-6, "published duty matches state")
 		t.eq(ch:get("ihx.loopsRunning"), 3)
 		t.eq(ch:get("ihx.unitsInService"), 6)
@@ -332,6 +336,33 @@ return {
 		local sys = make({ load = 0, hotPool_C = Config.Program.partLoad.coreInlet_C })
 		run(sys, 1)
 		t.near(sys:getState().total_MWt, 0, 1e-9, "375 °C against 375 °C carries nothing")
+	end,
+
+	["a cleared runback ends the steam plant's runback too: the load holds, and later moves at LCO-10's rate (D-046)"] = function(t)
+		local sys, ch = make({ load = 100 })
+		local rb = Config.Protection.runbacks.RB2
+		ch:setExternal("protection.runback", "RB2")
+		ch:setExternal("protection.runbackTarget_pctFP", rb.target_pctFP)
+		ch:setExternal("protection.runbackRate_pctpmin", rb.rate_pctpmin)
+		run(sys, 10)
+		local during = sys.sinkLoad
+		t.near(during, 100 - rb.rate_pctpmin / 60 * 10, 1e-9, "RB-2 takes the load down at 60 %/min")
+
+		-- the operator clears the runback part-way: Protection publishes no runback, and the load holds there
+		ch:setExternal("protection.runback", "")
+		ch:setExternal("protection.runbackTarget_pctFP", 100)
+		ch:setExternal("protection.runbackRate_pctpmin", 0)
+		run(sys, 5)
+		t.near(sys.sinkLoad, during, 1e-9, "the load holds where the cleared runback left it")
+		t.near(sys:getState().sinkLoadDemand_pct, during, 1e-9, "with the demand there, for the operator to take")
+
+		-- the operator raises it, then lowers it: both at LCO-10's 1 %/min above 40 %, never at the runback's rate
+		t.ok(sys:applyCommand(OPERATOR, { kind = "sink.load", value = during + 5 }).ok)
+		run(sys, 60)
+		t.near(sys.sinkLoad, during + 1, 1e-9, "up a minute at 1 %/min")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "sink.load", value = rb.target_pctFP }).ok)
+		run(sys, 60)
+		t.near(sys.sinkLoad, during, 1e-9, "and down a minute at 1 %/min, not at RB-2's 60 %/min")
 	end,
 
 	["the load ramps at §7.1's 5 %/min, and at LCO-10's 1 %/min above 40 %"] = function(t)

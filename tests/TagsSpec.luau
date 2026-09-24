@@ -44,6 +44,7 @@ local APPENDIX_B_TYPES = {
 	{ code = "RD", meaning = "rod" },
 }
 
+-- The M1 instrument codes D-058 adds to Appendix B's list; another code needs a decision of its own
 local KNOWN_EXTENDED_TYPES = {
 	N = true,
 	PER = true,
@@ -68,7 +69,7 @@ return {
 		end
 	end,
 
-	["exact set of extension codes is known (unrecorded extensions)"] = function(t)
+	["exact set of extension codes is known (D-058)"] = function(t)
 		local appBTypes = {}
 		for _, typ in APPENDIX_B_TYPES do
 			appBTypes[typ.code] = true
@@ -136,8 +137,7 @@ return {
 			t.eq(parsedL0.index, 0)
 		end
 
-		-- Finding: Appendix B says "NN" (2 digits), but Tags.format allows three-digit indices (100–999).
-		-- This is an unrecorded extension, but it's what the code does so we keep testing it here.
+		-- Appendix B says "NN" (2 digits); D-058 extends it to three digits from 100 to 999, for the 331-position core map.
 		local L9 = Tags.format("RX", 9, "T", 999)
 		t.eq(L9, "RX-9-T-999")
 		local parsedL9 = Tags.parse(L9)

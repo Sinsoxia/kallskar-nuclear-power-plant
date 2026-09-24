@@ -875,7 +875,11 @@ Every tolerance CODE_REVIEW.md L13 lists takes the value its table derives, with
 - **The period:** from the 5 s filter, plus σ/√n of the averaged ticks.
 - **The AutoControls setpoint:** 0.5 K, §9.2's whole-degree rounding.
 - **IHX's six-unit total:** 12 MW, six times the per-unit rounding.
-- **FrameworkSpec's slice overrun:** the budget plus the measured longest piece, as IQSSpec now does.
+- **FrameworkSpec's and IQSSpec's slice overrun:** the budget plus twice the measured longest piece. The budget is
+  checked between pieces of work, so the piece running when the deadline passes finishes first: that is one piece
+  past the budget. The slice as the Scheduler times it also includes its own resume before the first piece and its
+  yield after the last. These are a few statements, and one more piece bounds them from what the test measures,
+  without guessing a margin.
 
 ## D-050 An alarm clears only once its signal is back past the setpoint by the channel's noise — Accepted (2026-09-24)
 With no deadband, an alarm chatters in and out every tick when a noisy signal sits at its setpoint. The CORE-OUT
@@ -905,6 +909,10 @@ code into decisions to implement.
 ## D-052 Developer powers are Studio only (review M1) — Accepted
 `isDev` is true only in Studio. A private-server owner is an ordinary player with one extra power, the §14.6 reset
 through `Persistence.requestReset`, and gets no exemption from reach or playtime.
+
+That reset has no caller yet: no remote or panel routes a request to `Persistence.requestReset`, and only
+FrameworkSpec calls it. The Studio debug panel's RESET is a separate control; it resets the trips. The owner's
+reset therefore stays open until the panels exist and one of them carries it.
 
 ## D-053 A private server saves §14.6's list, and a server close counts as a reactor trip (review M5) — Accepted
 Each system saves its §14.6 items: stuck rods, stopped pumps and loops, shutter demands, trip bypasses, active
@@ -937,3 +945,83 @@ press is forgotten after the window. The BCR keeps its one button (§9.5).
 It is split between the hot and cold pools in proportion to each pool's sodium. How the steel couples to the sodium,
 so that §4.1's mixing times stay as they are while the hours-long heat-up uses all of it, is derived before it is
 built (`tools/derive/pool_steel.py`). It is needed before DRACS and the blackout scenarios.
+
+## D-058 Tags: three-digit indices and six M1 type codes (TagsSpec findings) — Accepted (Aqua, 2026-09-24)
+Appendix B's tag is `SYS-L-TYPE-NN`. Jules' TagsSpec (9ec03e3) found two extensions already in `Tags.luau` with no
+decision behind them. Both stay:
+- **Index:** two digits up to 99, and three from 100 to 999. The 331-position core map (§2.2, rings 0–10) needs
+  three, for example `RX-0-TC-331`. Each tag still has one spelling: `Tags.parse` rejects any spelling `Tags.format`
+  would not produce, so `RX-0-TC-05` is valid and `RX-0-TC-005` is not.
+- **Types:** `N` neutron flux (the SR, WR and PR channels), `PER` reactor period, `RHO` reactivity, `DND` delayed
+  neutron detector, `POS` position and `PQ` power-to-flow ratio. These are M1 instruments that Appendix B has no
+  code for.
+
+`tests/TagsSpec` pins the exact set of extension codes, so adding another needs a decision of its own. C-39 (the
+glossary's `SM`, and the hydrogen meters' index rule) is separate and stays open.
+
+## Aqua's choices on the review of PR #5 (2026-09-24)
+The review of PR #5 raised three questions that needed Aqua. The amendments below record her choices.
+
+## D-050 amendment — bounded noise gets its full span; Gaussian noise gets 3σ and a 5 s off-delay
+The review showed that D-050's deadbands do not stop the chatter. With the signal steady just under its setpoint,
+CORE-OUT still flickers about 2.5 times a second, and PR-HIGH about 1.7 times a second at 104 %FP. A flicker is one
+change of state, in or out. **Decision (Aqua):**
+- **Bounded noise:** a channel whose noise is bounded gets its full peak-to-peak span as its deadband. For the
+  thermocouples that is 2 K, from §2.5's ±1 K. A steady signal can then never be past the setpoint and back past
+  the deadband at the same time, so it does not flicker at any level.
+- **Gaussian noise:** a channel with Gaussian noise (the power range and the DNDs) gets 3σ of its noise at the
+  setpoint as its deadband, plus a 5 s off-delay. The alarm goes out only once every channel has stayed back past
+  the deadband for 5 s. Both numbers are `decision` values in `Config.Protection.alarmDeadband`.
+
+`tools/derive/alarm_deadband.py` takes the 5 s as its engineering input. It derives the two-state alarm's flicker
+rate and finds the signal level where that rate is highest:
+- **PR-HIGH:** at the worst level, 102.56 %FP, once every 3.4 h with the noise's σ taken at the setpoint (Aqua's
+  estimate). With the noise relative to the power, as Detectors draws it, the figure is once every 4.5 h. The old
+  rule's worst was once every 0.43 s.
+- **CORE-OUT:** never.
+- **The DNDs:** once every 50 min, at 89 cps. That is 2.2 × background, which only the DND-HIGH fault reaches. The
+  ratemeter carries each reading into the next, so six readings stay back for 5 s far more often than 50 fresh
+  draws would. A 10 s off-delay would make it once every 4.0 h. Whether the DNDs should have a longer off-delay is
+  open for Aqua (docs/review/DECISIONS_NEEDED.md, D-050+).
+
+ProtectionSpec holds PR-HIGH for 600 s at each of two levels: the derived worst level, and the old rule's worst
+level, where the old rule flickered 1,353 times. It bounds the count from the derivation, using its expected counts
+and their Poisson tails at the one-sided chance of 5σ. The deterministic test D-050 had is gone. A new test checks
+the off-delay's timing, tick by tick.
+
+## D-046 amendment (D-046+) — on a pump trip, the surviving pumps hold 105 % while RB-2 runs
+While D-046 was being implemented, RB-2 started by its own trigger still tripped a full-power plant. A primary pump
+trip with flow auto in tripped the reactor on PQ at 10.4 s, with P/Q peaking at 1.122. The lost pump coasts down, and
+flow auto slows the other two as its 10 s power filter comes down. **Decision (Aqua):** use §4.2's mechanism (Rev
+A5, F27). On a primary pump trip, the surviving pumps ramp to 105 % at the 2 %/s limit, which keeps P/Q below the
+1.12 trip while RB-2 runs power back. They hold 105 % while RB-2 runs, and flow auto takes them back when the runback
+ends. PrimaryPumps holds the survivors at the top of their range whenever a pump is down and RB-2 is running. While
+the hold is on, it refuses an operator's `pump.speed`.
+
+**How this sits with §9.4.** §9.4 gives flow auto the built-in weakness that it "ignores a pump trip". The ramp to
+105 % is the pump drives' own response to the trip (§4.2), not flow auto's. Flow auto still ignores the trip: its
+demand stays the three-pump programme, and the drives override it only while RB-2 runs. The weakness shows once the
+runback ends:
+- **Flow auto in:** flow auto takes the two pumps back to the programme's demand, 69 % at the end of RB-2. Two pumps
+  at that speed give the core about two thirds of the flow the programme means to. With flow auto left in, the plant
+  trips on PQ 16.4 s after RB-2 completes, unless the crew takes flow auto out or sets the pumps first. That is open
+  for Aqua (docs/review/DECISIONS_NEEDED.md, D-046+).
+- **Flow auto out:** the pumps stay at 105 %, and the operator takes them from there.
+
+**Result.** A pump trip at full power with flow auto in now runs back without a trip. P/Q peaks at 1.040, against
+1.122 before, and RB-2 completes at 40 s. PlantSpec has the case.
+
+**RB-1, still open for the steam-plant milestone.** Losing a secondary loop at full power still trips the reactor on
+INLET-HIGH before RB-1 completes. That happens at 53.1 s and 72 %FP with flow auto in, and at 45.9 s and 76 %FP with
+it out. The M1 heat sink has no secondary inventory, so a stopped loop's capacity goes at once, faster than 30 %/min
+can take the power off. The secondary loops' own model (their inventory and pump coastdown) is what fixes it, and it
+belongs to the steam-plant milestone.
+
+## D-055 amendment — putting a bypassed row back in service needs no playtime
+D-055 made `pss.bypass` a critical control, so both directions needed the §10.7 playtime: taking a row out, and
+putting it back. **Decision (Aqua):** putting a bypassed row back (`pss.bypass` with value 0) is the safe direction,
+so it no longer needs the critical playtime. Only taking a row out does. The command treats any value other than 0,
+including no value at all, as taking the row out, so only an exact 0 is exempt. `Config.Access.criticalUnlessRestoring`
+lists the controls this applies to; so far `pss.bypass` is the only one. `runback.clear` still needs the playtime.
+The rest of D-055 is unchanged: the one-row cap, the neutron rows, and the shift supervisor's authorisation once the
+desks exist.

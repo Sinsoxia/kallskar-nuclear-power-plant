@@ -43,6 +43,7 @@ export type Context = {
 	log: any, -- EventLog
 	clock: Types.Clock,
 	isStudio: boolean,
+	realTime: (() -> number)?, -- a real-time clock in seconds, where a system times people rather than the plant (os.clock if absent)
 }
 
 local RunService = game:GetService("RunService")

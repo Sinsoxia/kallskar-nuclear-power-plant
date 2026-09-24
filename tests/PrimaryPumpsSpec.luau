@@ -27,6 +27,7 @@ local function make(power_pctFP: number?)
 	ch:declareExternal("core.thermalPower_pctFP", power_pctFP or 100)
 	ch:declareExternal("pools.coverGas_MPa", Config.Primary.coverGas.setpoint_MPa)
 	ch:declareExternal("pools.coldPool_K", Config.Feedback.referenceTemperature_K)
+	ch:declareExternal("protection.runback", "")
 	local sys = System.new(PrimaryPumps)
 	local log = EventLog.new(Config, { sim = 0, grid = 0 })
 	local bus = Bus.new()
@@ -65,6 +66,30 @@ return {
 		t.near(sys:getState().pumps[1].speed_pct, 60, 1e-9, "reaches demand after 20 s")
 		run(sys, 5)
 		t.near(sys:getState().pumps[1].speed_pct, 60, 1e-9, "and stops there")
+	end,
+
+	["on a pump trip the survivors ramp to 105 % and hold it while RB-2 runs, then let go (§4.2, D-046+)"] = function(t)
+		local sys, ch = make()
+		local top = P.speedRange_pct[2]
+		-- RB-2 by command, with every pump running, is no pump trip: nothing to make up
+		ch:setExternal("protection.runback", "RB2")
+		run(sys, 1)
+		t.eq(sys.pumps[1].demand_pct, 100, "no hold without a pump down")
+		t.ok(sys:tripPump(3, "test"), "PP3 trips")
+		run(sys, 1)
+		for i = 1, 2 do
+			t.near(sys.pumps[i].speed_pct, 100 + P.maxRamp_pctps, 1e-9, `PP{i} ramps at {P.maxRamp_pctps} %/s`)
+		end
+		run(sys, 2)
+		for i = 1, 2 do
+			t.near(sys.pumps[i].speed_pct, top, 1e-9, `PP{i} reaches {top} % and stops there`)
+		end
+		local r = sys:applyCommand(OPERATOR, { kind = "pump.speed", target = "PP1", value = 80 })
+		t.ok(not r.ok, `an operator speed change waits for RB-2 ({r.reason})`)
+		ch:setExternal("protection.runback", "")
+		run(sys, 1)
+		t.eq(sys.pumps[1].demand_pct, top, "with flow auto out the survivors stay where RB-2 left them")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "pump.speed", target = "PP1", value = 80 }).ok, "and the operator takes them")
 	end,
 
 	["coastdown follows Q₀/(1 + t/10 s)"] = function(t)
