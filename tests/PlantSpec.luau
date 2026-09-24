@@ -172,27 +172,100 @@ local function settled(t: any, p: any, target: number, id: string)
 	t.eq(p.channels:get("protection.runback"), "", "and the runback is over, with rod auto holding the plant")
 end
 
+-- Persistence for a private server's plant under `key`, in `store`
+local function persist(p: any, store: any, key: string): any
+	return Persistence.new({
+		config = Config,
+		registry = p.registry,
+		log = p.log,
+		bus = p.bus,
+		clock = p.scheduler.clock,
+		store = store,
+		mode = "private",
+		key = key,
+		ownerUserId = 7,
+		channels = p.channels,
+		faults = p.faults,
+	})
+end
+
+-- The first place two saved slices differ, as a path with both values, or nil when they are the same
+local function difference(want: any, got: any, path: string): string?
+	if type(want) ~= "table" or type(got) ~= "table" then
+		return if want == got then nil else `{path}: saved {tostring(want)}, loaded {tostring(got)}`
+	end
+	for k, v in want do
+		local d = difference(v, got[k], `{path}.{tostring(k)}`)
+		if d then
+			return d
+		end
+	end
+	for k, v in got do
+		if want[k] == nil then
+			return `{path}.{tostring(k)}: saved nil, loaded {tostring(v)}`
+		end
+	end
+	return nil
+end
+
+--[[
+	Straight after a load, before any tick, every system saves again exactly what it saved, except for what the load
+	itself changes (D-053): the PSS trips, keeping its first out if it had one and taking SERVER-CLOSE if not; the PSS
+	rods go in, except a stuck one, and the SSRs too if the SSS had tripped them; rod auto drops to manual (D-035).
+	Core is left out: it saves its power to re-seat the precursors from, which it does on its first step, and the
+	delayed-neutron tail after the load is what shows it did.
+]]
+local function loadsWhatItSaved(t: any, b: any, store: any, key: string)
+	local _, saved = store:get(key) -- a copy, to write the load's changes into
+	local expected = saved.systems
+	local prot, rods = expected.Protection, expected.RodDrives
+	local ssrIn = rods.scrammed.SSR == true
+	prot.tripped = { PSS = true, SSS = if prot.tripped.SSS then true else nil }
+	if prot.firstOut == "" then
+		prot.firstOut = "SERVER-CLOSE"
+	end
+	for _, drive in b.byName.RodDrives.drives do
+		if not rods.stuck[drive.name] and (drive.system == "PSS" or ssrIn) then
+			rods.positions[drive.name] = 0
+		end
+	end
+	rods.scrammed = { PSS = true, SSR = if ssrIn then true else nil }
+	expected.AutoControls.rodOn = false
+	t.eq(b.byName.Core.reseatPower, expected.Core.power_pctFP / 100, "the core re-seats at the power it was saved at")
+	expected.Core = nil
+	for _, sys in b.registry.systems do
+		local name = sys.spec.name
+		if expected[name] ~= nil then
+			local d = difference(expected[name], sys:save(), name)
+			t.ok(d == nil, d or `{name} comes back as it was saved, with only the trip's changes`)
+		end
+	end
+end
+
+-- How many times the log records a server close as a reactor trip
+local function serverCloses(log: any): number
+	local n = 0
+	for _, rec in log:export() do
+		if rec.kind == "reactor.trip" and rec.target == "SERVER-CLOSE" then
+			n += 1
+		end
+	end
+	return n
+end
+
 return {
 	["a private server saves §14.6's list and comes back tripped: all ten systems in one round trip (D-053)"] = function(t)
 		local store = Persistence.MemoryStore.new()
 		local function persistence(p: any): any
-			return Persistence.new({
-				config = Config,
-				registry = p.registry,
-				log = p.log,
-				bus = p.bus,
-				clock = p.scheduler.clock,
-				store = store,
-				mode = "private",
-				key = "plant/d053",
-				ownerUserId = 7,
-				channels = p.channels,
-				faults = p.faults,
-			})
+			return persist(p, store, "plant/d053")
 		end
 
-		-- a plant at 30 %FP with one of each §14.6 item in it
+		-- a plant at 30 %FP with one of each §14.6 item in it, and the 1/M reference its start-up took at hot
+		-- standby, while the source range was energised
 		local a = plant()
+		run(a, 1)
+		t.ok(a.byName.Detectors:applyCommand(AUTO, { kind = "ni.reference" }).ok, "a 1/M reference is taken")
+		local reference = a.byName.Detectors.reference_cps
 		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
 		run(a, 2)
 		local rods, pumps, ihx, prot = a.byName.RodDrives, a.byName.PrimaryPumps, a.byName.IHX, a.byName.Protection
@@ -206,7 +279,6 @@ return {
 		run(a, 1)
 		t.eq(a.channels:get("protection.tripped"), false, "still at power when the server closes")
 		local stuckAt = rods.drives[rods:indexOf("SMA1")].position_mm
-		local ssrAt = rods.drives[rods:indexOf("SSR1")].position_mm
 		local shutter = ihx.units[1].demand
 		local mode = a.channels:get("program.mode")
 		local pools, fuel, decay = a.byName.Pools, a.byName.FuelThermal, a.byName.DecayHeat
@@ -218,14 +290,18 @@ return {
 		for _, sys in a.registry.systems do
 			t.ok(saved.systems[sys.spec.name] ~= nil, `{sys.spec.name} saves its slice`)
 		end
+		t.ok(saved.systems.Detectors.reference_cps ~= nil, "the reference is in Detectors' slice")
 
 		-- a new server, a fresh plant, the same store
 		local b = plant()
 		t.eq(persistence(b):load(), "loaded")
+		loadsWhatItSaved(t, b, store, "plant/d053")
 		local rodsB, protB = b.byName.RodDrives, b.byName.Protection
 		-- a server close counts as a reactor trip: rods in, scram latched, in the mode it was in
 		t.ok(protB.tripped.PSS, "the reactor comes back tripped")
-		t.ok(protB.firstOut ~= "", `with a first out ({protB.firstOut})`)
+		t.eq(protB.tripped.SSS, nil, "by the PSS alone")
+		t.eq(protB.firstOut, "SERVER-CLOSE", "with the server close as its first out")
+		t.eq(serverCloses(b.log), 1, "logged once, as a reactor trip")
 		t.ok(rodsB.scrammed.PSS, "the scram is latched")
 		for _, drive in rodsB.drives do
 			if drive.name == "SMA1" then
@@ -233,10 +309,9 @@ return {
 				t.eq(drive.stuck, true)
 			elseif drive.system == "PSS" then
 				t.eq(drive.position_mm, 0, `{drive.name} is in`)
-			elseif drive.name == "SSR1" then
-				t.eq(drive.position_mm, ssrAt, "the secondary shutdown rods stay where they were: it is a PSS trip")
 			end
 		end
+		t.eq(b.byName.Detectors.reference_cps, reference, "the 1/M reference is kept")
 		t.eq(b.channels:get("program.mode"), mode, "in the mode it was in")
 		-- §14.6's list
 		t.eq(b.byName.PrimaryPumps.pumps[3].tripped, true, "the stopped pump is stopped")
@@ -291,19 +366,7 @@ return {
 	["a fault comes back active but is not fired again, and its own effects come back with it (D-053)"] = function(t)
 		local store = Persistence.MemoryStore.new()
 		local function persistence(p: any): any
-			return Persistence.new({
-				config = Config,
-				registry = p.registry,
-				log = p.log,
-				bus = p.bus,
-				clock = p.scheduler.clock,
-				store = store,
-				mode = "private",
-				key = "plant/faults",
-				ownerUserId = 7,
-				channels = p.channels,
-				faults = p.faults,
-			})
+			return persist(p, store, "plant/faults")
 		end
 		local a = plant()
 		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
@@ -348,22 +411,97 @@ return {
 		t.eq(b.byName.Detectors.pr[2], frozen, "a tick later PR2 still reads what it froze at")
 	end,
 
+	["a plant saved after a trip keeps its own first out, and the load finishes the rods' insertion (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		local a = plant()
+		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
+		run(a, 1)
+		t.ok(a.byName.Protection:applyCommand(AUTO, { kind = "reactor.trip.manual", target = "BCR" }).ok, "tripped from the BCR")
+		run(a, 2 * DT) -- the server closes while the PSS rods are still on their way in
+		local moving = 0
+		for _, drive in a.byName.RodDrives.drives do
+			if drive.system == "PSS" and drive.position_mm > 0 then
+				moving += 1
+			end
+		end
+		t.ok(moving > 0, `the server closes with {moving} PSS rods still out`)
+		t.ok((persist(a, store, "plant/tripped"):save()), "saved")
+
+		local b = plant()
+		t.eq(persist(b, store, "plant/tripped"):load(), "loaded")
+		loadsWhatItSaved(t, b, store, "plant/tripped")
+		local prot = b.byName.Protection
+		t.eq(prot.firstOut, "MANUAL", "the first out is the trip it had, not the server close")
+		t.eq(serverCloses(b.log), 0, "and the close is not logged as a second trip")
+		for _, drive in b.byName.RodDrives.drives do
+			if drive.system == "PSS" then
+				t.eq(drive.position_mm, 0, `{drive.name} is in`)
+			end
+		end
+	end,
+
+	["a plant saved after an SSS trip comes back with the SSS tripped and the SSRs in (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		local a = plant()
+		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
+		run(a, 1)
+		t.ok(a.byName.Protection:applyCommand(AUTO, { kind = "sss.trip.manual" }).ok, "the SSS is tripped")
+		run(a, 0.5) -- the server closes while the SSRs are dropping
+		for _, drive in a.byName.RodDrives.drives do
+			if drive.system == "SSR" then
+				t.ok(drive.position_mm > 0, `{drive.name} is still at {math.floor(drive.position_mm)} mm when the server closes`)
+			end
+		end
+		t.ok((persist(a, store, "plant/sss"):save()), "saved")
+
+		local b = plant()
+		t.eq(persist(b, store, "plant/sss"):load(), "loaded")
+		loadsWhatItSaved(t, b, store, "plant/sss")
+		local prot, rods = b.byName.Protection, b.byName.RodDrives
+		t.ok(prot.tripped.SSS and prot.tripped.PSS, "the SSS is still tripped, and the PSS trips with the close")
+		t.eq(prot.firstOut, "SSS-MANUAL", "with the SSS trip as the first out")
+		t.ok(rods.scrammed.SSR and rods.scrammed.PSS, "both scrams are latched")
+		for _, drive in rods.drives do
+			t.eq(drive.position_mm, 0, `{drive.name} is in`)
+		end
+	end,
+
+	["an SSR the crew was withdrawing stays where it was, since a server close is a PSS trip (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		-- at hot standby after an SSS trip, reset, with SSR1 on its way back out at the withdraw-only speed (§3.4)
+		local a = plant()
+		local prot, rods = a.byName.Protection, a.byName.RodDrives
+		t.ok(prot:applyCommand(AUTO, { kind = "sss.trip.manual" }).ok, "the SSS is tripped")
+		run(a, 3)
+		t.ok(prot:applyCommand(AUTO, { kind = "reactor.trip.reset" }).ok, "the trip is reset")
+		run(a, DT)
+		t.ok(rods:applyCommand(AUTO, { kind = "rod.reset" }).ok, "and the scram")
+		t.ok(rods:applyCommand(AUTO, { kind = "rod.move", target = "SSR1", value = Config.Units.rodTravel_mm }).ok,
+			"SSR1 is withdrawn")
+		run(a, 20)
+		local at = rods.drives[rods:indexOf("SSR1")].position_mm
+		t.ok(at > 0 and at < Config.Rods.secondaryShutdown.parked_mm, `SSR1 is part way out ({at} mm), neither in nor parked`)
+		t.ok((persist(a, store, "plant/ssr"):save()), "saved")
+
+		local b = plant()
+		t.eq(persist(b, store, "plant/ssr"):load(), "loaded")
+		loadsWhatItSaved(t, b, store, "plant/ssr")
+		local rodsB = b.byName.RodDrives
+		t.eq(rodsB.scrammed.SSR, nil, "the SSRs are not scrammed")
+		for _, drive in rodsB.drives do
+			if drive.name == "SSR1" then
+				t.eq(drive.position_mm, at, "SSR1 is where it was")
+				t.eq(drive.demand_mm, at, "and stopped there")
+			else
+				t.eq(drive.position_mm, 0, `{drive.name} is in`)
+			end
+		end
+	end,
+
 	["flow auto's demand comes back with it, so the pumps do not reach for 100 % on the first tick (D-053)"] = function(t)
 		local store = Persistence.MemoryStore.new()
 		local function persistence(p: any): any
-			return Persistence.new({
-				config = Config,
-				registry = p.registry,
-				log = p.log,
-				bus = p.bus,
-				clock = p.scheduler.clock,
-				store = store,
-				mode = "private",
-				key = "plant/flow",
-				ownerUserId = 7,
-				channels = p.channels,
-				faults = p.faults,
-			})
+			return persist(p, store, "plant/flow")
 		end
 		local a = plant()
 		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
@@ -393,20 +531,7 @@ return {
 			eventLog = {},
 		})
 		local b = plant()
-		local pers = Persistence.new({
-			config = Config,
-			registry = b.registry,
-			log = b.log,
-			bus = b.bus,
-			clock = b.scheduler.clock,
-			store = store,
-			mode = "private",
-			key = "plant/v1",
-			ownerUserId = 7,
-			channels = b.channels,
-			faults = b.faults,
-		})
-		t.eq(pers:load(), "loaded")
+		t.eq(persist(b, store, "plant/v1"):load(), "loaded")
 		t.ok(b.byName.Protection.tripped.PSS and b.byName.RodDrives.scrammed.PSS, "tripped, with the scram latched")
 		run(b, 1)
 		t.ok(b.channels:get("core.k") < 1, "and shut down")
