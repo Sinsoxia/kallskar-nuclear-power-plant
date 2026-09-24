@@ -1048,3 +1048,32 @@ including no value at all, as taking the row out, so only an exact 0 is exempt. 
 lists the controls this applies to; so far `pss.bypass` is the only one. `runback.clear` still needs the playtime.
 The rest of D-055 is unchanged: the one-row cap, the neutron rows, and the shift supervisor's authorisation once the
 desks exist.
+
+## D-059 The automatic controllers are competent, local and reactive (§9.4, Rev A6) — Accepted (Aqua, 2026-09-24)
+§9.4 built each auto "deliberately worse than a crew". After playing the M1 plant, Aqua changed the brief:
+- **Principle.** Each auto holds its own variable by feedback on its own measurement. It moves its own actuator as
+  fast as the error needs, within the equipment's limits, and settles without overshooting. None anticipates (no
+  feedforward), none coordinates with another auto, and none sees a fault or an equipment state outside its loop.
+  Those are what still make a crew worth having: small servers survive on auto, and full crews do better.
+- **What goes:** handicaps built into the controllers themselves, namely primary flow auto's 10 s power filter, the
+  secondary flow auto's 60 s integral time, the feed auto's ±8 K overshoot, and the bypass auto's slowness and
+  ±0.3 MPa swings. Rod auto's hunting on the lagging thermocouple goes with its tuning.
+- **What stays:** a real controller's limits.
+  - Rod auto moves the regulating rods only, as the automatic regulator does in BN-600 and VVER practice. It still
+    alarms when they leave the 250–750 mm band, and the crew re-shims (the dev panel's shim buttons, c7ac4dd).
+  - Every auto acts on its real measurement, with that measurement's lag and noise.
+  - The eight rows whose limit is structural are unchanged: the attemperation auto can only cool, the splitter holds
+    a position, turbines A and B don't coordinate, the trace heating can't see failed heaters, the load-follow
+    master follows dispatch into violations, and the rest.
+  - The cover gas auto keeps "cycles on heatup" until its controller (D-020) is reviewed under this principle.
+- **Tuning.** Each loop's gains are derived, not tuned by hand. The plant's own step response gives the loop's gain,
+  delay and time constant, and the SIMC rules (S. Skogestad, "Simple analytic rules for model reduction and PID
+  controller tuning", J. Process Control 13, 2003) turn them into gains that don't overshoot. The derivation goes
+  in `tools/derive/auto_tuning.py`.
+- **Spec.** Rev A6 (`tools/derive/apply_rev_a6.py`, 35/35 checks) rewrites §9.4 and the project brief's sentence
+  on the autos. Every rewritten row keeps its number of lines, and the two rows the spec audit cites inside §9.4 are
+  untouched, so the audit's citations still hold. Only the two after Appendix C moved, by the A6 entry's 7 lines.
+- **Consequence to confirm when built:** flow auto answers a pump trip through its own P/Q error, so the PQ trip
+  16 s after RB-2 (D-046+) should no longer happen with flow auto left in.
+- **Order:** the spec (A6, done), then the tuning derivation, then AutoControls and its tests, with Config.revision
+  moving to A6 then.

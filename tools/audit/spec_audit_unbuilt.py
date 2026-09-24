@@ -186,7 +186,7 @@ check("C-03", "§5.2 hydrogen drift and §12.3 impurity ingress are stated per G
       f"(×360 drifts more than the whole 0.06 ppm full-power background, §5.2, in half an hour)")
 
 # pump heat in the heat balance
-cite(3037, "Reactor thermal = SG total minus 10.5 MW")
+cite(3044, "Reactor thermal = SG total minus 10.5 MW")
 cite(1119, "3.3 MW shaft")
 cite(1173, "0.3 MW loss per loop")
 sg_total = 2 * QT
@@ -438,7 +438,7 @@ check("C-15", "S-05's poor-crew outcome 'Condenser B overloaded, second trip' ne
 # cooling water
 cite(1478, "15.3 m³/s per unit, 11 K rise")
 cite(1480, "690 MWt per unit")
-cite(3101, "(4.0*11)")
+cite(3108, "(4.0*11)")
 cite(529, "about 5 psu")
 SA = gsw.SA_from_SP(5.0, 0.0, 17.0, 61.5)
 t_mean = 19 + 11 / 2
@@ -813,7 +813,7 @@ check("C-39", "Appendix B: the glossary says shim rods are tagged 'SM', which is
 # said Rev A3. The check now reads the order from the text instead of comparing two fixed line numbers.
 cite(2983, "* A4")
 cite(2995, "* A5")
-cite(10, "Design specification Rev A5")
+cite(10, "Design specification Rev A6")
 n_old = sum("SPECIFICATION, REV A3" in l or "Design specification Rev A3" in l for l in LINES)
 check("C-40", f"Appendix C runs A3, A4, A5 in order, and {n_old} labels (README and file headers) still say 'Rev A3' "
                "(fixed 2026-09-24)", LINES.index("* A3") < LINES.index("* A4") < LINES.index("* A5") and n_old == 0)

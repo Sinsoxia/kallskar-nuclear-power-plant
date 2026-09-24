@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A5</title>
+  <title>Kallskär Nuclear Power Plant: SFR-1000 design specification, Rev A6</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -515,7 +515,7 @@
               <li class="n3"><a href="#91-operating-modes">9.1 Operating modes</a></li>
               <li class="n3"><a href="#92-part-load-program">9.2 Part-load program</a></li>
               <li class="n3"><a href="#93-who-controls-what">9.3 Who controls what</a></li>
-              <li class="n3"><a href="#94-automatic-controllers-deliberately-worse-than-a-crew">9.4 Automatic controllers, deliberately worse than a crew</a></li>
+              <li class="n3"><a href="#94-automatic-controllers-competent-local-and-reactive">9.4 Automatic controllers: competent, local and reactive</a></li>
               <li class="n3"><a href="#95-reactor-protection">9.5 Reactor protection</a></li>
               <li class="n3"><a href="#96-operating-limits">9.6 Operating limits</a></li>
             </ul>
@@ -3365,36 +3365,36 @@ flowchart LR
 
       <p>In <strong>reactor leads</strong> mode (default), the shift supervisor sets reactor power and the turbines hold header pressure. In <strong>turbine leads</strong> mode (OD-5), the supervisor sets MWe: header pressure falls, the SG and feedwater desks follow, the core inlet cools, and reactor power rises through inlet feedback about 1–2 minutes later while the reactor desk trims. It's slower and needs four desks to cooperate.</p>
 
-      <h3 id="94-automatic-controllers-deliberately-worse-than-a-crew">9.4 Automatic controllers, deliberately worse than a crew</h3>
+      <h3 id="94-automatic-controllers-competent-local-and-reactive">9.4 Automatic controllers: competent, local and reactive</h3>
       <div class="tw">
         <table>
           <thead>
             <tr>
               <th scope="col">Controller</th>
               <th scope="col">Holds</th>
-              <th scope="col">Weakness built in</th>
+              <th scope="col">Limits</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Rod auto</td>
               <td>Core outlet 550 ±2 K using RR only</td>
-              <td>Never moves shims; stops and alarms when RR leave the 250–750 mm band; reacts after thermocouples move</td>
+              <td>Moves the RR only, so it stops and alarms when they leave the 250–750 mm band and the crew re-shims; acts on the outlet thermocouples, so it corrects after they move</td>
             </tr>
             <tr>
               <td>Primary flow auto</td>
               <td>P/Q at 1.00</td>
-              <td>10 s filter on power, so P/Q swings ±5% on fast changes; ignores a pump trip</td>
+              <td>Acts on measured P/Q alone; after a pump trip it gets back what the pumps left can give</td>
             </tr>
             <tr>
               <td>Secondary flow auto</td>
               <td>Core inlet 375 ±3 K</td>
-              <td>Drives all three loops equally even with isolated sections; 60 s integral time</td>
+              <td>Drives all three loops equally even with isolated sections: it sees the inlet, not the loops</td>
             </tr>
             <tr>
               <td>Feed auto</td>
               <td>Main steam 505 ±3 K</td>
-              <td>Overshoots ±8 K on 10% steps; no turbine feedforward; off in separator mode</td>
+              <td>No turbine feedforward, so a load step moves main steam first; off in separator mode</td>
             </tr>
             <tr>
               <td>Attemperation auto</td>
@@ -3414,7 +3414,7 @@ flowchart LR
             <tr>
               <td>Bypass auto</td>
               <td>Opens at header + 0.4 MPa</td>
-              <td>Slow; pressure swings ±0.3 MPa</td>
+              <td>Acts on header pressure alone, so a fast load drop swings it before the valves open</td>
             </tr>
             <tr>
               <td>Cover gas auto</td>
@@ -5253,6 +5253,11 @@ n = n1
               the constant-gap pin model's own figures, so they are derived outputs rather than independent checks
               (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5 core-inlet-low trip states its
               mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20). LCO-7 gains the idle-loop case (F27)</td>
+            </tr>
+            <tr>
+              <td>A6</td>
+              <td>24 Sep 2026</td>
+              <td>§9.4's automatic controllers become competent, local and reactive (D-059). Each holds its own loop on its own measurement, tuned not to overshoot, and the built-in handicaps go: flow auto's 10 s power filter, the secondary flow auto's 60 s integral time, the feed auto's ±8 K overshoot and the bypass auto's slowness. What stays is what a local controller cannot do: anticipate, coordinate with another, or see a fault. Rod auto keeps to the regulating rods, and the crew re-shims</td>
             </tr>
           </tbody>
         </table>

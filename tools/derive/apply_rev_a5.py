@@ -148,12 +148,26 @@ VERIFY = [
 ]
 
 
+# Checks whose text Rev A6 replaced on purpose. apply_rev_a6.py verifies what took their place, so here they are
+# reported as superseded, not wrong: a check that fails on a correct tree invites someone to "fix" the spec back.
+SUPERSEDED = {
+    "Rev A5 title": "Rev A6 retitled the spec",
+    "C-40 README label": "Rev A6 relabelled the README",
+    "C-40 spec-file headers": "Rev A6 relabelled the spec-file headers",
+}
+
+
 def verify():
     html, txt = HTML.read_text(encoding="utf-8"), TXT.read_text(encoding="utf-8")
     checks = []
+    superseded = 0
     for label, snippet, want_html, want_txt in VERIFY:
         gh, gt = html.count(snippet), txt.count(snippet)
         ok = (want_html is None or gh == want_html) and (want_txt is None or gt == want_txt)
+        if not ok and label in SUPERSEDED:
+            superseded += 1
+            print(f"   superseded {label}: {SUPERSEDED[label]}; apply_rev_a6.py checks it")
+            continue
         checks.append((ok, f"{label}: html {gh} (want {want_html}), text pack {gt} (want {want_txt})"))
     # C-40: every revision log runs A3, A4, A5 in order, and every handoff file is still verbatim in the text pack
     logs = [("HTML", html, "<td>{}</td>"), ("text pack", txt, "\n* {}\n")]
@@ -168,7 +182,8 @@ def verify():
         bad += not ok
         if not ok:
             print(f"   WRONG {what}")
-    print(f"verify: {len(checks) - bad}/{len(checks)} checks pass")
+    print(f"verify: {len(checks) - bad}/{len(checks)} checks pass"
+          + (f", {superseded} superseded by Rev A6" if superseded else ""))
     return bad
 
 

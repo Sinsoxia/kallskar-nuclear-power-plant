@@ -1,4 +1,4 @@
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A6
 Part 3 of 7: primary system, secondary sodium loops, steam generators, splitter, reheat
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 

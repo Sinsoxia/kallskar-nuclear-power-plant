@@ -7,15 +7,17 @@ A guide for coding agents working in this repository. Humans should start with [
 Kallskär Nuclear Power Plant (unit K1) is a multiplayer Roblox simulator of a fictional Swedish 2,380 MWt pool-type
 sodium-cooled fast reactor, the SFR-1000, written in Luau (`--!strict`). The developer is Aqua.
 
-The design spec is the source of truth for every number. It comes in three copies of the same text, Rev A5:
+The design spec is the source of truth for every number. It comes in three copies of the same text, Rev A6:
 
 - **`kallskar_handoff/`**, the handoff pack. Start at `00_README_START_HERE.txt`.
 - **`KALLSKAR_ALL_IN_ONE.txt`**, the same pack as one file, in reading order.
 - **`REACTOR SPEC/sfr-1000-spec.html`**, which covers the spec files (10–16) only. The text pack adds the README,
   the project brief, the design history and file 20's derivations.
 
-`python tools/derive/apply_rev_a5.py --check` verifies that the copies agree. `Config.revision` is `"A5"`, and
-`docs/FINAL_DECISIONS_REV_A5.md` records what took the spec from A4 to A5.
+`python tools/derive/apply_rev_a6.py --check` verifies that the copies agree. `docs/FINAL_DECISIONS_REV_A5.md`
+records what took the spec from A4 to A5, and D-059 in docs/DECISIONS.md what took it to A6 (§9.4's automatic
+controllers). `Config.revision` names the revision Config's values follow: still `"A5"`, because A6 changed no
+Config value; it moves to A6 when AutoControls implements D-059.
 
 Decisions made while building it are in [docs/DECISIONS.md](docs/DECISIONS.md), as `D-xxx` decisions and `Fxx` spec
 findings. Read the relevant entries before changing behaviour, and cite them by number in code and commits.

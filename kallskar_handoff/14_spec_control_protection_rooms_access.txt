@@ -1,4 +1,4 @@
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A6
 Part 5 of 7: control, protection, limits, control rooms, desks, crew, anti-AFK, hybrid rooms, access, guides
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -153,49 +153,49 @@ SG and feedwater desks follow, the core inlet cools, and reactor power rises thr
 about 1–2 minutes later while the reactor desk trims. It's slower and needs four desks to cooperate.
 
 
-9.4 Automatic controllers, deliberately worse than a crew
----------------------------------------------------------
+9.4 Automatic controllers: competent, local and reactive
+--------------------------------------------------------
 * Rod auto
     Holds: Core outlet 550 ±2 K using RR only
-    Weakness built in: Never moves shims; stops and alarms when RR leave the 250–750 mm band; reacts
-      after thermocouples move
+    Limits: Moves the RR only, so it stops and alarms when they leave the 250–750 mm band and the
+      crew re-shims; acts on the outlet thermocouples, so it corrects after they move
 * Primary flow auto
     Holds: P/Q at 1.00
-    Weakness built in: 10 s filter on power, so P/Q swings ±5% on fast changes; ignores a pump trip
+    Limits: Acts on measured P/Q alone; after a pump trip it gets back what the pumps left can give
 * Secondary flow auto
     Holds: Core inlet 375 ±3 K
-    Weakness built in: Drives all three loops equally even with isolated sections; 60 s integral
-      time
+    Limits: Drives all three loops equally even with isolated sections: it sees the inlet, not
+      the loops
 * Feed auto
     Holds: Main steam 505 ±3 K
-    Weakness built in: Overshoots ±8 K on 10% steps; no turbine feedforward; off in separator mode
+    Limits: No turbine feedforward, so a load step moves main steam first; off in separator mode
 * Attemperation auto
     Holds: Hot reheat ≤ 505 °C
-    Weakness built in: Can only cool
+    Limits: Can only cool
 * Splitter auto
     Holds: Valve position
-    Weakness built in: Holds it and nothing more
+    Limits: Holds it and nothing more
 * Turbine auto, pressure mode
     Holds: Header 13.5 ±0.2 MPa, plus FCR response when contracted
-    Weakness built in: Ignores the reheat load limit; A and B don't coordinate
+    Limits: Ignores the reheat load limit; A and B don't coordinate
 * Bypass auto
     Holds: Opens at header + 0.4 MPa
-    Weakness built in: Slow; pressure swings ±0.3 MPa
+    Limits: Acts on header pressure alone, so a fast load drop swings it before the valves open
 * Cover gas auto
     Holds: 0.115–0.125 MPa
-    Weakness built in: Cycles on heatup; vents without checking activity
+    Limits: Cycles on heatup; vents without checking activity
 * Trace heating auto
     Holds: Zone setpoints
-    Weakness built in: Can't see failed heaters or stuck contactors
+    Limits: Can't see failed heaters or stuck contactors
 * Deaerator and hotwell auto
     Holds: Levels
-    Weakness built in: Robust: naturally stable by design
+    Limits: Robust: naturally stable by design
 * EDGs and sequencer
     Holds: Essential boards
-    Weakness built in: Robust, but restores essential loads only
+    Limits: Robust, but restores essential loads only
 * Load-follow master
     Holds: Dispatcher MW at exactly 1 %/min
-    Weakness built in: Follows dispatch straight into violations
+    Limits: Follows dispatch straight into violations
 
 
 9.5 Reactor protection

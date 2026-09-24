@@ -1,4 +1,4 @@
-KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A5
+KALLSKAR NUCLEAR POWER PLANT (display: Kallskär): SFR-1000 DESIGN SPECIFICATION, REV A6
 Part 7 of 7: Roblox implementation, persistence, modules, sodium properties, tags, glossary, revisions
 Source of truth for numbers and rules. † marks a tuning value. Units and clocks: file 10, section 0.
 
@@ -303,3 +303,10 @@ APPENDIX C. REVISION LOG
       independent checks (D-018). §12.1's hazard sentence reads λ as a rate (D-008). The §9.5
       core-inlet-low trip states its mode-based inhibits (D-004). Regulating-band drift 2.7 h (F20).
       LCO-7 gains the idle-loop case (F27)
+* A6
+    Date: 24 Sep 2026
+    Change: §9.4's automatic controllers become competent, local and reactive (D-059). Each holds its own
+      loop on its own measurement, tuned not to overshoot, and the built-in handicaps go: flow auto's 10 s
+      power filter, the secondary flow auto's 60 s integral time, the feed auto's ±8 K overshoot and the
+      bypass auto's slowness. What stays is what a local controller cannot do: anticipate, coordinate
+      with another, or see a fault. Rod auto keeps to the regulating rods, and the crew re-shims

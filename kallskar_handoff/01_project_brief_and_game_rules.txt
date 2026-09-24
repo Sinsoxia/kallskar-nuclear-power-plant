@@ -33,8 +33,8 @@ Four realistic sources:
   4. Genuine instabilities where physics has them, such as density-wave oscillation in once-through
      evaporators at low flow.
 
-Automatic controllers are deliberately worse than a good crew (spec file 14, section 9.4): slower,
-less efficient, blind to faults. Small servers survive on auto; full crews do better.
+Automatic controllers are competent but local (spec file 14, section 9.4): each holds its own loop,
+but none anticipates, coordinates or sees faults. Small servers survive on auto; full crews do better.
 
 Anti-solo through realism: some actions only exist in the field (breakers, dampers, diesel starts,
 freeze valves, screen washing), and rooms are far enough apart that walking takes time (file 14,

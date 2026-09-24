@@ -1,6 +1,6 @@
 KALLSKAR SPEC AUDIT: SECTIONS THE CODE HAS NOT REACHED (5-8, 10-13, FILE 16)
-spec: KALLSKAR_ALL_IN_ONE.txt, 3169 lines
-file-20 calc.py cut from spec lines 3056-3160 and run unmodified: SG heat per turbine 1194.52 MWt, steam 437.53 kg/s per turbine, 291.69 kg/s per loop, sodium 3111.7 kg/s per loop
+spec: KALLSKAR_ALL_IN_ONE.txt, 3176 lines
+file-20 calc.py cut from spec lines 3063-3167 and run unmodified: SG heat per turbine 1194.52 MWt, steam 437.53 kg/s per turbine, 291.69 kg/s per loop, sodium 3111.7 kg/s per loop
 
 ====================================================================================================================
 §5 SECONDARY SODIUM LOOPS  (lines 1186-1233)
