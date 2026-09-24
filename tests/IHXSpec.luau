@@ -354,7 +354,7 @@ return {
 	["the steam plant's load does not hide the persistence load hook (§14.6)"] = function(t)
 		local sys = make({ load = 40 })
 		t.eq(sys.sinkLoad, 40, "the steam plant's load is held in sinkLoad")
-		-- whether IHX keeps System's default hook or has its own, Persistence.load calls sys:load(clock, slice)
+		-- whether IHX keeps System's default hook or has its own, Persistence.load calls sys:load(slice, version)
 		t.eq(type(sys.load), "function", "so IHX:load is still a method, not a number")
 	end,
 

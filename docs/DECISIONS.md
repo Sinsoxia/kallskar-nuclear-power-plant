@@ -765,3 +765,13 @@ corrected above. **C-29 is the high one**, and I confirmed it against the text: 
 ×360 slow-process clock (so does `Config/Clocks.luau`), while §12.3 gives "1 per 2,000 zone-hours real". Read on ×360,
 about 180 zones would fail every couple of minutes. Nothing in these sections is built yet, so none of this affects
 M1. **For Aqua:** review before the steam-plant milestone, starting with C-29 and the medium findings.
+
+## D-045 The prompt-critical flag describes the core as it is now, not what happened this session — Proposed
+§14.2 has the amplitude hand over to a scripted core-damage event once ρ reaches 0.9β, "rather than integrating
+through it". Before PR #4, `Kinetics` set `amp.promptCritical` on the first crossing and never cleared it, although
+Core already had a branch meant to clear it. That made the latch a bug rather than a design. The code review (L3)
+left the choice open. **Decision:** the flag clears on the first step back below 0.9β, and the CORE-PROMPT alarm
+goes out with it (commit 4dcbe6c). The one-way hand-over §14.2 describes belongs to the scripted event, which will
+latch its own trigger on the flag's rising edge once it exists. **Effect outside the plant:** the SnapshotServer
+payload keeps its `promptCritical` field, with the same name and type. It now means "prompt-critical on this tick",
+not "at some point this session", so a display reading it (KallskarWeb) will see it drop back to false.
