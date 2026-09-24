@@ -1,0 +1,44 @@
+The thermocouple: uniform noise, +-1 K, independent ticks (§2.5, Pools)
+       D-050 as it stood, 1 K deadband: worst at 564.50 °C, 2.50 flickers/s
+  ok   the review's CORE-OUT figure, about 2.5 a second: 2.500/s
+       amended, 2 K deadband: an in needs m > 564 °C, a tick back needs m < 564 °C; no steady level has both
+  ok   with the full span as deadband, no steady level flickers: worst 0.0/s
+
+The power range: Gaussian noise relative to the power, four channels, independent ticks (D-025, Detectors)
+       D-050 as it stood, 1 sigma deadband: 1.70 flickers/s at 104 %FP
+  ok   the review's PR-HIGH figure, about 1.7 a second at 104 %FP: 1.698/s
+       its worst: 2.34 flickers/s at 104.20 %FP, once every 0.43 s
+  ok   the review's 'one every 0.4 s now': 0.427 s
+       amended: deadband 3 sigma at the setpoint = 1.575 %FP, off-delay 5 s = 50 ticks
+       with the noise's sigma taken at the setpoint: worst at 102.53 %FP, once every 3.4 h
+  ok   Aqua's estimate, about one flicker every 3.4 h: 3.43 h
+       with the noise relative to the power, as Detectors draws it: worst at 102.56 %FP, once every 4.5 h
+         there: p = 3.922e-06 a tick (a channel past 105), q = 0.8287 (all four back past 103.425), q^50 = 8.306e-05
+         the alarm is in 22% of the time there: the worst level is where both states are long, not where either is short
+       amended, at the old rule's worst level (104.20 %FP): never in practice (3e-231/s) -- the alarm comes in and stays in
+  ok   the amended rule is at least 10^4 times quieter than the old at its worst: 3.81e+04 times
+
+The asymptotic method, checked on the power range, where the exact rate is known
+       at 102.56 %FP: exact 6.149103e-05/s, asymptotic 6.148973e-05/s
+  ok   the asymptotic rate matches the exact one to 0.1 %: -2.10e-05
+
+The DNDs: Poisson counts through the ratemeter, six channels, correlated ticks (§3.5, D-025, Detectors)
+       sigma at the 120 cps setpoint 7.746 cps: deadband 23.24 cps, back below 96.76 cps
+       amended: worst at 88.9 cps (2.22 x background), once every 49.5 min
+         there: U = 2.481e-05 a tick (out period 1.1 h), W = 5.252e-05 a tick (in period 0.5 h), against a ratemeter time constant of 1 s
+         on a grid of half the step: once every 49.9 min (-0.8%)
+  ok   the grid is fine enough: halving it moves the rate by under 5 %
+  ok   both periods are long against the ratemeter's memory, as the method needs
+       5.5 times the power range's worst: the ratemeter carries each reading into the next, so
+       the six readings stay back for 5 s far more often than 50 fresh draws would. For comparison only,
+       the worst rate with a longer off-delay and the same deadband (Aqua's rule gives the DNDs 5 s):
+           10 s: worst at 86.7 cps, once every 4.0 h
+           20 s: worst at 84.5 cps, once every 20.4 h
+           30 s: worst at 83.3 cps, once every 53.0 h
+
+Summary: steady-signal flicker at each row's worst level
+       CORE-OUT  1 K, no off-delay:        once every 0.40 s   amended (2 K):              never
+       PR-HIGH   1 sigma, no delay:        once every 0.43 s   amended (3 sigma, 5 s): once every 4.5 h
+       DND       amended (3 sigma, 5 s): once every 49.5 min
+
+9/9 checks pass

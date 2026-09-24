@@ -81,6 +81,49 @@ function Faults.arm(self: any, id: string, params: { [string]: any }?, actor: Ac
 	return { ok = true }
 end
 
+-- The active faults and what each was armed with, in id order, for a save (D-053)
+function Faults.export(self: any): { { id: string, params: any } }
+	local out = {}
+	for id, a in self.active do
+		table.insert(out, { id = id, params = a.params })
+	end
+	table.sort(out, function(x, y)
+		return x.id < y.id
+	end)
+	return out
+end
+
+--[[
+	Mark saved faults active on a plant being loaded (D-053), with the params they were armed with, so they can be
+	listed and cleared as before. A fault's arm is the event itself (a pump trips, a loop stops, a shutter drifts
+	shut, a row is left bypassed), and the crew may have answered it before the save, so arm is not called again.
+	What a fault leaves standing is its system's state, and comes back in that system's slice (the stopped pump, a
+	frozen channel, a leak rate). A fault whose effect no slice could hold may give an optional
+	restore(system, params); none needs one today. A fault this plant does not have is skipped and logged.
+]]
+function Faults.restore(self: any, saved: { { id: string, params: any } }?)
+	if type(saved) ~= "table" then
+		return
+	end
+	for _, s in saved do
+		local entry = type(s) == "table" and self.registry.faultIndex[s.id]
+		if not entry then
+			self.log:record("fault.restore", nil, tostring(type(s) == "table" and s.id), "no such fault in this plant", "skipped")
+		elseif not self.active[s.id] then
+			local ok, err = true, nil
+			if entry.fault.restore then
+				ok, err = pcall(entry.fault.restore, entry.system, s.params)
+			end
+			if ok then
+				self.active[s.id] = { params = s.params, armedAt = self.log.clock.sim }
+				self.log:record("fault.restore", nil, s.id, entry.fault.label, "ok")
+			else
+				self.log:record("fault.restore", nil, s.id, tostring(err), "error")
+			end
+		end
+	end
+end
+
 --[[
 	Forget every active fault, for an owner reset (§14.6). The systems are re-initialised by the same reset, which
 	puts their side of each fault back, so the faults' own clear() is not called; each is still logged and announced.

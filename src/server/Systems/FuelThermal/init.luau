@@ -229,6 +229,40 @@ function FuelThermal.fuelNodeOf(self: any, r: number, k: number): number?
 	return (a - 1) * self.L + l
 end
 
+-- §14.6 (D-053): the fuel's thermal state, which the saved decay heat has to land in, and what it last published
+function FuelThermal.save(self: any): any
+	return {
+		Tf = table.clone(self.Tf),
+		Tc = table.clone(self.Tc),
+		Tna = table.clone(self.Tna),
+		Ts = table.clone(self.Ts),
+		Tout = table.clone(self.Tout),
+		last = table.clone(self.last),
+	}
+end
+
+function FuelThermal.load(self: any, data: any, _version: number)
+	-- into the tables the channels already hold, and only a field whose size matches this mesh
+	for _, name in { "Tf", "Tc", "Tna", "Ts", "Tout" } do
+		local saved, into = data[name], self[name]
+		if type(saved) == "table" and #saved == #into then
+			table.move(saved, 1, #into, 1, into)
+		end
+	end
+	local last = data.last
+	if type(last) == "table" then
+		local fields = { "coreAverage_K", "coreAverageSodium_K", "mixedOutlet_K", "heatToCoolant_W", "cladHotSpot_K",
+			"hotPinCentre_K", "peakLinearHeat_Wpm" }
+		for _, f in fields do
+			if type(last[f]) ~= "number" then
+				return
+			end
+		end
+		self:publish(last.coreAverage_K, last.coreAverageSodium_K, last.mixedOutlet_K, last.heatToCoolant_W,
+			last.cladHotSpot_K, last.hotPinCentre_K, last.peakLinearHeat_Wpm)
+	end
+end
+
 function FuelThermal.getState(self: any): { [string]: any }
 	return table.clone(self.last)
 end
