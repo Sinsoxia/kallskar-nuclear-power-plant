@@ -1,16 +1,26 @@
 {
  "meta": {
-  "model": "tools/xsgen/k1_model.py (explicit pins, fresh as-fabricated fuel; D-038 to D-042)",
+  "model": "tools/xsgen/k1_model.py (explicit pins; D-038 to D-042, BOC core D-043/D-044)",
   "library": "ENDF/B-VIII.1 (OpenMC HDF5)",
   "openmc": "0.16.0",
-  "quality": "preliminary: fresh core, not the equilibrium BOC core \u00a73.3 and D-012 refer to"
+  "cases": {
+   "nominal": "fresh as-fabricated core",
+   "hzp": "fresh as-fabricated core",
+   "cold230": "fresh as-fabricated core",
+   "clad-density": "fresh as-fabricated core",
+   "storage-empty": "fresh as-fabricated core",
+   "axial-reflective": "fresh as-fabricated core",
+   "boc": "equilibrium BOC core (D-012, D-043, D-044)",
+   "boc-cold230": "equilibrium BOC core (D-012, D-043, D-044)"
+  },
+  "quality": "preliminary: statistics of a quick pass; the BOC core rests on single-assembly depletion (D-043)"
  },
  "cases": {
   "nominal": {
-   "keff": 1.0577484059402267,
-   "sigma": 0.00021972169563040536,
-   "rho_pcm": 5459.559722890283,
-   "runtime_s": 1136.8714807229999,
+   "keff": 1.0576162810817122,
+   "sigma": 0.00018726869446209117,
+   "rho_pcm": 5447.749066682605,
+   "runtime_s": 793.08980776,
    "sourceConverged": true,
    "run": {
     "particles": 100000,
@@ -18,12 +28,12 @@
     "inactive": 50
    },
    "betaEff_pcm": {
-    "value": 347.42039257941667,
-    "sigma": 7.7078126843965995
+    "value": 332.4632450522932,
+    "sigma": 7.347441956941459
    },
    "generationTime_s": {
-    "value": 4.563958630417449e-07,
-    "sigma": 1.8049398195186156e-09
+    "value": 4.532681269081982e-07,
+    "sigma": 1.7925053309446853e-09
    }
   },
   "hzp": {
@@ -38,8 +48,8 @@
     "inactive": 50
    },
    "deltaRhoFromNominal_pcm": {
-    "value": 626.764877851993,
-    "sigma": 26.75293793106324
+    "value": 638.5755340596711,
+    "sigma": 24.705178665192538
    }
   },
   "cold230": {
@@ -54,16 +64,104 @@
     "inactive": 50
    },
    "deltaRhoFromNominal_pcm": {
-    "value": 908.3668300155279,
-    "sigma": 28.159767203215953
+    "value": 920.177486223206,
+    "sigma": 26.222102392353648
+   }
+  },
+  "clad-density": {
+   "keff": 1.0573077657546603,
+   "sigma": 0.00019839235891407406,
+   "rho_pcm": 5420.159352916187,
+   "runtime_s": 829.0999092019999,
+   "sourceConverged": true,
+   "run": {
+    "particles": 100000,
+    "batches": 150,
+    "inactive": 50
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": -27.589713766418278,
+    "sigma": 24.397714815698794
+   }
+  },
+  "storage-empty": {
+   "keff": 1.057751339333091,
+   "sigma": 0.0002027755000644132,
+   "rho_pcm": 5459.821905732887,
+   "runtime_s": 795.1347488690001,
+   "sourceConverged": true,
+   "run": {
+    "particles": 100000,
+    "batches": 150,
+    "inactive": 50
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": 12.072839050281114,
+    "sigma": 24.67321034650691
+   }
+  },
+  "axial-reflective": {
+   "keff": 1.0676875450078291,
+   "sigma": 0.00021542777089585805,
+   "rho_pcm": 6339.63984353988,
+   "runtime_s": 848.8500414770001,
+   "sourceConverged": true,
+   "run": {
+    "particles": 100000,
+    "batches": 150,
+    "inactive": 50
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": 891.8907768572737,
+    "sigma": 25.247314546315803
+   }
+  },
+  "boc": {
+   "keff": 1.0396098252524673,
+   "sigma": 0.00032190599001825383,
+   "rho_pcm": 3810.066458620487,
+   "runtime_s": 1523.609505648,
+   "sourceConverged": true,
+   "run": {
+    "particles": 50000,
+    "batches": 130,
+    "inactive": 30
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": -1637.6826080621188,
+    "sigma": 34.16730687873147
+   },
+   "betaEff_pcm": {
+    "value": 349.51262927311177,
+    "sigma": 11.618165225157446
+   },
+   "generationTime_s": {
+    "value": 4.564386716599007e-07,
+    "sigma": 3.0105571645747804e-09
+   }
+  },
+  "boc-cold230": {
+   "keff": 1.0492663116824639,
+   "sigma": 0.00026573099352899523,
+   "rho_pcm": 4695.310535936958,
+   "runtime_s": 1487.108691087,
+   "sourceConverged": true,
+   "run": {
+    "particles": 50000,
+    "batches": 130,
+    "inactive": 30
+   },
+   "deltaRhoFromNominal_pcm": {
+    "value": -752.4385307456472,
+    "sigma": 29.37444037507174
    }
   }
  },
  "forInformation": {
   "hzpToFullPower_pcm": {
-   "value": -626.764877851993,
-   "sigma": 26.75293793106324,
-   "specFixedGeometryParts_pcm": -645.2932736190783,
+   "value": -638.5755340596711,
+   "sigma": 24.705178665192538,
+   "specFixedGeometryParts_pcm": -643.4932736190782,
    "note": "fresh core; \u00a73.2 Doppler + sodium-density terms only, no expansion"
   },
   "cold230ToHzp_pcm": {
@@ -71,6 +169,13 @@
    "sigma": 27.154212837277996,
    "specFixedGeometryParts_pcm": -169.76212397563933,
    "note": "fresh core; \u00a73.3 isothermal 376 pcm includes the expansion terms"
+  },
+  "excessReactivity230BOC_pcm": {
+   "value": 4695.310535936958,
+   "sigma": 24.136303183745007,
+   "target": 2250.0,
+   "absTol": 150.0,
+   "withinTolerance": false
   }
  }
 }

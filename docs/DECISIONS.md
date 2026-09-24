@@ -728,6 +728,9 @@ D-012 needs burnup-dependent fuel for the equilibrium four-batch core. **Decisio
   runs at about 800 particles/s instead of 14,000 for fresh fuel. Reaction rates summed over the whole bundle are
   still far more precise than k∞.
 - **Output:** nuclides above NEA's own 10⁻¹⁰ cut-off are kept.
+- **Step check (run 2026-09-24):** for the inner zone, the Richardson corrections to the fine k∞ are −53 to +32 pcm,
+  each within its own σ of 75–89 pcm. The ten checked actinides move by at most 0.13 % (Cm-244), so the 80 EFPD
+  steps are converged. The outer zone uses the same scheme; only the inner was double-run.
 
 ## F37 160 EFPD × 4 cycles at 2,380 MWt is 52.3 GWd/tHM, against §2.3's "≈ 51" — Open
 On §2.3's own numbers, a cycle burns 160 × 2,380 / 29.11 = 13.08 GWd/t, so four cycles discharge at **52.3**. On
@@ -775,3 +778,45 @@ goes out with it (commit 4dcbe6c). The one-way hand-over §14.2 describes belong
 latch its own trigger on the flag's rising edge once it exists. **Effect outside the plant:** the SnapshotServer
 payload keeps its `promptCritical` field, with the same name and type. It now means "prompt-critical on this tick",
 not "at some point this session", so a display reading it (KallskarWeb) will see it drop back to false.
+
+## F39 K1's Pu content gives about 2,450 pcm more excess reactivity than §3.3 budgets — Open
+The equilibrium BOC core (D-043, D-044), in OpenMC with ENDF/B-VIII.1 (`tools/xsgen/results/k1_fresh_results.json`),
+gives an excess of **+4,695 ± 24 pcm** at 230 °C with all rods out. §3.3 (and §3.7's target) require
+**2,250 ± 150**.
+
+| Case | k | ρ (pcm) |
+|---|---|---|
+| Fresh core, full power | 1.05762 ± 0.00019 | +5,448 |
+| Fresh core, hot zero power | 1.06481 ± 0.00021 | +6,086 |
+| Fresh core, 230 °C | 1.06801 ± 0.00023 | +6,368 |
+| Equilibrium BOC, full power | 1.03961 ± 0.00032 | +3,810 |
+| Equilibrium BOC, 230 °C | 1.04927 ± 0.00027 | **+4,695** |
+
+**The sensitivity cases rule out the model's own assumptions as the cause:**
+- Cladding density +1 %: −28 ± 24 pcm.
+- Ring 15 empty: +12 ± 25 pcm.
+- Reflective axial ends: **+892 ± 25**. The vacuum beyond §2.1's lengths is therefore the *less* reactive bound, and
+  real structure there could only add reactivity.
+
+So the gap is a lower bound. The Pu worth these runs imply (the fresh inner and outer lattices, 18 % against 23 % Pu)
+is about 2,150 pcm per percentage point of Pu. Closing the gap would take Pu at **about 17 % and 22 %**, which is
+outside §2.3's "≈ 18" and "≈ 23". D-012 allows a search only within the "≈", so nothing has been changed.
+
+**For Aqua, one of:**
+- (a) lower §2.3's Pu to about 17/22 %, fixed exactly by a search script;
+- (b) keep 18/23 % and choose a more degraded Pu vector than NEA's BOC one;
+- (c) raise §3.3's excess to what the core has, which also moves the rod-worth and shutdown-margin budget;
+- (d) another change to the core.
+
+Every §3.7 comparison of the reference core waits on this choice.
+
+Other results from the same runs:
+- **Power defect:** hot zero power → full power at fixed geometry is −639 ± 25 pcm, against §3.2's Doppler + sodium
+  terms, −643.
+- **β_eff (BOC):** 349.5 ± 11.6 pcm, inside §3.1's 360 ± 5 %.
+
+## F40 The model's prompt generation time is 4.56 × 10⁻⁷ s, 14 % above §3.1's 4.0 × 10⁻⁷ — Open
+IFP tallies give Λ = 4.56 × 10⁻⁷ s for the equilibrium BOC core, and 4.53 × 10⁻⁷ s for the fresh core. §3.7's
+target is 4.0 × 10⁻⁷ ± 5 %. Lowering the Pu content for F39 would lengthen Λ slightly further. The point-kinetics
+facade uses §3.1's value today (D-031), and the 3D model will compute its own from the shape. **For Aqua:** accept
+the computed Λ once XSData lands, or keep §3.1's 4.0 × 10⁻⁷ as a tuning value (†) and record the difference.
