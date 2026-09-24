@@ -442,7 +442,7 @@ Pools.faults = {
 }
 
 -- §14.6 (D-053): the thermal state the saved decay heat lands in: the pool nodes, the transport line, the outlet
--- thermocouple, and the cover gas with its controller. A cover gas leak is a fault, and comes back with it.
+-- thermocouple, and the cover gas with its controller and any leak the CG-LEAK fault left.
 function Pools.save(self: any): any
 	return {
 		hot = { self.hot[1], self.hot[2] },
@@ -460,6 +460,7 @@ function Pools.save(self: any): any
 		correcting = self.correcting,
 		admitted_mol = self.admitted_mol,
 		vented_mol = self.vented_mol,
+		leak_molps = self.leak_molps,
 	}
 end
 
@@ -494,6 +495,7 @@ function Pools.load(self: any, data: any, _version: number)
 	self.correcting = data.correcting == true
 	self.admitted_mol = num(data.admitted_mol, 0)
 	self.vented_mol = num(data.vented_mol, 0)
+	self.leak_molps = math.max(num(data.leak_molps, 0), 0)
 	self:publish()
 end
 

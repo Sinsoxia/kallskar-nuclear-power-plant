@@ -301,15 +301,44 @@ function Detectors.step(self: any, dt: number)
 	self:publish()
 end
 
--- D-053: the 1/M reference the crew took. A failed or noisy channel is a fault, and comes back with it; the filters
--- start again from the first reading rather than differentiating across the gap.
+--[[
+	D-053: the 1/M reference the crew took, and what the NI-FAIL and DND-HIGH faults leave standing: the failed
+	channels and their modes, the DND factor, and every channel's reading, so a frozen channel comes back frozen at the
+	reading it froze at. The live channels' filters start again from their first reading rather than differentiating
+	across the gap.
+]]
+local FAIL_MODES = { low = true, high = true, freeze = true }
+
 function Detectors.save(self: any): any
-	return { reference_cps = self.reference_cps }
+	return {
+		reference_cps = self.reference_cps,
+		failed = table.clone(self.failed),
+		dndFactor = self.dndFactor,
+		readings = { sr = table.clone(self.sr), wr = table.clone(self.wr), pr = table.clone(self.pr), dnd = table.clone(self.dnd) },
+	}
 end
 
 function Detectors.load(self: any, data: any, _version: number)
 	if type(data.reference_cps) == "number" then
 		self.reference_cps = data.reference_cps
+	end
+	table.clear(self.failed)
+	if type(data.failed) == "table" then
+		for name, mode in data.failed do
+			if type(name) == "string" and FAIL_MODES[mode] then
+				self.failed[name] = mode
+			end
+		end
+	end
+	if type(data.dndFactor) == "number" and data.dndFactor > 0 then
+		self.dndFactor = data.dndFactor
+	end
+	local readings = if type(data.readings) == "table" then data.readings else {}
+	for _, bank in { "sr", "wr", "pr", "dnd" } do
+		local saved, into = readings[bank], self[bank]
+		if type(saved) == "table" and #saved == #into then
+			table.move(saved, 1, #into, 1, into) -- into the tables the channels hold
+		end
 	end
 	self.started = false
 end

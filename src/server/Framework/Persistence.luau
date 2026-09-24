@@ -11,7 +11,7 @@
 	  version) is given the slice after migration, so `version` is always CURRENT_VERSION.
 	- D-053: the slices hold §14.6's list (stuck rods, stopped pumps and loops, shutter demands, trip bypasses) and
 	  the thermal state the saved decay heat needs (pool, fuel and cover gas temperatures); the framework adds the
-	  active faults (Faults.export, re-armed on load) and the external inputs, which carry the mode. A server close
+	  active faults (Faults.export; marked active on load, not fired again) and the external inputs, which carry the mode. A server close
 	  counts as a reactor trip: the plant comes back tripped, rods in and scram latched (Protection, RodDrives, Core).
 	- Owner reset: requestReset(actor, phrase) checks the private server owner and the typed phrase
 	  (Engineering.resetConfirmationPhrase), then counts down Access.reset.countdown_s, announcing on the Bus; at zero
@@ -287,7 +287,7 @@ function Persistence.load(self: any): string
 		end
 	end
 	if self.faults then
-		self.faults:restore(data.faults) -- after the systems, so each fault's arm acts on the loaded state
+		self.faults:restore(data.faults) -- active again; what each left standing came back in the slices above
 	end
 	self.log:record("load", nil, self.key, `save version {fromVersion} → {self.currentVersion}`, "ok")
 	self.writable = true

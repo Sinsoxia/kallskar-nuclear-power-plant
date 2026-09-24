@@ -94,9 +94,12 @@ function Faults.export(self: any): { { id: string, params: any } }
 end
 
 --[[
-	Re-arm saved faults on a plant being loaded (D-053). Each fault's own arm puts its side back, with the params it
-	was armed with. There is no eligibility check: the fault was already in the plant when it was saved. A fault
-	this plant does not have is skipped and logged.
+	Mark saved faults active on a plant being loaded (D-053), with the params they were armed with, so they can be
+	listed and cleared as before. A fault's arm is the event itself (a pump trips, a loop stops, a shutter drifts
+	shut, a row is left bypassed), and the crew may have answered it before the save, so arm is not called again.
+	What a fault leaves standing is its system's state, and comes back in that system's slice (the stopped pump, a
+	frozen channel, a leak rate). A fault whose effect no slice could hold may give an optional
+	restore(system, params); none needs one today. A fault this plant does not have is skipped and logged.
 ]]
 function Faults.restore(self: any, saved: { { id: string, params: any } }?)
 	if type(saved) ~= "table" then
@@ -107,7 +110,10 @@ function Faults.restore(self: any, saved: { { id: string, params: any } }?)
 		if not entry then
 			self.log:record("fault.restore", nil, tostring(type(s) == "table" and s.id), "no such fault in this plant", "skipped")
 		elseif not self.active[s.id] then
-			local ok, err = pcall(entry.fault.arm, entry.system, s.params)
+			local ok, err = true, nil
+			if entry.fault.restore then
+				ok, err = pcall(entry.fault.restore, entry.system, s.params)
+			end
 			if ok then
 				self.active[s.id] = { params = s.params, armedAt = self.log.clock.sim }
 				self.log:record("fault.restore", nil, s.id, entry.fault.label, "ok")

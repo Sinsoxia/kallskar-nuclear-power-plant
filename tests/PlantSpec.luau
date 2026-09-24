@@ -275,6 +275,66 @@ return {
 			"down in the source range, where a shut-down core belongs (§3.5)")
 	end,
 
+	["a fault comes back active but is not fired again, and its own effects come back with it (D-053)"] = function(t)
+		local store = Persistence.MemoryStore.new()
+		local function persistence(p: any): any
+			return Persistence.new({
+				config = Config,
+				registry = p.registry,
+				log = p.log,
+				bus = p.bus,
+				clock = p.scheduler.clock,
+				store = store,
+				mode = "private",
+				key = "plant/faults",
+				ownerUserId = 7,
+				channels = p.channels,
+				faults = p.faults,
+			})
+		end
+		local a = plant()
+		t.ok(InitialConditions.seatAtPower(a.byName, a.channels, Config, 30) ~= nil, "seated at 30 %FP")
+		run(a, 1)
+		local pumps, ihx, prot, det, pools = a.byName.PrimaryPumps, a.byName.IHX, a.byName.Protection,
+			a.byName.Detectors, a.byName.Pools
+		-- the faults whose arm is the event itself, each then answered by the crew
+		t.ok(a.faults:arm("PP-TRIP", { pump = 2 }, AUTO).ok, "PP2 trips")
+		t.ok(pumps:applyCommand(AUTO, { kind = "pump.start", target = "PP2" }).ok, "and the crew restarts it")
+		t.ok(a.faults:arm("SL-LOST", { loop = 3 }, AUTO).ok, "loop 3 is lost")
+		t.ok(ihx:applyCommand(AUTO, { kind = "loop.start", target = "3" }).ok, "and restarted")
+		t.ok(a.faults:arm("IHX-SHUT", { unit = 2 }, AUTO).ok, "unit 2's shutter drifts shut")
+		t.ok(ihx:applyCommand(AUTO, { kind = "ihx.shutter", target = "1B", value = 1 }).ok, "and is opened again")
+		t.ok(a.faults:arm("PROT-CHANNEL", { signal = "COVER-GAS" }, AUTO).ok, "a row is left bypassed")
+		t.ok(prot:applyCommand(AUTO, { kind = "pss.bypass", target = "COVER-GAS", value = 0 }).ok, "and restored")
+		-- the faults whose effect is a standing condition, which only the system's own slice can carry
+		t.ok(a.faults:arm("NI-FAIL", { channel = "PR2", mode = "freeze" }, AUTO).ok, "PR2 freezes")
+		t.ok(a.faults:arm("DND-HIGH", { factor = 5 }, AUTO).ok, "the DNDs rise")
+		t.ok(a.faults:arm("CG-LEAK", { rate_molps = 0.5 }, AUTO).ok, "the cover gas leaks")
+		run(a, 1)
+		local frozen = det.pr[2]
+		local shutter = ihx.units[2].demand
+		t.eq(ihx.units[2].name, "1B")
+		t.eq(shutter, 1, "unit 1B's shutter is open again before the save")
+		t.ok(frozen > 0, "PR2 is frozen at a reading")
+		t.ok((persistence(a):save()), "saved")
+
+		local b = plant()
+		t.eq(persistence(b):load(), "loaded")
+		for _, id in { "PP-TRIP", "SL-LOST", "IHX-SHUT", "PROT-CHANNEL", "NI-FAIL", "DND-HIGH", "CG-LEAK" } do
+			t.ok(b.faults:isActive(id), `{id} is still active`)
+		end
+		t.eq(b.byName.PrimaryPumps.pumps[2].tripped, false, "the pump the crew restarted is still running")
+		t.eq(b.byName.IHX.loops[3].running, true, "the loop they restarted is still running")
+		t.eq(b.byName.IHX.units[2].demand, shutter, "the shutter they opened is still open")
+		t.eq(b.byName.Protection.bypassed["COVER-GAS"], nil, "the row they restored is still in service")
+		t.eq(b.byName.Detectors.failed.PR2, "freeze", "PR2 is still frozen")
+		t.eq(b.byName.Detectors.pr[2], frozen, "at the reading it froze at")
+		t.eq(b.byName.Detectors.dndFactor, 5, "the DNDs still read five times background")
+		t.eq(b.byName.Pools.leak_molps, 0.5, "and the cover gas still leaks at the same rate")
+		run(b, 1)
+		t.eq(b.byName.Detectors.pr[2], frozen, "a tick later PR2 still reads what it froze at")
+	end,
+
 	["a version-1 save, from before D-053, also comes back tripped (D-053)"] = function(t)
 		local store = Persistence.MemoryStore.new()
 		-- version 1 saved the decay heat and nothing else of the plant
