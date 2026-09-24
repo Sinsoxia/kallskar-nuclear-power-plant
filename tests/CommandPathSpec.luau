@@ -185,9 +185,16 @@ return {
 
 	["every control a system handles is carried by a desk (§10.2, D-054)"] = function(t)
 		local registry = plant()
+		local desks = Config.Desks
 		for kind in registry.commandOwner do
-			t.ok(Config.Desks.controls[kind] ~= nil, `{kind} is on a desk`)
+			t.ok(desks.controls[kind] ~= nil or desks.placed[kind] ~= nil, `{kind} is on a desk`)
 		end
+		-- and each is either §10.2's or D-054's placement, never both, so its provenance is one or the other
+		for kind in desks.placed do
+			t.eq(desks.controls[kind], nil, `{kind} is placed by D-054, not listed by §10.2`)
+		end
+		t.eq(Config.sourceOf("Desks.placed").kind, "decision", "D-054's placements carry the decision's provenance")
+		t.eq(Config.sourceOf("Desks.controls").kind, "spec", "and §10.2's carry the spec's")
 	end,
 
 	["a client's backup control room trip is one button (§9.5)"] = function(t)

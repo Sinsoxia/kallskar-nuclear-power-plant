@@ -163,7 +163,7 @@ function Commands.new(opts: {
 		if kind == "reactor.trip.manual" and button then
 			return desk == button -- a trip button is on one desk, the MCR's or the BCR's
 		end
-		local carriers = desks.controls[kind]
+		local carriers = desks.controls[kind] or desks.placed[kind]
 		return desk ~= nil and carriers ~= nil and table.find(carriers, desk) ~= nil
 	end
 	self.characterPosition = opts.characterPosition or function(player: Player): Vector3?
