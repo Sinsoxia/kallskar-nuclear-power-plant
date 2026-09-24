@@ -20,7 +20,10 @@ local EventLog = require(Framework:WaitForChild("EventLog")) :: any
 local Bus = require(Framework:WaitForChild("Bus")) :: any
 local Commands = require(Framework:WaitForChild("Commands")) :: any
 
-local PANEL = "MCR-RO-1"
+local PANEL = "MCR-RO-1" -- the reactor operator's desk (§10.2)
+local PRIMARY = "MCR-PO-1" -- the primary operator's desk
+local SECONDARY = "SGCR-SSO-1" -- the secondary sodium desk, in the steam generator control room
+local BACKUP = "BCR-ESP-1" -- the backup control room's emergency shutdown panel
 local PLAYER = { kind = "player" :: any, name = "Tester", userId = 42, player = {} :: any }
 
 -- The whole M1 plant as Main registers it, with Main's external inputs
@@ -51,8 +54,9 @@ local function plant()
 end
 
 --[[
-	Commands as Main builds it, with the three services M1 has no instances for yet filled in: one panel, a player
-	standing beside it, and enough playtime for the critical controls.
+	Commands as Main builds it, with the three services M1 has no instances for yet filled in: a panel on each desk
+	the tests use, all at one spot with the player standing beside them, and enough playtime for the critical
+	controls.
 ]]
 local function intake(registry: any, log: any, bus: any, hours: number?)
 	return Commands.new({
@@ -61,7 +65,7 @@ local function intake(registry: any, log: any, bus: any, hours: number?)
 		log = log,
 		bus = bus,
 		panelPosition = function(tag: string): Vector3?
-			return if tag == PANEL then Vector3.zero else nil
+			return if tag == PANEL or tag == PRIMARY or tag == SECONDARY or tag == BACKUP then Vector3.zero else nil
 		end,
 		characterPosition = function(_player: Player): Vector3?
 			return Vector3.new(1, 0, 0)
@@ -89,15 +93,15 @@ return {
 		t.eq(rods.selection and rods.selection.id, "RR1", "RodDrives is moving the rod the client named")
 		t.eq(rods.drives[1].demand_mm, 600, "toward the position the client asked for")
 
-		r = send({ kind = "pump.speed", target = "PP1", value = 60, panel = PANEL })
+		r = send({ kind = "pump.speed", target = "PP1", value = 60, panel = PRIMARY })
 		t.ok(r.ok, `pump.speed refused: {r.reason}`)
 		t.eq(byName.PrimaryPumps.pumps[1].demand_pct, 60, "PP1 takes the speed demand")
 
-		r = send({ kind = "ihx.shutter", target = "1A", value = 0, panel = PANEL })
+		r = send({ kind = "ihx.shutter", target = "1A", value = 0, panel = PRIMARY })
 		t.ok(r.ok, `ihx.shutter refused: {r.reason}`)
 		t.eq(byName.IHX.units[1].demand, Config.Primary.ihx.shutterLeakBy_frac, "1A's shutter heads for its leak-by")
 
-		r = send({ kind = "loop.stop", target = "2", panel = PANEL })
+		r = send({ kind = "loop.stop", target = "2", panel = SECONDARY })
 		t.ok(r.ok, `loop.stop refused: {r.reason}`)
 		t.eq(byName.IHX.loops[2].running, false, "secondary loop 2 stopped")
 
@@ -143,10 +147,43 @@ return {
 		t.eq(byName.Protection.bypassed["COVER-GAS"], nil, "so nothing was bypassed")
 	end,
 
+	["a control is operated only from a desk that carries it (§10.2, D-054)"] = function(t)
+		local registry, byName, log, bus = plant()
+		local commands = intake(registry, log, bus)
+		local function send(kind: string, target: string, panel: string, value: number?): any
+			return commands:submit(PLAYER, { kind = kind, target = target, panel = panel, value = value })
+		end
+		local function refused(r: any): boolean
+			return not r.ok and string.find(r.reason or "", "desk", 1, true) ~= nil
+		end
+		-- the rods are on the reactor desk and the pumps on the primary desk, a step apart in the same room
+		local r = send("rod.move", "RR1", PRIMARY, 600)
+		t.ok(refused(r), `a rod from the primary desk is refused ({r.reason})`)
+		t.ok(send("rod.move", "RR1", PANEL, 600).ok, "and taken from the reactor desk")
+		r = send("pump.speed", "PP1", PANEL, 60)
+		t.ok(refused(r), `a pump from the reactor desk is refused ({r.reason})`)
+		t.ok(send("pump.speed", "PP1", PRIMARY, 60).ok, "and taken from the primary desk")
+		-- the trip buttons: the MCR's two on the reactor desk, and the BCR's one on its emergency shutdown panel
+		r = send("reactor.trip.manual", "BCR", PANEL)
+		t.ok(refused(r), `the BCR's button cannot be pressed from the MCR ({r.reason})`)
+		t.ok(send("reactor.trip.manual", "MCR-1", PANEL).ok, "MCR-1 is on the reactor desk")
+		r = send("reactor.trip.manual", "MCR-2", BACKUP)
+		t.ok(refused(r), `and not in the BCR ({r.reason})`)
+		t.ok(send("reactor.trip.manual", "BCR", BACKUP).ok, "the BCR's button is in the BCR")
+		t.ok(byName.Protection:getState().tripped.PSS, "and trips the reactor")
+	end,
+
+	["every control a system handles is carried by a desk (§10.2, D-054)"] = function(t)
+		local registry = plant()
+		for kind in registry.commandOwner do
+			t.ok(Config.Desks.controls[kind] ~= nil, `{kind} is on a desk`)
+		end
+	end,
+
 	["a client's backup control room trip is one button (§9.5)"] = function(t)
 		local registry, byName, log, bus = plant()
 		local commands = intake(registry, log, bus)
-		local r = commands:submit(PLAYER, { kind = "reactor.trip.manual", target = "BCR", panel = PANEL })
+		local r = commands:submit(PLAYER, { kind = "reactor.trip.manual", target = "BCR", panel = BACKUP })
 		t.ok(r.ok, `reactor.trip.manual refused: {r.reason}`)
 		local state = byName.Protection:getState()
 		t.ok(state.tripped.PSS, "one press in the backup control room trips the reactor")

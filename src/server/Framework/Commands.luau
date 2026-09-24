@@ -7,8 +7,9 @@
 	  1. rate limit — token bucket per player (Engineering.commandRate_perSecond / commandBurst), before any other work
 	  2. sanitise   — copy the client's table into a fresh Command, rejecting wrong types, oversized strings, NaN/inf
 	  3. route      — the system that declared this command kind (Registry), or refuse
-	  4. access     — players only: within reach of the panel (Access.panelReach_studs) and, for critical controls,
-	                  the minimum total playtime (Access.criticalMinimumPlaytime_h)
+	  4. access     — players only: on a panel of a desk that carries the control (Config.Desks, §10.2, D-054),
+	                  within reach of it (Access.panelReach_studs) and, for critical controls, the minimum total
+	                  playtime (Access.criticalMinimumPlaytime_h)
 	  5. apply      — system:applyCommand(actor, cmd)
 	  6. log        — every control attempt that reaches a system's desk, accepted or refused, goes to the EventLog
 	                  with the actor's name (§10.7). A player's commands refused before that (throttled, malformed,
@@ -23,6 +24,8 @@
 
 	Pluggable services (so tests and later milestones can swap them):
 	  panelPosition(panelTag) -> Vector3?      where the control panel is (nil = unknown panel)
+	  panelHosts(panel, kind, target) -> bool  whether that panel's desk carries the control: by default Config.Desks,
+	                                           with the desk read from the tag (desk-n), until panels are instances
 	  characterPosition(player) -> Vector3?    where the player is standing
 	  playtimeHours(player) -> number?         total playtime; nil when the lookup failed
 ]]
@@ -129,6 +132,7 @@ function Commands.new(opts: {
 	log: any,
 	bus: any?,
 	panelPosition: ((string) -> Vector3?)?,
+	panelHosts: ((string, string, string?) -> boolean)?,
 	characterPosition: ((Player) -> Vector3?)?,
 	playtimeHours: ((Player) -> number?)?,
 	now: (() -> number)?,
@@ -151,6 +155,16 @@ function Commands.new(opts: {
 	end
 	self.panelPosition = opts.panelPosition or function(_tag: string): Vector3?
 		return nil
+	end
+	local desks = opts.config.Desks
+	self.panelHosts = opts.panelHosts or function(panel: string, kind: string, target: string?): boolean
+		local desk = string.match(panel, "^(.-)%-%d+$")
+		local button = if target then desks.buttons[target] else nil
+		if kind == "reactor.trip.manual" and button then
+			return desk == button -- a trip button is on one desk, the MCR's or the BCR's
+		end
+		local carriers = desks.controls[kind]
+		return desk ~= nil and carriers ~= nil and table.find(carriers, desk) ~= nil
 	end
 	self.characterPosition = opts.characterPosition or function(player: Player): Vector3?
 		local character = player.Character
@@ -217,6 +231,9 @@ local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolea
 	local panelPos = self.panelPosition(cmd.panel)
 	if not panelPos then
 		return false, `unknown panel '{cmd.panel}'`
+	end
+	if not self.panelHosts(cmd.panel, cmd.kind, cmd.target) then
+		return false, `{cmd.kind}{if cmd.target then " " .. cmd.target else ""} is not on the desk of panel '{cmd.panel}'`
 	end
 	local pos = self.characterPosition(player)
 	if not pos then
