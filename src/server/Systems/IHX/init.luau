@@ -67,6 +67,8 @@
 	         primary.coreFlow_kgps   total primary flow, split between the units
 	         primary.pumpHeat_MWt    the pumps' heat, which the steam plant carries away with the load
 	         protection.scram        a trip takes the turbines off with it
+	         protection.runback…     a runback takes the load back with the reactor: to the runback's target, at its
+	                                 rate rather than §7.1's (D-046)
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -84,7 +86,13 @@ local IHX = System.extend({
 	name = "IHX",
 	lane = "fast",
 	reads = { "pools.hotPool_K", "primary.coreFlow_kgps", "primary.pumpHeat_MWt" },
-	readsLagged = { "protection.scram" }, -- Protection runs after the pools it watches, so the trip arrives next tick
+	-- Protection runs after the pools it watches, so a trip or a runback arrives next tick
+	readsLagged = {
+		"protection.scram",
+		"protection.runback",
+		"protection.runbackTarget_pctFP",
+		"protection.runbackRate_pctpmin",
+	},
 	writes = {
 		"ihx.heatRemoved_W",
 		"ihx.dutyEach_W",
@@ -177,6 +185,9 @@ function IHX.init(self: any, ctx: any)
 	self.ratedPrimary_kgps = cfg.Primary.pumps.ratedFlowTotal_kgps -- F30: the total is the authoritative figure
 	self.sinkLoad = 0 -- not `load`: that name is the System persistence hook (Framework/System)
 	self.loadDemand = 0
+	-- the runback the load is following down (D-046): its target, and its rate in % per second
+	self.runbackTarget = nil :: number?
+	self.runbackRate = 0
 	self.lastScram = "none"
 	self.coldLeg_K = self.warmest_K
 	self.loops = {}
@@ -324,6 +335,7 @@ function IHX.tripLoad(self: any, scram: string)
 	end
 	self.sinkLoad = 0
 	self.loadDemand = 0
+	self.runbackTarget = nil
 	if self.log then
 		self.log:record("sink.trip", nil, "steam plant", `reactor trip ({scram}): turbines tripped, bypass holding`, "tripped")
 	end
@@ -340,6 +352,12 @@ function IHX.rampLoad(self: any, dt: number)
 		return
 	end
 	local rising = demand > load
+	-- D-046: above a runback's target the load falls at the runback's rate, not at the operating limits
+	local floor = self.runbackTarget
+	if floor and not rising and load > floor then
+		self.sinkLoad = math.max(demand, floor, load - self.runbackRate * dt)
+		return
+	end
 	local high = if rising then load >= limit else load > limit
 	local rate = if high then self.loadRateHigh else self.loadRateLow
 	local step = rate * dt
@@ -434,6 +452,16 @@ function IHX.step(self: any, dt: number)
 		self:tripLoad(scram)
 	end
 	self.lastScram = scram
+	-- a runback (D-046): the demand goes down to its target, and the load follows at its rate
+	local runback = port:read("protection.runback") or ""
+	local target = port:read("protection.runbackTarget_pctFP") or 100
+	local perMinute = port:read("protection.runbackRate_pctpmin") or 0
+	if runback ~= "" then
+		self.runbackTarget, self.runbackRate = target, perMinute / 60
+		self.loadDemand = math.min(self.loadDemand, target)
+	elseif self.runbackTarget and self.sinkLoad <= self.runbackTarget then
+		self.runbackTarget = nil -- the load has got there after the runback finished
+	end
 	self:rampLoad(dt)
 	self:applyFlows(flow)
 	self:solve(hotPool, flow)

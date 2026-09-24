@@ -35,6 +35,7 @@ local function make(power: number?)
 	local pctFP = power or 100
 	local ch = Channels.new()
 	ch:declareExternal("detectors.pr_pctFP", { pctFP, pctFP, pctFP, pctFP })
+	ch:declareExternal("detectors.prMean_pctFP", pctFP)
 	ch:declareExternal("detectors.period_s", { 1e6, 1e6, 1e6 })
 	ch:declareExternal("detectors.fluxRate_pctFPps", 0)
 	ch:declareExternal("detectors.dnd_cps", { DND, DND, DND, DND, DND, DND })
@@ -349,6 +350,44 @@ return {
 		lch:setExternal("ihx.loopsRunning", 1)
 		run(loops, 1)
 		t.eq(lch:get("protection.firstOut"), "LOOPS", "two lost trips")
+	end,
+
+	["a runback starts on its trigger's rising edge, so a clear sticks and a finished one stays finished (D-046)"] = function(t)
+		local sys, ch, bus = make()
+		local starts = 0
+		bus:subscribe("Runback", function()
+			starts += 1
+		end)
+		run(sys, 1)
+		ch:setExternal("primary.pumpsRunning", 2)
+		run(sys, DT)
+		t.eq(ch:get("protection.runback"), "RB2", "one pump lost starts RB-2")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "runback.clear" }).ok, "the operator clears it")
+		run(sys, 10)
+		t.eq(ch:get("protection.runback"), "", "and it stays cleared while the pump is still lost")
+		t.eq(starts, 1, "nothing restarted it")
+
+		-- the pump comes back, which resets the trigger, and the next loss is a new event
+		ch:setExternal("primary.pumpsRunning", 3)
+		run(sys, 1)
+		t.eq(ch:get("protection.runback"), "", "a trigger resetting starts nothing")
+		ch:setExternal("primary.pumpsRunning", 2)
+		run(sys, DT)
+		t.eq(ch:get("protection.runback"), "RB2", "the next loss starts RB-2 again")
+		t.eq(starts, 2)
+
+		-- the power runs back: the demand takes 40 s from 100 to 60 %FP at 60 %/min, and the runback then ends
+		local rb = Config.Protection.runbacks.RB2
+		ch:setExternal("detectors.pr_pctFP", fill(4, rb.target_pctFP))
+		ch:setExternal("detectors.prMean_pctFP", rb.target_pctFP)
+		t.eq(ch:get("protection.rodRunback"), true, "the drive-in runs while the power is above the demand")
+		run(sys, DT)
+		t.eq(ch:get("protection.rodRunback"), false, "and stops once the power is below it")
+		run(sys, (100 - rb.target_pctFP) / (rb.rate_pctpmin / 60) + 1)
+		t.eq(ch:get("protection.runback"), "", "RB-2 is complete once its demand and the power are at its target")
+		run(sys, 10)
+		t.eq(ch:get("protection.runback"), "", "and, with the pump still lost, it does not start again")
+		t.eq(starts, 2)
 	end,
 
 	["a runback with no depth to run to is refused, so it cannot halt the plant later (§9.5 RB-3)"] = function(t)

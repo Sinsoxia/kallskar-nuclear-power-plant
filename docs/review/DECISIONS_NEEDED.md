@@ -18,6 +18,7 @@ both are at the end.
 | L13 | Where do the unexplained test tolerances come from? | Derive most from the method; record the rest as decisions |
 | L1+ | Should alarms have a reset deadband? | Yes, the channel's own noise |
 | L12 (deferred) | Where can a whole-fast-lane P99 test run reliably? | In Studio, with the headless run logging it |
+| D-046+ | Why do the runbacks' own triggers still trip a full-power plant? | Flow auto holds its demand during a runback |
 
 ---
 
@@ -254,3 +255,31 @@ pass would not show that the budget holds in a live server.
   Scheduler's report already carries `fastP99_ms`.
 
 **Recommendation.** B, with the headless run also logging the whole lane's P99 (C) so that CI shows the trend.
+
+## D-046+: The runbacks' own triggers at full power (found while implementing D-046)
+
+**Today.** D-046 is in, and a runback started by command does what it says: from 100 %FP, RB-2 reaches 60 %FP in
+40 s and RB-1 reaches 64 %FP in 72 s (PlantSpec). The events that start them automatically still end in a trip at
+full power:
+- **One primary pump lost, flow auto in (RB-2):** a reactor trip on PQ at 10.4 s, with P/Q peaking at 1.122. The
+  lost pump coasts down, and flow auto slows the other two pumps as its 10 s power filter comes down, so the flow
+  falls faster than a 60 %/min power demand. With flow auto out, the plant survives: P/Q peaks at 1.082, and the
+  runback completes at 40.1 s.
+- **One secondary loop lost (RB-1):** a reactor trip on INLET-HIGH at 53.1 s, at 72 %FP. The M1 heat sink has no
+  secondary inventory, so a stopped loop's capacity goes at once. At 30 %/min, the excess heat raises the core inlet
+  past 405 °C before the power gets down to what two loops can carry.
+
+**Spec.** §9.5 gives the runback table. §9.4 gives flow auto's 10 s filter as a stated weakness, and says a large
+enough step under flow auto trips the plant on P/Q. The IHX header records the missing secondary inventory as an
+M1 limitation.
+
+**Options.**
+- **A. Flow auto holds its speed demand while a runback runs,** the way rod auto stands down (D-035). This is what
+  saves RB-2 in the numbers above.
+- **B. A faster first stage.** RB-2 drives in at full speed until P/Q is back under its alarm, and then follows the
+  table rate. This departs from §9.5's rate column.
+- **C. For RB-1, the secondary loops' own model:** their inventory and pump coast-down, so a lost loop's capacity
+  goes over the loops' transit time rather than at once. That is the IHX stand-in's documented limitation, and the
+  runback is only as good as the heat sink it runs against.
+
+**Recommendation.** A now, and C when the secondary loops are built. Keep the table rates.

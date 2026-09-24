@@ -30,6 +30,17 @@
 	thermocouple, D-025's relative noise for the power range, the Poisson σ = √(R/τ) for the counting channels. A row
 	whose signal carries no modelled noise cannot chatter and has none.
 
+	**Runbacks (D-046).** §9.5 gives each runback a target and a rate, and §3.4 the mechanism: the shims drive in at
+	10 mm/s. The rate is a demand, not a rod speed. A runback ramps a power demand from the neutron power at its start
+	down to its target at its table rate, and asks for the shim drive-in (`protection.rodRunback`) only while the
+	measured power, the PR median, is above that demand, so the shims follow the ramp rather than running the core
+	down into a shutdown. The steam plant runs back alongside: IHX reads the target and rate and ramps its load the
+	same way. Rod auto stands down while a runback runs (AutoControls). The runback is complete once the demand has
+	reached the target and the measured power is at or below the target plus one PR channel's D-025 noise there; rod
+	auto, if it was in auto, then takes over at the new load. The pump and loop rows start their runback on the
+	alarm's rising edge, so a runback that has been cleared or has finished does not restart until the trigger has
+	reset and come back. RB-3's target, "bypass-limited", is not a number yet, so RB-3 is refused (M3).
+
 	**First-out.** The first monitor to reach its trip level latches, and stays latched through the reset, because
 	the question after a trip is always which signal went first. Later trips are recorded but do not overwrite it.
 
@@ -68,6 +79,7 @@ local Protection = System.extend({
 		"primary.pumpSpeed_pct",
 		"ihx.loopsRunning",
 		"core.power_pctFP",
+		"detectors.prMean_pctFP",
 		"program.mode",
 		"site.seismic_g",
 		"electrical.boards11kV",
@@ -322,6 +334,7 @@ local function buildMonitors(cfg: any): { any }
 				return single(if running then 3 - running else 0)
 			end,
 			vote = 1, inclusive = true, alarm = pss.primaryPumpsLost.runback, trip = pss.primaryPumpsLost.trip,
+			runback = "RB2", -- §9.5's "alarm or first action" column
 		},
 		{
 			id = "LOOPS", label = "Secondary loops lost", system = "PSS", sense = "above",
@@ -330,6 +343,7 @@ local function buildMonitors(cfg: any): { any }
 				return single(if running then 3 - running else 0)
 			end,
 			vote = 1, inclusive = true, alarm = pss.secondaryLoopsLost.runback, trip = pss.secondaryLoopsLost.trip,
+			runback = "RB1",
 		},
 		{
 			id = "SEISMIC", label = "Seismic", system = "PSS", sense = "above",
@@ -392,9 +406,11 @@ function Protection.init(self: any, ctx: any)
 	self.monitors = buildMonitors(cfg)
 	self.state = {}
 	for _, m in self.monitors do
-		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0 }
+		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0, wasAlarm = false }
 	end
 	self.power = 0
+	self.measured = 0
+	self.prNoise = cfg.Instruments.noise.powerRangeRelative -- a runback ends within one PR channel's noise (D-046)
 	self.mode = 1
 	self.tripped = {}
 	self.firstOut = ""
@@ -460,8 +476,8 @@ function Protection.fire(self: any, id: string, label: string, system: string, a
 end
 
 --[[
-	Start a runback (§9.5). A more severe one replaces a milder one; the same one twice does nothing. RB-1 also
-	drives the shim banks in at 10 mm/s, which is why it carries `driveIn`.
+	Start a runback (§9.5, D-046). A more severe one replaces a milder one; the same one twice does nothing. Its power
+	demand starts at the measured neutron power, and `driveIn` is set each tick while the power is above it.
 ]]
 function Protection.startRunback(self: any, id: string, actor: Actor?)
 	local spec = self.cfg.runbacks[id]
@@ -476,7 +492,8 @@ function Protection.startRunback(self: any, id: string, actor: Actor?)
 		id = id,
 		target = spec.target_pctFP,
 		rate = spec.rate_pctpmin,
-		driveIn = spec.shimDriveIn_mmps ~= nil,
+		demand = self.measured,
+		driveIn = false,
 	}
 	if self.log then
 		self.log:record("runback", actor, id, spec.trigger, `to {spec.target_pctFP} %FP at {spec.rate_pctpmin} %/min`)
@@ -492,9 +509,33 @@ function Protection.startRunback(self: any, id: string, actor: Actor?)
 	return true
 end
 
+--[[
+	One tick of a running runback (D-046): ramp the demand toward the target at the table rate, ask for the shim
+	drive-in while the measured power is above the demand, and finish once the demand is at the target and the power
+	is within one PR channel's noise of it.
+]]
+function Protection.followRunback(self: any, dt: number)
+	local rb = self.runback
+	if rb == nil then
+		return
+	end
+	if rb.demand > rb.target then
+		rb.demand = math.max(rb.target, rb.demand - rb.rate / 60 * dt)
+	end
+	local measured = self.measured
+	rb.driveIn = measured > rb.demand
+	if rb.demand <= rb.target and measured <= rb.target * (1 + self.prNoise) then
+		if self.log then
+			self.log:record("runback", nil, rb.id, string.format("%.1f %%FP", measured), "complete")
+		end
+		self.runback = nil
+	end
+end
+
 function Protection.step(self: any, dt: number)
 	local port = self.port
 	self.power = port:read("core.power_pctFP") or 0
+	self.measured = port:read("detectors.prMean_pctFP") or self.power -- the neutron power a runback follows (D-046)
 	-- D-056: an MCR trip button's press counts toward the trip only within the window
 	self.elapsed += dt
 	for button, at in self.pressed do
@@ -574,13 +615,15 @@ function Protection.step(self: any, dt: number)
 			end
 		end
 
-		-- §9.5's "alarm or first action" column is a runback for the pump and loop rows
-		if m.id == "PUMPS" and st.alarm then
-			self:startRunback("RB2")
-		elseif m.id == "LOOPS" and st.alarm then
-			self:startRunback("RB1")
+		-- §9.5's "alarm or first action" column is a runback for the pump and loop rows. It starts on the alarm's
+		-- rising edge, so one that has been cleared or has finished waits for the trigger to reset and come back.
+		if m.runback and st.alarm and not st.wasAlarm then
+			self:startRunback(m.runback)
 		end
+		st.wasAlarm = st.alarm
 	end
+
+	self:followRunback(dt)
 
 	-- §9.5's other rod withdrawal blocks, which are conditions rather than measured signals
 	--[[
