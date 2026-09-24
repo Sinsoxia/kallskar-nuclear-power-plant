@@ -820,3 +820,60 @@ IFP tallies give Λ = 4.56 × 10⁻⁷ s for the equilibrium BOC core, and 4.53 
 target is 4.0 × 10⁻⁷ ± 5 %. Lowering the Pu content for F39 would lengthen Λ slightly further. The point-kinetics
 facade uses §3.1's value today (D-031), and the 3D model will compute its own from the shape. **For Aqua:** accept
 the computed Λ once XSData lands, or keep §3.1's 4.0 × 10⁻⁷ as a tuning value (†) and record the difference.
+
+## D-046 A runback follows a power demand at its table rate, driven by the shims (review H5) — Proposed
+§9.5 gives each runback a target and a rate: RB-1 64 %FP at 30 %/min, RB-2 60 %FP at 60 %/min, RB-3
+bypass-limited at 20 %/min. §3.4 gives the mechanism: the shims drive in at 10 mm/s on a runback. The rate is a
+demand, not a rod speed. At 10 mm/s, eighteen shims insert up to about 108 pcm/s at mid-stroke (5,400 pcm over
+1,000 mm, peak differential worth twice the average). The steepest runback, 60 %/min, needs about 8.4 pcm/s, which
+is §3.3's 844 pcm power defect spread over 100 %FP. So a drive-in with nothing to follow overshoots into a shutdown,
+which is the defect H5 found. **Decision:**
+- **Start:** a runback starts on its trigger's rising edge. Once it is cleared or complete, it does not restart
+  until the trigger has reset and come back.
+- **Demand:** it ramps a power demand from the neutron power at its start down to its target, at its table rate.
+- **Actuator:** the shim banks drive in at §3.4's 10 mm/s while the measured power (the PR median,
+  `detectors.prMean_pctFP`) is above the demand, and hold otherwise.
+- **Rod auto:** stands down during the runback (D-035 is unchanged).
+- **Heat sink:** the IHX load ramps to the same target at the same rate, so the M1 stand-in for the turbines runs
+  back with the reactor. Flow auto follows §9.2 as usual; that is RB-1's "plus flow program".
+- **End:** the runback is complete once the demand has reached the target and the measured power is at or below the
+  target plus one PR channel's D-025 noise at that power. It is logged, and rod auto, if it was in auto, takes over
+  at the new load.
+- **RB-3:** stays refused until turbines give its target a number (M3).
+
+## D-047 The IQS shape step works on a copy of the shape (review M8) — Proposed
+A time-sliced shape step that sweeps `psi` in place lets the fast ticks between slices compute ρ from a half-swept,
+un-normalised shape. **Decision:**
+- **Copy:** the shape step iterates on a working copy, allocated once, and swaps it in only when a step converges.
+  Ticks use the last complete shape until then. That is what §14.2's "the amplitude keeps power moving" needs.
+- **Allocations:** the shape step's other work arrays are also allocated once (the rest of L9).
+- **Assembly:** the assembly is sliced too, since on its own it overruns the 4 ms slice (DECISIONS_NEEDED, 899086a).
+This stays latent until IQS replaces the point-kinetics facade (D-031), and is done then.
+
+## D-048 Detectors reads the core's power fresh (review L4) — Proposed
+Detectors declared `core.*` as lagged although no cycle requires it. It runs first in the lane, so every neutron trip
+reached the rods a tick late, at t + 0.2 s. That is about 24 % more overshoot on the 0.47 s period of §3.4's
+all-RR-out case. A fission chamber answers at neutron speed; the only delays the plant models are D-025's filters.
+**Decision:** Detectors reads `core.power_pctFP` and `core.k` as ordinary reads, so the trips act at t + 0.1 s. The
+Registry puts Core ahead of Detectors, and that makes no cycle. Lagged reads keep L5's meaning ("last tick's or this
+tick's, and the code must be right either way"); no snapshot of lagged channels is added.
+
+## D-049 Test tolerances take the bases the review derived (review L13) — Proposed
+Every tolerance CODE_REVIEW.md L13 lists takes the value its table derives, with the derivation in a comment:
+- **CoreSpec's D-030 floor:** the prompt drop and the inhour decay at −3,826 pcm.
+- **Subcritical multiplication:** read after several |T|, and bounded the same way.
+- **Zone I share:** the exact arithmetic, 1.12 × 301 / Σf.
+- **Hot-standby inlet:** the pump heat's 0.7 K.
+- **The Detectors statistics:** 3σ for the effective sample count.
+- **The period:** from the 5 s filter, plus σ/√n of the averaged ticks.
+- **The AutoControls setpoint:** 0.5 K, §9.2's whole-degree rounding.
+- **IHX's six-unit total:** 12 MW, six times the per-unit rounding.
+- **FrameworkSpec's slice overrun:** the budget plus the measured longest piece, as IQSSpec now does.
+
+## D-050 An alarm clears only once its signal is back past the setpoint by the channel's noise — Proposed
+With no deadband, an alarm chatters in and out every tick when a noisy signal sits at its setpoint. The CORE-OUT
+thermocouple does it near 565 °C (±1 K, §2.5), and PR near 105 %FP (D-025's noise). **Decision:** each §9.5 row's
+alarm comes in at its setpoint as now, and goes out only once the signal is back past the setpoint by that channel's
+own noise amplitude: 1 K for the thermocouples (§2.5), and D-025's relative noise times the setpoint for the neutron
+channels. Channels with no modelled noise keep no deadband, since they cannot chatter. The deadband comes from
+figures the plant already has; no new number is introduced.
