@@ -95,13 +95,15 @@ end
 --[[
 	Advance one step to reactivity rho1 (at the end of the step) with source q1. Returns the new n.
 	If rho1 reaches the prompt-jump limit, the state is left unchanged and a.promptCritical is set; the caller
-	hands over to a scripted prompt-critical event (§14.2).
+	hands over to a scripted prompt-critical event (§14.2). The flag describes this step, so a step back below the
+	limit clears it.
 ]]
 function Kinetics.step(a: Amplitude, dt: number, rho1: number, q1: number?): number
 	if rho1 >= a.promptLimit then
 		a.promptCritical = true
 		return a.n
 	end
+	a.promptCritical = false
 	cache(a, dt)
 	local q = q1 or 0
 	local n0 = a.n
@@ -121,9 +123,37 @@ end
 --[[
 	Asymptotic period for a constant reactivity step under the prompt-jump approximation (Λ → 0):
 	ρ = Σ βᵢ / (1 + λᵢT). Returns the root that dominates at long times: the positive root for ρ > 0; for ρ < 0 the
-	slowest-decaying root, which lies below the most negative pole −1/λ_min (f → −ρ > 0 as T → −∞, → −∞ at the pole).
+	slowest-decaying root, the one below the most negative pole −1/λ_min. At ρ = 0 exactly there is no root: a critical
+	core holds its level, so the period is infinite.
+
+	As ρ → 0⁻ that slowest root runs off toward −∞ (T ≈ Σ(βᵢ/λᵢ)/ρ), past any fixed bracket in T, and a bisection that
+	has lost its root ends at the pole, −1/λ_min. So for ρ < 0 the root is found in ω = 1/T, where it lies in
+	(−λ_min, 0) for every ρ < 0: there Σ βᵢω/(ω + λᵢ) rises from −∞ to 0.
 ]]
 function Kinetics.inhourPeriod(lambda: { number }, beta: { number }, rho: number): number
+	if rho == 0 then
+		return math.huge
+	end
+	if rho < 0 then
+		local lmin = math.huge
+		for _, l in lambda do
+			lmin = math.min(lmin, l)
+		end
+		local lo, hi = -lmin, 0
+		for _ = 1, 300 do
+			local mid = (lo + hi) / 2
+			local g = 0
+			for i = 1, #beta do
+				g += beta[i] * mid / (mid + lambda[i])
+			end
+			if g < rho then
+				lo = mid
+			else
+				hi = mid
+			end
+		end
+		return 2 / (lo + hi)
+	end
 	local function f(T: number): number
 		local s = 0
 		for i = 1, #beta do
@@ -131,16 +161,7 @@ function Kinetics.inhourPeriod(lambda: { number }, beta: { number }, rho: number
 		end
 		return s - rho
 	end
-	local lo, hi
-	if rho > 0 then
-		lo, hi = 1e-9, 1e12
-	else
-		local lmin = math.huge
-		for _, l in lambda do
-			lmin = math.min(lmin, l)
-		end
-		lo, hi = -1e12, -1 / lmin - 1e-9
-	end
+	local lo, hi = 1e-9, 1e12
 	local flo = f(lo)
 	for _ = 1, 300 do
 		local mid = (lo + hi) / 2

@@ -120,7 +120,7 @@ return {
 		local function atDesignSecondary(opts: { [string]: any }?)
 			local sys = make(opts)
 			for l = 1, 3 do
-				sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", tag = tostring(l), value = SPEC.secondaryFlowEach_kgps })
+				sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", target = tostring(l), value = SPEC.secondaryFlowEach_kgps })
 			end
 			return sys
 		end
@@ -149,7 +149,7 @@ return {
 		local sys = make()
 		sys:step(DT)
 		local before = sys:getState().units
-		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", tag = "1",
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", target = "1",
 			value = SPEC.secondaryInlet_C + 10 }).ok, "raise loop 1's inlet by 10 K")
 		sys:step(DT)
 		local after = sys:getState().units
@@ -170,7 +170,7 @@ return {
 		end)
 		sys:step(DT)
 		local before = ch:get("ihx.heatRemoved_W")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.stop", tag = "2" }).ok, "stop loop 2")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.stop", target = "2" }).ok, "stop loop 2")
 		sys:step(DT)
 		local s = sys:getState()
 		t.near(s.units[3].duty_MWt, 0, 1e-12, "2A carries nothing without secondary flow")
@@ -182,15 +182,15 @@ return {
 		t.eq(#seen, 1, "one EquipmentTrip")
 		t.eq(seen[1].system, "IHX")
 		t.eq(seen[1].running, 2)
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.stop", tag = "2" }).ok, "stopping it twice is refused")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.start", tag = "2" }).ok, "and it can be restarted")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.stop", target = "2" }).ok, "stopping it twice is refused")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.start", target = "2" }).ok, "and it can be restarted")
 	end,
 
 	["the inlet shutter strokes in §4.3's 60 s and moves its flow to the others"] = function(t)
 		local sys, ch = make()
 		sys:step(DT)
 		local before = sys:getState().units
-		t.ok(sys:applyCommand(OPERATOR, { kind = "ihx.shutter", tag = "1A", value = 0 }).ok, "close 1A")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "ihx.shutter", target = "1A", value = 0 }).ok, "close 1A")
 		run(sys, SPEC.shutterClose_s / 2)
 		local mid = sys:getState().units[1]
 		t.near(mid.shutter, 0.5 * (1 + SPEC.shutterLeakBy_frac), 1e-6, "half stroked at 30 s")
@@ -232,15 +232,15 @@ return {
 
 	["commands are validated"] = function(t)
 		local sys = make()
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "ihx.shutter", tag = "4A", value = 1 }).ok, "unknown unit")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "ihx.shutter", tag = "1A", value = 2 }).ok, "shutter is 0–1")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", tag = "4", value = 320 }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "ihx.shutter", target = "4A", value = 1 }).ok, "unknown unit")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "ihx.shutter", target = "1A", value = 2 }).ok, "shutter is 0–1")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", target = "4", value = 320 }).ok,
 			"there are only three loops")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", tag = "1", value = 90 }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", target = "1", value = 90 }).ok,
 			"below sodium's freezing point")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", tag = "1", value = -1 }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", target = "1", value = -1 }).ok,
 			"flow cannot be negative")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", tag = "1", value = 0 }).ok,
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.flow", target = "1", value = 0 }).ok,
 			"but zero is a stopped pump, which is allowed")
 	end,
 
@@ -351,6 +351,13 @@ return {
 		t.ok(not sys:applyCommand(OPERATOR, { kind = "sink.load", value = 101 }).ok, "past rated is refused")
 	end,
 
+	["the steam plant's load does not hide the persistence load hook (§14.6)"] = function(t)
+		local sys = make({ load = 40 })
+		t.eq(sys.sinkLoad, 40, "the steam plant's load is held in sinkLoad")
+		-- whether IHX keeps System's default hook or has its own, Persistence.load calls sys:load(clock, slice)
+		t.eq(type(sys.load), "function", "so IHX:load is still a method, not a number")
+	end,
+
 	["a reactor trip trips the turbines: the load goes to zero at once and stays there"] = function(t)
 		local sys, ch = make({ load = 60 })
 		run(sys, 1)
@@ -379,15 +386,15 @@ return {
 	["an override holds one loop by hand until it is handed back to the programme"] = function(t)
 		local sys = make()
 		run(sys, 0.1)
-		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", tag = "1", value = 330 }).ok, "hold loop 1 at 330 °C")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.inlet", target = "1", value = 330 }).ok, "hold loop 1 at 330 °C")
 		local s = sys:getState()
 		t.near(s.loops[1].inlet_C, 330, 1e-9, "loop 1 stays where it was put")
 		-- the other two loops try to make up what loop 1 no longer carries, and bottom out at the programme
 		t.near(s.loops[2].inlet_C, SPEC.secondaryInlet_C, 1e-9, "loop 2 is on the programme at full load")
 		t.ok(s.loops[1].overridden and not s.loops[2].overridden, "and the state says which is which")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.program", tag = "1" }).ok, "hand loop 1 back")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "loop.secondary.program", target = "1" }).ok, "hand loop 1 back")
 		t.near(sys:getState().loops[1].inlet_C, SPEC.secondaryInlet_C, 1e-9, "it rejoins the programme at once")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.program", tag = "1" }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "loop.secondary.program", target = "1" }).ok,
 			"handing back a loop that is not held is refused")
 	end,
 }

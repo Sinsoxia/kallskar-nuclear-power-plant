@@ -93,6 +93,23 @@ return {
 		t.eq(#s.inhibited, 0, "and nothing is holding a trip off")
 	end,
 
+	["the assembly outlet row refills its buffers rather than allocating every tick"] = function(t)
+		local sys, ch = make()
+		local row = nil
+		for _, m in sys.monitors do
+			if m.id == "ASSY-DEV" then
+				row = m
+			end
+		end
+		local first = row.signal(sys)
+		t.ok(first == row.signal(sys), "the deviations table is the same table, tick after tick")
+		-- a different number of outlets refills it to the new length, with nothing left over from the old one
+		ch:setExternal("fuel.assemblyOutlet_K", { 830, 840, 850 })
+		local resized = row.signal(sys)
+		t.eq(#resized, 3, "sized to the outlets it was given")
+		t.eq(resized[3] - resized[1], 20, "holding the deviations of these three outlets")
+	end,
+
 	["PR high flux trips 2-out-of-4, not 1 (§9.5, D-005)"] = function(t)
 		local sys, ch = make()
 		run(sys, 1)
@@ -183,6 +200,26 @@ return {
 		t.eq(twoCh:get("protection.scram"), "none", "Mode 2 during heatup")
 	end,
 
+	["an alarm on a row that stops being watched goes out on the annunciator"] = function(t)
+		local sys, ch, bus = make(30)
+		local states = {}
+		bus:subscribe("Alarm", function(p)
+			if p.tag == "INLET-LOW" then
+				table.insert(states, p.state)
+			end
+		end)
+		-- below §9.5's 360 °C alarm and above its 345 °C trip, in Mode 1 at 30 %FP where D-004 arms the row
+		ch:setExternal("pools.coreInlet_K", PSS.coreInlet.alarmLow_C - 5 + KEL)
+		run(sys, 1)
+		t.eq(states[#states], "in", "the low inlet alarms")
+		-- the power falls under D-004's 5 %FP arming point, and the row is no longer evaluated
+		ch:setExternal("core.power_pctFP", 2)
+		ch:setExternal("detectors.pr_pctFP", fill(4, 2))
+		run(sys, 1)
+		t.eq(states[#states], "out", "so its alarm is announced as gone, not left showing")
+		t.eq(#sys:getState().active, 0)
+	end,
+
 	["the 25 %FP low setpoint protects a startup and bypasses itself above the permissive"] = function(t)
 		local sys, ch = make(2)
 		run(sys, 1)
@@ -249,6 +286,19 @@ return {
 		t.eq(lch:get("protection.firstOut"), "LOOPS", "two lost trips")
 	end,
 
+	["a runback with no depth to run to is refused, so it cannot halt the plant later (§9.5 RB-3)"] = function(t)
+		local sys, ch = make()
+		run(sys, 1)
+		local r = sys:applyCommand(OPERATOR, { kind = "runback.start", target = "RB3" })
+		t.ok(not r.ok, "RB-3's bypass-limited target is not a power the plant can run to")
+		t.eq(ch:get("protection.runback"), "", "so no runback is running")
+		-- a pump lost afterwards starts RB-2 as usual, instead of failing on RB-3's missing target
+		ch:setExternal("primary.pumpsRunning", 2)
+		local ok, err = pcall(run, sys, 1)
+		t.ok(ok, `the protection step survives: {tostring(err)}`)
+		t.eq(ch:get("protection.runback"), "RB2")
+	end,
+
 	["power to flow: alarm and rod block at 1.05, trip at 1.12, armed above 5 %FP"] = function(t)
 		local sys, ch = make()
 		ch:setExternal("primary.flowFraction", 1 / (PSS.powerToFlow.alarm * 1.001))
@@ -293,30 +343,30 @@ return {
 	["manual trip needs two buttons in the control room, or one in the backup"] = function(t)
 		local sys, ch = make()
 		run(sys, 1)
-		local first = sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", tag = "MCR" })
+		local first = sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "MCR" })
 		t.ok(first.ok)
 		t.eq(ch:get("protection.scram"), "none", "§9.5: one button is not a trip")
-		sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", tag = "MCR" })
+		sys:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "MCR" })
 		run(sys, 0.1)
 		t.eq(ch:get("protection.firstOut"), "MANUAL", "two are")
 
 		local backup, bch = make()
-		backup:applyCommand(OPERATOR, { kind = "reactor.trip.manual", tag = "BCR" })
+		backup:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "BCR" })
 		run(backup, 0.1)
 		t.eq(bch:get("protection.scram"), "PSS", "one button in the backup control room is enough")
 	end,
 
 	["a bypassed signal cannot trip, and the bypass is logged"] = function(t)
 		local sys, ch = make()
-		t.ok(sys:applyCommand(OPERATOR, { kind = "pss.bypass", tag = "COVER-GAS", value = 1 }).ok)
+		t.ok(sys:applyCommand(OPERATOR, { kind = "pss.bypass", target = "COVER-GAS", value = 1 }).ok)
 		ch:setExternal("pools.coverGas_MPa", PSS.coverGas.trip_MPa * 1.2)
 		run(sys, 1)
 		t.eq(ch:get("protection.scram"), "none", "bypassed")
 		t.ok(sys:getState().monitors["COVER-GAS"].alarm, "but the alarm still comes in, so it is visible")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "pss.bypass", tag = "COVER-GAS", value = 0 }).ok)
+		t.ok(sys:applyCommand(OPERATOR, { kind = "pss.bypass", target = "COVER-GAS", value = 0 }).ok)
 		run(sys, 1)
 		t.eq(ch:get("protection.firstOut"), "COVER-GAS", "and restoring it trips immediately")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "pss.bypass", tag = "NOT-A-SIGNAL", value = 1 }).ok)
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "pss.bypass", target = "NOT-A-SIGNAL", value = 1 }).ok)
 	end,
 
 	["assembly outlet deviation needs two channels, not one (§9.5)"] = function(t)
@@ -331,6 +381,17 @@ return {
 		ch:setExternal("fuel.assemblyOutlet_K", { normal + trip + 5, normal + trip + 5, normal, normal, normal })
 		run(sys, 1)
 		t.eq(ch:get("protection.firstOut"), "ASSY-DEV", "two is")
+	end,
+
+	["assembly outlets are compared with their median, so the majority is never the deviation (§9.5)"] = function(t)
+		local sys, ch = make()
+		local normal = 832
+		local step = PSS.assemblyOutletDeviation.trip_K + 5
+		-- three of five read the same, two read cooler: the three are what the core is doing, not a blockage
+		ch:setExternal("fuel.assemblyOutlet_K", { normal, normal, normal + step, normal + step, normal + step })
+		run(sys, 1)
+		t.eq(ch:get("protection.scram"), "none", "the majority reading is the expected outlet")
+		t.ok(not sys:getState().monitors["ASSY-DEV"].alarm, "and nothing deviates above it")
 	end,
 
 	["every §9.5 trip row exists, and the ones M1 cannot drive yet sit at safe values"] = function(t)

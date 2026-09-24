@@ -25,6 +25,7 @@ local Commands = require(Framework:WaitForChild("Commands"))
 local Faults = require(Framework:WaitForChild("Faults"))
 local Replicator = require(Framework:WaitForChild("Replicator"))
 local Persistence = require(Framework:WaitForChild("Persistence"))
+local PlantReset = require(Framework:WaitForChild("PlantReset"))
 local SystemClasses = require(Root:WaitForChild("Systems")) :: { any }
 
 local isStudio = RunService:IsStudio()
@@ -95,11 +96,16 @@ if not okLoad then
 	log:record("load", nil, nil, tostring(loadResult), "error")
 end
 
-bus:subscribe("PlantReset", function()
-	scheduler.clock.sim, scheduler.clock.grid, scheduler.clock.slow, scheduler.clock.fastTicks = 0, 0, 0, 0
-	registry:initAll(ctx)
-	log:record("plant.reinitialised", nil, nil, "hot standby, beginning of cycle", "ok")
-end)
+-- §14.6: hot standby at beginning of cycle with every component as new, and the framework's own state with it
+PlantReset.new({
+	registry = registry,
+	channels = channels,
+	scheduler = scheduler,
+	faults = faults,
+	log = log,
+	bus = bus,
+	ctx = ctx,
+})
 
 -- Network --------------------------------------------------------------------------------------------------------
 local remotes = Remotes.server()
@@ -127,7 +133,9 @@ for _, player in Players:GetPlayers() do
 	replicator:sendManifestTo(player)
 end
 Players.PlayerRemoving:Connect(function(player)
-	log:record("player.left", { kind = "player", name = player.Name, userId = player.UserId }, nil, nil, "info")
+	local actor = { kind = "player" :: any, name = player.Name, userId = player.UserId }
+	commands:forget(actor)
+	log:record("player.left", actor, nil, nil, "info")
 end)
 
 --[[

@@ -97,21 +97,21 @@ return {
 
 	["a single rod moves at its §3.4 speed, and only one thing moves at a time"] = function(t)
 		local sys = make()
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 500 }).ok, "withdraw RR1")
-		local second = sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "SMA1", value = 100 })
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 500 }).ok, "withdraw RR1")
+		local second = sys:applyCommand(OPERATOR, { kind = "rod.move", target = "SMA1", value = 100 })
 		t.ok(not second.ok, "§3.4: one rod or one bank at a time")
 		run(sys, 10)
 		t.near(find(sys, "RR1").position_mm, 10 * RODS.regulating.speed_mmps, 1e-9, "5 mm/s for ten seconds")
 		run(sys, 90)
 		t.near(find(sys, "RR1").position_mm, 500, 1e-9, "arrives at the demand")
 		t.eq(sys:getState().selection, nil, "and releases the selection")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "SMA1", value = 100 }).ok, "freeing the next move")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "SMA1", value = 100 }).ok, "freeing the next move")
 	end,
 
 	["a bank moves at its own slower speed (§3.4)"] = function(t)
 		for bank, speed in { A = RODS.shim.speedBankA_mmps, B = RODS.shim.speedBank_mmps, C = RODS.shim.speedBank_mmps } do
 			local sys = make()
-			t.ok(sys:applyCommand(OPERATOR, { kind = "rod.bank", tag = bank, value = 1000 }).ok, `withdraw bank {bank}`)
+			t.ok(sys:applyCommand(OPERATOR, { kind = "rod.bank", target = bank, value = 1000 }).ok, `withdraw bank {bank}`)
 			run(sys, 10)
 			local moved = 0
 			for _, d in sys:getState().drives do
@@ -128,7 +128,7 @@ return {
 		-- mid-stroke is where differential worth peaks: d = 0.5 is position 1,100 − 500 = 600 mm
 		local sys, ch = make()
 		place(sys, "SM_A", TRAVEL - 0.5 * ACTIVE)
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.bank", tag = "A", value = TRAVEL }).ok, "withdraw bank A")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.bank", target = "A", value = TRAVEL }).ok, "withdraw bank A")
 		local worst = 0
 		for _ = 1, 100 do
 			sys:step(DT)
@@ -145,7 +145,7 @@ return {
 		local sys, ch = make()
 		place(sys, "SM_A", TRAVEL - 0.5 * ACTIVE)
 		sys.banks.A.speed = 2 -- far above §3.4's 0.8 mm/s
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.bank", tag = "A", value = TRAVEL }).ok, "withdraw bank A")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.bank", target = "A", value = TRAVEL }).ok, "withdraw bank A")
 		local before = find(sys, "SMA1").position_mm
 		local worst = 0
 		for _ = 1, 20 do
@@ -160,27 +160,27 @@ return {
 
 	["a rod withdrawal block refuses withdrawal and stops one in progress (§9.5)"] = function(t)
 		local sys, ch = make()
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 800 }).ok, "start withdrawing")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 800 }).ok, "start withdrawing")
 		run(sys, 5)
 		local caught = find(sys, "RR1").position_mm
 		ch:setExternal("protection.rodWithdrawalBlock", true)
 		run(sys, 5)
 		t.near(find(sys, "RR1").position_mm, caught, 1e-9, "stopped where the block found it")
 		t.eq(sys:getState().selection, nil, "and the selection is dropped")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR2", value = 500 }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR2", value = 500 }).ok,
 			"no new withdrawal while blocked")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 0 }).ok,
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 0 }).ok,
 			"but insertion is never blocked")
 	end,
 
 	["the SSRs withdraw only (§3.4)"] = function(t)
 		local sys = make()
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "SSR1", value = 500 }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", target = "SSR1", value = 500 }).ok,
 			"they cannot be driven in")
 		local ssr = find(sys, "SSR1")
 		ssr.position_mm = 600
 		ssr.demand_mm = 600
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "SSR1", value = 900 }).ok,
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "SSR1", value = 900 }).ok,
 			"but they can be withdrawn")
 	end,
 
@@ -218,13 +218,13 @@ return {
 		local sys = make()
 		place(sys, "RR", TRAVEL)
 		sys:scram("PSS", "test")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 500 }).ok, "no withdrawal")
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 500 }).ok, "no withdrawal")
 		local early = sys:applyCommand(OPERATOR, { kind = "rod.reset" })
 		t.ok(not early.ok, "reset is refused while rods are still out")
 		run(sys, 2)
 		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.reset" }).ok, "allowed once they are all in")
 		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.reset" }).ok, "and not twice")
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 100 }).ok, "rods move again")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 100 }).ok, "rods move again")
 	end,
 
 	["RD-STUCK: the most reactive rod stuck is §3.4's shutdown margin case"] = function(t)
@@ -256,13 +256,13 @@ return {
 				drive.demand_mm = 800
 			end
 		end
-		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 1000 }).ok, "an operator move")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 1000 }).ok, "an operator move")
 		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.runback", value = 1 }).ok, "then a runback")
 		run(sys, 10)
 		t.near(find(sys, "SMA1").position_mm, 800 - 10 * RODS.shim.speedRunbackDriveIn_mmps, 1e-9,
 			"§3.4: shim drives in at 10 mm/s")
 		t.near(find(sys, "RR1").position_mm, 800, 1e-9, "the regulating rods are not part of a runback")
-		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 900 }).ok,
+		t.ok(not sys:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 900 }).ok,
 			"and the operator cannot move rods during one")
 		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.runback", value = 0 }).ok, "release it")
 		run(sys, 10)

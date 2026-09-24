@@ -18,6 +18,7 @@ local EventLog = require(Framework:WaitForChild("EventLog")) :: any
 local Commands = require(Framework:WaitForChild("Commands")) :: any
 local Faults = require(Framework:WaitForChild("Faults")) :: any
 local Persistence = require(Framework:WaitForChild("Persistence")) :: any
+local PlantReset = require(Framework:WaitForChild("PlantReset")) :: any
 
 local SERVER: any = { kind = "auto", name = "test-auto", userId = 0 }
 
@@ -275,6 +276,142 @@ return {
 		t.eq(p.systems[1].steps, stepsBefore, "nothing runs after a halt")
 	end,
 
+	["an owner reset restarts a halted plant, forgets its faults and restores its inputs (§14.6)"] = function(t)
+		local Flaky = System.extend({ name = "Flaky", lane = "fast", reads = { "program.mode" }, writes = {} })
+		function Flaky:init()
+			self.failing = false
+		end
+		function Flaky:step()
+			if self.failing then
+				error("sensor exploded")
+			end
+		end
+		Flaky.faults = {
+			{
+				id = "FLAKY",
+				label = "Flaky sensor",
+				cost = 1,
+				arm = function(self)
+					self.failing = true
+				end,
+			},
+		}
+		local p = plant({ Flaky })
+		p.channels:declareExternal("program.mode", 3)
+		resolveAndInit(p)
+		local faults = Faults.new(p.registry, p.log, p.bus)
+		t.ok(faults:arm("FLAKY", nil, SERVER).ok)
+		p.channels:setExternal("program.mode", 1) -- as the dev preset does when it seats the plant at power
+		t.eq(p.scheduler:stepFast(), false, "the fault halts the plant")
+
+		-- the handler Main builds, answering the event Persistence publishes when the countdown ends
+		PlantReset.new({
+			registry = p.registry,
+			channels = p.channels,
+			scheduler = p.scheduler,
+			faults = faults,
+			log = p.log,
+			bus = p.bus,
+			ctx = { config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true },
+		})
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+
+		t.eq(p.scheduler.halted, nil, "no longer halted")
+		t.eq(p.scheduler.clock.sim, 0, "the clocks start again from zero")
+		t.ok(not faults:isActive("FLAKY"), "no fault stays marked active on a plant that was re-initialised")
+		t.eq(p.channels:get("program.mode"), 3, "the external inputs are back at their boot values")
+		t.ok(p.scheduler:stepFast(), "and the plant runs")
+		t.ok(faults:arm("FLAKY", nil, SERVER).ok, "the fault can be armed again")
+	end,
+
+	["an owner reset whose init fails leaves the plant halted and says why (§14.6)"] = function(t)
+		local Sound = makeClass("Sound", "fast", {}, { "s.n" })
+		local Fragile = makeClass("Fragile", "fast", {}, { "f.n" })
+		local broken = false
+		local fragileInit = Fragile.init
+		function Fragile:init(ctx)
+			if broken then
+				error("calibration table missing")
+			end
+			fragileInit(self, ctx)
+		end
+		local p = plant({ Sound, Fragile })
+		resolveAndInit(p)
+		local faults = Faults.new(p.registry, p.log, p.bus)
+		local reset = PlantReset.new({
+			registry = p.registry,
+			channels = p.channels,
+			scheduler = p.scheduler,
+			faults = faults,
+			log = p.log,
+			bus = p.bus,
+			ctx = { config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true },
+		})
+		t.ok(p.scheduler:stepFast(), "the plant runs before the reset")
+
+		broken = true
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+		local halted = p.scheduler.halted
+		t.ok(halted ~= nil and string.find(halted, "calibration table missing", 1, true) ~= nil,
+			`the plant stays halted, with the reason ({halted})`)
+		local steps = p.systems[1].steps
+		t.eq(p.scheduler:stepFast(), false, "a half-initialised plant does not run")
+		t.eq(p.systems[1].steps, steps, "not even the systems that did initialise")
+		local last = p.log:latest(1)[1]
+		t.eq(last.kind, "plant.reinitialised")
+		t.eq(last.result, "error")
+		t.ok(string.find(last.detail or "", "calibration table missing", 1, true) ~= nil, "the log says why")
+
+		-- once the fault is put right, another reset brings the plant back
+		broken = false
+		t.ok(reset:reinitialise(), "a reset that initialises every system")
+		t.eq(p.scheduler.halted, nil, "clears the halt")
+		t.ok(p.scheduler:stepFast(), "and the plant runs")
+	end,
+
+	["an owner reset announces every alarm still in as out (§14.6)"] = function(t)
+		local Panel = makeClass("Panel", "fast", {}, { "a.n" })
+		local p = plant({ Panel })
+		resolveAndInit(p)
+		PlantReset.new({
+			registry = p.registry,
+			channels = p.channels,
+			scheduler = p.scheduler,
+			faults = Faults.new(p.registry, p.log, p.bus),
+			log = p.log,
+			bus = p.bus,
+			ctx = { config = Config, bus = p.bus, log = p.log, clock = p.scheduler.clock, isStudio = true },
+		})
+		local lit = {} -- the annunciator's view: tag -> in
+		local outs = {}
+		p.bus:subscribe("Alarm", function(a)
+			if a.state == "in" then
+				lit[a.tag] = true
+			elseif a.state == "out" then
+				lit[a.tag] = nil
+				table.insert(outs, a)
+			end
+		end)
+		-- three alarms come in; one goes out again and one is acknowledged, which leaves it in
+		p.bus:publish("Alarm", { tag = "INLET-LOW", priority = 2, state = "in", text = "Core inlet low" })
+		p.bus:publish("Alarm", { tag = "AUTO-ROD-BAND", priority = 2, state = "in", text = "Rods at band edge" })
+		p.bus:publish("Alarm", { tag = "CORE-PROMPT", priority = 1, state = "in", text = "Prompt critical" })
+		p.bus:publish("Alarm", { tag = "CORE-PROMPT", priority = 1, state = "out", text = "Prompt critical" })
+		p.bus:publish("Alarm", { tag = "INLET-LOW", priority = 2, state = "ack", text = "Core inlet low" })
+		table.clear(outs)
+
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+		t.eq(next(lit), nil, "nothing is left lit on a plant that starts again as new")
+		t.eq(#outs, 2, "one out for each alarm that was in, and none for one already out")
+		for _, a in outs do
+			t.ok(a.tag == "INLET-LOW" or a.tag == "AUTO-ROD-BAND", `out for {a.tag}`)
+			t.ok(a.priority == 2 and type(a.text) == "string", "with the priority and text it came in with")
+		end
+		-- a second reset has nothing more to clear
+		p.bus:publish("PlantReset", { requestedBy = "Owner" })
+		t.eq(#outs, 2, "and a second reset announces nothing again")
+	end,
+
 	["scheduler limits catch-up and counts dropped time"] = function(t)
 		local Fa = makeClass("Catch", "fast", {}, { "c.n" })
 		local p = plant({ Fa })
@@ -403,6 +540,34 @@ return {
 		t.ok(cmd ~= raw and cmd.args ~= raw.args)
 	end,
 
+	["a player's rate-limit bucket goes when they leave, with any refused count noted"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local cmds = Commands.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			now = function()
+				return 0
+			end,
+		})
+		local leaver = { kind = "player", name = "Leaver", userId = 77, player = {} :: any }
+		-- malformed through the burst, then throttled: all refused before routing, the first noted at once and the
+		-- rest counted
+		local sent = Config.Engineering.commandBurst + 5
+		for _ = 1, sent do
+			cmds:submit(leaver, {})
+		end
+		t.ok(cmds.buckets[77] ~= nil, "a bucket while they play")
+		cmds:forget(leaver)
+		t.eq(cmds.buckets[77], nil, "none once they have gone")
+		local last = p.log:latest(1)[1]
+		t.eq(last.kind, "command.refused")
+		t.eq(tonumber(string.match(last.detail or "", "^(%d+)")), sent - 1, `the ones still counted are noted ({last.detail})`)
+		cmds:forget(leaver) -- a second PlayerRemoving for the same player is harmless
+	end,
+
 	["commands route, check access and log every attempt (§10.7)"] = function(t)
 		local Rod = System.extend({ name = "RodDesk", lane = "fast", reads = {}, writes = {} })
 		Rod.commands = {
@@ -488,6 +653,69 @@ return {
 		t.ok(cmds:submit(actor, { kind = "rod.move", panel = "MCR-RO-1" }).ok, "tokens refill over time")
 	end,
 
+	["a sustained flood writes one note per window for refusals, and the rate limit bounds the rest (§10.7)"] = function(t)
+		-- one desk system, so part of the flood is routed: a control attempt refused at the panel is a §10.7 record
+		local Rod = System.extend({ name = "RodDesk", lane = "fast", reads = {}, writes = {} })
+		Rod.commands = {
+			["rod.move"] = function()
+				return { ok = true }
+			end,
+		}
+		function Rod:step() end
+		local p = plant({ Rod })
+		resolveAndInit(p)
+		local now = 0
+		-- no panelPosition service, so every panel is unknown and every routed command is refused at the panel
+		local cmds = Commands.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			now = function()
+				return now
+			end,
+		})
+		local flooder = { kind = "player", name = "Flooder", userId = 66, player = {} :: any }
+		local E = Config.Engineering
+		local window = E.commandRefusalNote_s
+		local seconds = 60
+
+		-- a minute of refusals that are not control actions, a thousand a second: malformed, unhandled, rich text
+		local before = p.log.seq
+		local sent = 0
+		for step = 0, seconds * 10 - 1 do
+			now = step / 10
+			for i = 1, 100 do
+				local raw = if i % 3 == 0 then {} elseif i % 3 == 1 then { kind = "reactor.explode" } else { kind = "<b>tripped by Tester</b>" }
+				cmds:submit(flooder, raw)
+				sent += 1
+			end
+		end
+		local written = p.log.seq - before
+		local bound = math.floor(seconds / window) + 1 -- a note at the first refusal, then at most one per window
+		t.ok(written <= bound, `{sent} refusals over {seconds} s wrote {written} records, not at most {bound}`)
+		cmds:forget(flooder) -- the refusals of the last, unfinished window are noted as the player leaves
+		local counted = 0
+		for _, e in p.log:latest(p.log.seq - before) do
+			t.eq(e.kind, "command.refused", "notes only: no record per refusal, and no client text")
+			counted += tonumber(string.match(e.detail or "", "^(%d+)")) or 0
+		end
+		t.eq(counted, sent, "and the notes account for every refused command")
+
+		-- a minute of control attempts refused at the panel: each one is a control attempt, so each is logged, and
+		-- the rate limit is what bounds them (plus the notes for the commands it throttles)
+		before = p.log.seq
+		for step = 0, seconds * 10 - 1 do
+			now = 1000 + step / 10
+			for _ = 1, 100 do
+				cmds:submit(flooder, { kind = "rod.move", panel = "NOWHERE" })
+			end
+		end
+		written = p.log.seq - before
+		bound = E.commandBurst + E.commandRate_perSecond * seconds + math.floor(seconds / window) + 1
+		t.ok(written <= bound, `a minute of routed commands wrote {written} records, not at most {bound}`)
+	end,
+
 	["critical access policy when the playtime lookup fails"] = function(t)
 		local required = Config.Access.criticalMinimumPlaytime_h
 		t.eq(Commands.criticalAccess(required, required), true)
@@ -549,6 +777,37 @@ return {
 		t.ok(not p.systems[1].tripped)
 		t.ok(not faults:clear("S-07").ok, "not active")
 		t.ok(not faults:arm("S-99").ok, "unknown id")
+	end,
+
+	["a fault clears the target it was armed on, not a default (§13.1)"] = function(t)
+		-- the shape of RD-STUCK, IHX-SHUT, NI-FAIL and PROT-CHANNEL: params name the target, with a default
+		local Rack = System.extend({ name = "Rack", lane = "fast", reads = {}, writes = {} })
+		function Rack:step() end
+		function Rack:init()
+			self.failed = {}
+		end
+		Rack.faults = {
+			{
+				id = "RACK-FAIL",
+				label = "Channel failure",
+				cost = 1,
+				arm = function(self, params)
+					self.failed[(params and params.channel) or "A"] = true
+				end,
+				clear = function(self, params)
+					self.failed[(params and params.channel) or "A"] = nil
+				end,
+			},
+		}
+		local p = plant({ Rack })
+		resolveAndInit(p)
+		local faults = Faults.new(p.registry, p.log, p.bus)
+		local rack = p.systems[1]
+		t.ok(faults:arm("RACK-FAIL", { channel = "B" }, SERVER).ok)
+		t.ok(rack.failed.B, "armed on channel B")
+		t.ok(faults:clear("RACK-FAIL", SERVER).ok)
+		t.eq(rack.failed.B, nil, "clearing the fault restores channel B")
+		t.ok(not faults:isActive("RACK-FAIL"))
 	end,
 
 	-- Packets and tags ----------------------------------------------------------------------------------------
@@ -619,8 +878,9 @@ return {
 		function Keeper:save()
 			return { burnup = self.burnup }
 		end
-		function Keeper:load(data)
+		function Keeper:load(data, version)
 			self.burnup = data.burnup
+			self.loadedAs = version
 		end
 		local p = plant({ Keeper })
 		resolveAndInit(p)
@@ -653,7 +913,14 @@ return {
 		t.eq(persist(q):load(), "loaded")
 		t.eq(q.systems[1].burnup, 42.5, "system slice restored")
 		t.eq(q.scheduler.clock.sim, 1234, "clock restored")
-		t.ok(q.log.seq >= 1, "event log restored")
+		-- load() records its own "load" entry, so a sequence number alone would pass with nothing imported
+		local restored = false
+		for _, e in q.log:latest() do
+			if e.kind == "before-save" then
+				restored = true
+			end
+		end
+		t.ok(restored, "event log restored")
 
 		-- a version-1 save migrated to a hypothetical version 3
 		local migrated = plant({ Keeper })
@@ -673,6 +940,7 @@ return {
 		})
 		t.eq(pers3:load(), "loaded")
 		t.eq(migrated.systems[1].burnup, (42.5 + 1) * 2, "migrations applied in order")
+		t.eq(migrated.systems[1].loadedAs, 3, "and the system is told the version its slice is now in, not the old one")
 		local gap = persist(plant({}), { currentVersion = 3, migrations = {} })
 		t.throws(function()
 			gap:load()
@@ -682,6 +950,73 @@ return {
 		local public = persist(plant({}), { mode = "public" })
 		t.eq(public:load(), "fresh")
 		t.eq(public:save(), false)
+	end,
+
+	["a plant that could not be loaded is never overwritten (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local writes = 0
+		local stored: any = { version = Persistence.CURRENT_VERSION + 1, systems = {} } -- written by a newer server
+		local store: any = {}
+		function store.get(_self: any, _key: string)
+			return true, stored
+		end
+		function store.set(_self: any, _key: string, value: any)
+			writes += 1
+			stored = value
+			return true, nil
+		end
+		function store.remove(_self: any, _key: string)
+			stored = nil
+			return true, nil
+		end
+		local function persist(backing: any)
+			return Persistence.new({
+				config = Config,
+				registry = p.registry,
+				log = p.log,
+				bus = p.bus,
+				clock = p.scheduler.clock,
+				store = backing,
+				mode = "private",
+				key = "plant/unreadable",
+				ownerUserId = 7,
+			})
+		end
+		local pers = persist(store)
+		t.ok(not pcall(pers.load, pers), "a save from a newer server does not load")
+		pers.sinceSave = Config.Engineering.saveInterval_s
+		pers:tick(Config.Engineering.serverFrame_s)
+		t.eq(writes, 0, "the autosave does not replace it")
+		t.ok(not (pers:save()), "nor does any other save")
+		t.eq(stored.version, Persistence.CURRENT_VERSION + 1, "the save this server could not read is still there")
+
+		-- a store that cannot be read at all at boot is the same case
+		local outage: any = {}
+		function outage.get(_self: any, _key: string)
+			return false, "DataStore outage"
+		end
+		function outage.set(_self: any, _key: string, _value: any)
+			writes += 1
+			return true, nil
+		end
+		function outage.remove(_self: any, _key: string)
+			return true, nil
+		end
+		local blind = persist(outage)
+		t.ok(not pcall(blind.load, blind), "an outage at boot does not load")
+		t.ok(not (blind:save()), "and the fresh plant is not saved over the real one")
+		t.eq(writes, 0)
+
+		-- the owner can still choose to start over, and from then on the plant saves normally
+		local owner = { kind = "player", name = "Owner", userId = 7 }
+		t.ok(pers:requestReset(owner, Config.Engineering.resetConfirmationPhrase).ok)
+		for _ = 1, Config.Access.reset.countdown_s do
+			pers:tick(1)
+		end
+		t.eq(stored, nil, "the reset cleared the old save")
+		t.ok((pers:save()), "and the new plant saves")
+		t.eq(writes, 1)
 	end,
 
 	["owner reset needs the owner, the phrase and a countdown"] = function(t)
@@ -736,5 +1071,175 @@ return {
 			pers:tick(1)
 		end
 		t.eq(resets, 1, "cancelled reset never fires")
+	end,
+
+	["an autosave is one write at a time, however many frames the write takes (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		-- SetAsync yields, and Heartbeat keeps firing while it does, each frame calling tick on a thread of its own
+		local store: any = { data = {}, inFlight = 0, most = 0, writes = 0 }
+		function store.get(self: any, key: string)
+			return true, self.data[key]
+		end
+		function store.set(self: any, key: string, value: any)
+			self.inFlight += 1
+			self.most = math.max(self.most, self.inFlight)
+			self.writes += 1
+			task.wait()
+			self.data[key] = value
+			self.inFlight -= 1
+			return true, nil
+		end
+		function store.remove(self: any, key: string)
+			self.data[key] = nil
+			return true, nil
+		end
+		local pers = Persistence.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			clock = p.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/slow",
+			ownerUserId = 7,
+		})
+		local frame = Config.Engineering.serverFrame_s
+		pers.sinceSave = Config.Engineering.saveInterval_s
+		for _ = 1, 10 do
+			task.spawn(pers.tick, pers, frame)
+		end
+		t.eq(store.writes, 1, "the frames that ran during the write started no more writes of the key")
+		local frames = 0
+		while store.inFlight > 0 and frames < 100 do
+			task.wait()
+			frames += 1
+		end
+		t.eq(store.most, 1, "never two writes of the key at once")
+		t.ok(store.data["plant/slow"] ~= nil, "and the one write landed")
+	end,
+
+	["a save in flight lands before an owner reset removes the plant, never after (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local store: any = { data = {}, inFlight = 0 }
+		function store.get(self: any, key: string)
+			return true, self.data[key]
+		end
+		function store.set(self: any, key: string, value: any)
+			self.inFlight += 1
+			task.wait()
+			self.data[key] = value
+			self.inFlight -= 1
+			return true, nil
+		end
+		function store.remove(self: any, key: string)
+			self.data[key] = nil
+			return true, nil
+		end
+		local pers = Persistence.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			clock = p.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/r2",
+			ownerUserId = 7,
+		})
+		local owner = { kind = "player", name = "Owner", userId = 7 }
+		local frame = Config.Engineering.serverFrame_s
+		local reset = false
+		p.bus:subscribe("PlantReset", function()
+			reset = true
+		end)
+		t.ok(pers:requestReset(owner, Config.Engineering.resetConfirmationPhrase).ok)
+		pers.sinceSave = Config.Engineering.saveInterval_s
+		task.spawn(pers.tick, pers, frame) -- the autosave starts writing the plant as it stands
+		t.eq(store.inFlight, 1, "a write is in flight")
+		-- the countdown runs out on the very next frame, which is not itself an autosave frame
+		pers.reset.remaining = 0
+		pers.sinceSave = 0
+		task.spawn(pers.tick, pers, frame)
+		local frames = 0
+		while (not reset or store.inFlight > 0) and frames < 100 do
+			task.wait()
+			frames += 1
+		end
+		t.eq(store.data["plant/r2"], nil, "the reset removed the plant after that write, so the old plant is gone")
+	end,
+
+	["an owner reset whose remove raises still frees the store for the next save (§14.6)"] = function(t)
+		local p = plant({})
+		resolveAndInit(p)
+		local store: any = { data = { ["plant/r3"] = { old = true } } }
+		function store.get(self: any, key: string)
+			return true, self.data[key]
+		end
+		function store.set(self: any, key: string, value: any)
+			self.data[key] = value
+			return true, nil
+		end
+		function store.remove(_self: any, _key: string)
+			error("RemoveAsync: 502 service unavailable")
+		end
+		local pers = Persistence.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			clock = p.scheduler.clock,
+			store = store,
+			mode = "private",
+			key = "plant/r3",
+			ownerUserId = 7,
+		})
+		local owner = { kind = "player", name = "Owner", userId = 7 }
+		local reset = false
+		p.bus:subscribe("PlantReset", function()
+			reset = true
+		end)
+		t.ok(pers:requestReset(owner, Config.Engineering.resetConfirmationPhrase).ok)
+		pers.reset.remaining = 0
+		local ok, err = pcall(pers.tick, pers, Config.Engineering.serverFrame_s)
+		t.ok(ok, `the failed remove does not escape the tick ({err})`)
+		t.eq(pers.saving, false, "no write is left marked in flight")
+		local failed = false
+		for _, e in p.log:latest() do
+			failed = failed or (e.kind == "plant.reset" and e.result == "error" and string.find(e.detail or "", "502", 1, true) ~= nil)
+		end
+		t.ok(failed, "the log says the stored plant could not be removed, and why")
+		t.ok(reset, "the owner's reset still happens")
+		-- the next save is not held behind a write that never finished, and it replaces the old plant
+		local done = false
+		task.spawn(function()
+			t.ok(pers:save(), "the next save goes through")
+			done = true
+		end)
+		t.ok(done, "without waiting on anything")
+		t.eq(store.data["plant/r3"].old, nil, "and the old plant is gone")
+	end,
+
+	["a DataStore call is retried with backoff, and nothing waits after the last try"] = function(t)
+		local calls, waits = 0, {}
+		local backend = setmetatable({
+			ds = {
+				GetAsync = function()
+					calls += 1
+					error("DataStore outage")
+				end,
+			},
+			retries = 2,
+			wait = function(s: number)
+				table.insert(waits, s)
+			end,
+		}, Persistence.DataStoreBackend) :: any
+		local ok = backend:get("plant/x")
+		t.eq(ok, false, "the outage is reported")
+		t.eq(calls, 2, "after every try")
+		t.eq(#waits, 1, "with a backoff between the tries and none after the last")
+		t.eq(waits[1], 2, "2 s before the second try")
 	end,
 }

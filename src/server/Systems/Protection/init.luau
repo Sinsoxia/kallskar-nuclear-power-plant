@@ -30,9 +30,10 @@
 	This system does not move the rods itself: it writes `protection.scram`, and RodDrives reads it. Splitting the
 	decision from the mechanism means a scram can be tested without drives, and drives without protection.
 
-	Signals that belong to systems M1 does not build yet — seismic, the 11 kV boards, turbine availability, the
-	reactivity balance and the hot pool level programme — are declared as external inputs and stay inert at their
-	safe values until something writes them. They are wired, not invented.
+	Signals that belong to systems M1 does not build yet — seismic, the 11 kV boards, the reactivity balance and the
+	hot pool level programme — are declared as external inputs and stay inert at their safe values until something
+	writes them. They are wired, not invented. Turbine availability is declared too (Main), but no row reads it until
+	RB-3 has a target to run to.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -65,13 +66,11 @@ local Protection = System.extend({
 		"site.seismic_g",
 		"electrical.boards11kV",
 		"core.reactivityBalance_pcm",
-		"turbine.bypassAvailable",
 		"pools.levelDeviation_m",
 	},
 	readsLagged = {
 		"rods.allPssInserted",
 		"rods.regulatingInBand",
-		"rods.selection",
 		"rods.selectionKind",
 	},
 	writes = {
@@ -219,10 +218,18 @@ local function buildMonitors(cfg: any): { any }
 				if outlets == nil or #outlets == 0 then
 					return { 0 }
 				end
-				local sorted = table.clone(outlets)
+				-- two buffers per Protection, refilled every tick: a fresh copy of the 301 outlets to sort and a fresh
+				-- deviations table would be 600 slots of garbage every fast tick
+				local n = #outlets
+				local sorted = self.assySorted
+				if #sorted ~= n then
+					table.clear(sorted)
+					table.clear(self.assyDeviations)
+				end
+				table.move(outlets, 1, n, 1, sorted)
 				table.sort(sorted)
-				local expected = sorted[#sorted // 2]
-				local deviations = {}
+				local expected = sorted[(#sorted + 1) // 2] -- the median; the lower middle of an even count
+				local deviations = self.assyDeviations
 				for i, v in outlets do
 					deviations[i] = v - expected
 				end
@@ -385,6 +392,7 @@ function Protection.init(self: any, ctx: any)
 	self.curieTemp_C = 0
 	self.curieStarted = false
 	self.bypassed = {} :: { [string]: boolean }
+	self.assySorted, self.assyDeviations = {}, {} -- ASSY-DEV's working buffers
 	self:publish()
 end
 
@@ -437,7 +445,8 @@ end
 ]]
 function Protection.startRunback(self: any, id: string, actor: Actor?)
 	local spec = self.cfg.runbacks[id]
-	if spec == nil then
+	-- a runback runs to a depth; RB-3's is "bypass-limited", which M1 cannot evaluate (no turbines, no bypass yet)
+	if spec == nil or type(spec.target_pctFP) ~= "number" then
 		return false
 	end
 	if self.runback and self.runback.target <= spec.target_pctFP then
@@ -477,6 +486,10 @@ function Protection.step(self: any, dt: number)
 			armed, why = m.armed(self)
 		end
 		if not armed then
+			if st.alarm and self.bus then
+				-- the row stops being watched, so its alarm has gone: say so, or the annunciator shows it forever
+				self.bus:publish("Alarm", { tag = m.id, priority = 2, state = "out", text = m.label })
+			end
 			st.alarm, st.block, st.trip = false, false, false
 			st.blockFor, st.tripFor = 0, 0
 			if why then
@@ -610,7 +623,7 @@ Protection.commands = {
 		why the count is held rather than a boolean — one operator leaning on one button does not trip the plant.
 	]]
 	["reactor.trip.manual"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local where = if cmd.tag == "BCR" then "bcr" else "mcr"
+		local where = if cmd.target == "BCR" then "bcr" else "mcr"
 		self.manual[where] += 1
 		local needed = self.cfg.pss.manualButtons.mainControlRoom
 		if where == "bcr" or self.manual.mcr >= needed then
@@ -635,7 +648,7 @@ Protection.commands = {
 		available, so a bypassed trip has to be something an auditor can find afterwards.
 	]]
 	["pss.bypass"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local id = cmd.tag
+		local id = cmd.target
 		if id == nil or self.state[id] == nil then
 			return { ok = false, reason = `unknown protective signal '{tostring(id)}'` }
 		end
@@ -648,9 +661,12 @@ Protection.commands = {
 	end,
 
 	["runback.start"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		local id = cmd.tag
+		local id = cmd.target
 		if id == nil or self.cfg.runbacks[id] == nil then
 			return { ok = false, reason = `unknown runback '{tostring(id)}'` }
+		end
+		if type(self.cfg.runbacks[id].target_pctFP) ~= "number" then
+			return { ok = false, reason = `{id} runs to a {tostring(self.cfg.runbacks[id].target)} target the plant does not model yet` }
 		end
 		if not self:startRunback(id, actor) then
 			return { ok = false, reason = "a runback at least this deep is already running" }

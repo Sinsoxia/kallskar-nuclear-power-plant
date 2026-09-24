@@ -84,6 +84,43 @@ return {
 		t.near(Kinetics.inhourPeriod(LAMBDA, BETA, -1), -1 / LAMBDA[1], 0.5, "very deep subcriticality → −1/λ₁ ≈ −77 s")
 	end,
 
+	["a small negative reactivity gives the slowest root: a long negative period, not −1/λ₁"] = function(t)
+		local lmin = math.huge
+		for _, l in LAMBDA do
+			lmin = math.min(lmin, l)
+		end
+		-- below the most negative pole the equation has exactly one root, so a root found there is the slowest one
+		local periods = {}
+		for _, rho_pcm in { -1, -1e-10 } do
+			local rho = rho_pcm * PCM
+			local T = Kinetics.inhourPeriod(LAMBDA, BETA, rho)
+			periods[rho_pcm] = T
+			t.log(string.format("ρ = %g pcm: inhour T = %.6g s (−1/λ₁ = %.3f s)", rho_pcm, T, -1 / lmin))
+			t.ok(T < -1 / lmin, `below the most negative pole −1/λ_min at {rho_pcm} pcm`)
+			local sum = 0
+			for i = 1, #BETA do
+				sum += BETA[i] / (1 + LAMBDA[i] * T)
+			end
+			-- the bisection runs to adjacent doubles, so what is left is the rounding of a six-term sum (~1e-15)
+			t.rel(sum, rho, 1e-12, `and a root of ρ = Σβᵢ/(1 + λᵢT) at {rho_pcm} pcm`)
+		end
+		-- the level decays at that period once the faster modes have gone (they last under 77 s; this looks at
+		-- 2,300–2,500 s), to the tolerance the other negative periods use
+		local measured = measurePeriod(-1 * PCM, 2500, 200, 0.1)
+		t.log(string.format("ρ = −1 pcm: integrator %.1f s", measured))
+		t.near(measured, periods[-1], 1e-3 * math.abs(periods[-1]), "the integrator decays at the period found at −1 pcm")
+	end,
+
+	["an exactly critical core has an infinite period, not a negative one"] = function(t)
+		t.eq(Kinetics.inhourPeriod(LAMBDA, BETA, 0), math.huge, "ρ = 0: the level holds")
+		-- and the integrator agrees: at ρ = 0 the level does not move, so there is no finite period to find
+		local a = Kinetics.newAmplitude(LAMBDA, BETA, 1)
+		for _ = 1, 1000 do
+			Kinetics.step(a, 0.1, 0)
+		end
+		t.near(a.n, 1, 1e-12, "no drift in 100 s")
+	end,
+
 	["all three RR out: period and prompt-jump margin (§3.4, S-19, F7, F12)"] = function(t)
 		local rho = Config.Rods.interlocks.allRegulatingOutFromCritical_pcm * PCM
 		local T = Kinetics.inhourPeriod(LAMBDA, BETA, rho)

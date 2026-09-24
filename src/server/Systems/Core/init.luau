@@ -237,8 +237,12 @@ function Core.step(self: any, dt: number)
 				text = "Prompt critical",
 			})
 		end
-	elseif not self.pk.amp.promptCritical then
+	elseif not self.pk.amp.promptCritical and self.promptCritical then
+		-- back under the limit: the prompt-jump form holds again, and the alarm goes with the condition
 		self.promptCritical = false
+		if self.bus then
+			self.bus:publish("Alarm", { tag = "CORE-PROMPT", priority = 1, state = "out", text = "Prompt critical" })
+		end
 	end
 
 	self:spreadPower()

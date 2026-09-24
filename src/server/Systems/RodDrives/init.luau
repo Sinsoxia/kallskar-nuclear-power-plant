@@ -464,11 +464,11 @@ end
 
 RodDrives.commands = {
 	["rod.move"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		return self:request("rod", cmd.tag, cmd.value, actor)
+		return self:request("rod", cmd.target, cmd.value, actor)
 	end,
 
 	["rod.bank"] = function(self: any, actor: Actor, cmd: Command): CommandResult
-		return self:request("bank", cmd.tag, cmd.value, actor)
+		return self:request("bank", cmd.target, cmd.value, actor)
 	end,
 
 	["rod.stop"] = function(self: any, actor: Actor, cmd: Command): CommandResult

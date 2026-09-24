@@ -57,7 +57,7 @@ return {
 
 	["speed ramp is limited to §4.2's 2 %/s"] = function(t)
 		local sys = make()
-		local res = sys:applyCommand(OPERATOR, { kind = "pump.speed", tag = "PP1", value = 60 })
+		local res = sys:applyCommand(OPERATOR, { kind = "pump.speed", target = "PP1", value = 60 })
 		t.ok(res.ok, res.reason)
 		run(sys, 1)
 		t.near(sys:getState().pumps[1].speed_pct, 100 - P.maxRamp_pctps, 1e-9, "one second of ramp")
@@ -86,7 +86,7 @@ return {
 		local sys = make()
 		sys:step(DT)
 		sys:tripPump(1, "test")
-		local res = sys:applyCommand(OPERATOR, { kind = "pump.pony", tag = "PP1", value = 1 })
+		local res = sys:applyCommand(OPERATOR, { kind = "pump.pony", target = "PP1", value = 1 })
 		t.ok(res.ok, res.reason)
 		run(sys, 600)
 		t.near(sys:getState().pumps[1].flow_kgps, P.ratedFlowTotal_kgps / P.count * P.ponySpeed_pct / 100, 1e-6, "pony floor")
@@ -114,39 +114,39 @@ return {
 		local sys, ch = make()
 		sys:tripPump(1, "test")
 		ch:setExternal("pools.coverGas_MPa", P.startInterlocks.coverGasMin_MPa - 0.001)
-		local res = sys:applyCommand(OPERATOR, { kind = "pump.start", tag = "PP1" })
+		local res = sys:applyCommand(OPERATOR, { kind = "pump.start", target = "PP1" })
 		t.ok(not res.ok and string.find(res.reason :: string, "cover gas", 1, true), "cover gas blocks the start")
 		ch:setExternal("pools.coverGas_MPa", P.startInterlocks.coverGasMin_MPa)
 		ch:setExternal("pools.coldPool_K", P.startInterlocks.sodiumMin_C - 1 + 273.15)
-		res = sys:applyCommand(OPERATOR, { kind = "pump.start", tag = "PP1" })
+		res = sys:applyCommand(OPERATOR, { kind = "pump.start", target = "PP1" })
 		t.ok(not res.ok and string.find(res.reason :: string, "sodium", 1, true), "cold sodium blocks the start")
 		ch:setExternal("pools.coldPool_K", P.startInterlocks.sodiumMin_C + 273.15)
-		res = sys:applyCommand(OPERATOR, { kind = "pump.start", tag = "PP1" })
+		res = sys:applyCommand(OPERATOR, { kind = "pump.start", target = "PP1" })
 		t.ok(res.ok, res.reason)
 		t.near(sys:getState().pumps[1].demand_pct, P.speedRange_pct[1], 1e-9, "starts at the minimum speed")
 		ch:setExternal("pools.coverGas_MPa", nil)
 		sys:tripPump(1, "test")
-		res = sys:applyCommand(OPERATOR, { kind = "pump.start", tag = "PP1" })
+		res = sys:applyCommand(OPERATOR, { kind = "pump.start", target = "PP1" })
 		t.ok(not res.ok, "a missing interlock input refuses the start rather than assuming it is satisfied")
 	end,
 
 	["commands are validated"] = function(t)
 		local sys = make()
 		local cases = {
-			{ { kind = "pump.speed", tag = "PP9", value = 50 }, "unknown pump" },
-			{ { kind = "pump.speed", tag = "PP1", value = P.speedRange_pct[2] + 1 }, "above the range" },
-			{ { kind = "pump.speed", tag = "PP1", value = P.speedRange_pct[1] - 1 }, "below the range" },
-			{ { kind = "pump.speed", tag = "PP1", value = 0 / 0 }, "NaN" },
-			{ { kind = "pump.speed", tag = "PP1" }, "missing value" },
-			{ { kind = "pump.pony", tag = "PP1", value = 1 }, "pony while running" },
-			{ { kind = "pump.fly", tag = "PP1" }, "unsupported kind" },
+			{ { kind = "pump.speed", target = "PP9", value = 50 }, "unknown pump" },
+			{ { kind = "pump.speed", target = "PP1", value = P.speedRange_pct[2] + 1 }, "above the range" },
+			{ { kind = "pump.speed", target = "PP1", value = P.speedRange_pct[1] - 1 }, "below the range" },
+			{ { kind = "pump.speed", target = "PP1", value = 0 / 0 }, "NaN" },
+			{ { kind = "pump.speed", target = "PP1" }, "missing value" },
+			{ { kind = "pump.pony", target = "PP1", value = 1 }, "pony while running" },
+			{ { kind = "pump.fly", target = "PP1" }, "unsupported kind" },
 		}
 		for _, case in cases do
 			local res = sys:applyCommand(OPERATOR, case[1] :: any)
 			t.ok(not res.ok, `refused: {case[2]}`)
 			t.ok(type(res.reason) == "string" and #res.reason > 0, `reason given for {case[2]}`)
 		end
-		local ok = sys:applyCommand(OPERATOR, { kind = "pump.speed", tag = "PP2", value = 105 })
+		local ok = sys:applyCommand(OPERATOR, { kind = "pump.speed", target = "PP2", value = 105 })
 		t.ok(ok.ok, "105 % is inside the §4.2 range")
 	end,
 
@@ -157,7 +157,7 @@ return {
 			table.insert(seen, payload)
 		end)
 		sys:step(DT)
-		local res = sys:applyCommand(OPERATOR, { kind = "pump.stop", tag = "PP3" })
+		local res = sys:applyCommand(OPERATOR, { kind = "pump.stop", target = "PP3" })
 		t.ok(res.ok, res.reason)
 		t.eq(#seen, 1, "one bus event")
 		t.eq(seen[1].equipment, "PP3")

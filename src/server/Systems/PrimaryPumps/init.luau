@@ -222,7 +222,7 @@ function PrimaryPumps.startInterlocks(self: any): (boolean, string?)
 end
 
 local function pumpIndex(self: any, cmd: Command): (number?, string?)
-	local tag = cmd.tag
+	local tag = cmd.target
 	for i, pump in self.pumps do
 		if pump.name == tag then
 			return i

@@ -210,6 +210,26 @@ return {
 		t.ok(ch:get("core.promptCritical"), "§14.2: the prompt jump form stops being valid, and says so")
 	end,
 
+	["the prompt-critical flag clears once ρ is back under the limit (§14.2)"] = function(t)
+		local sys, ch = make(EXCESS)
+		local states = {}
+		sys.bus:subscribe("Alarm", function(p)
+			if p.tag == "CORE-PROMPT" then
+				table.insert(states, p.state)
+			end
+		end)
+		run(sys, 5)
+		ch:setExternal("rods.indicativeWorth_pcm", EXCESS - 1000)
+		run(sys, 1)
+		t.ok(ch:get("core.promptCritical"), "past 0.9β it is flagged")
+		t.eq(states[#states], "in")
+		-- the worth goes back in: critical again, far below the limit
+		ch:setExternal("rods.indicativeWorth_pcm", EXCESS)
+		run(sys, 1)
+		t.ok(not ch:get("core.promptCritical"), "and the flag describes the core as it is now")
+		t.eq(states[#states], "out", "the P1 alarm goes with it")
+	end,
+
 	["the whole plant, wired together: hot standby holds, and at power a rod out is caught by Doppler"] = function(t)
 		--[[
 			This is the test that says the physics is operable. Core, FuelThermal, Pools, PrimaryPumps, IHX and
@@ -271,7 +291,7 @@ return {
 
 		-- An operator withdraws one regulating rod 100 mm, at §3.4's 5 mm/s
 		local worth0 = channels:get("rods.indicativeWorth_pcm")
-		rods:applyCommand(OPERATOR, { kind = "rod.move", tag = "RR1", value = 600 })
+		rods:applyCommand(OPERATOR, { kind = "rod.move", target = "RR1", value = 600 })
 		advance(40)
 		local power = channels:get("core.power_pctFP")
 		t.log(string.format("100 mm of RR1 (%.1f pcm): power %.3f → %.3f %%FP, fuel %.1f K, feedback %.1f → %.1f pcm, ρ %.2f pcm",
@@ -290,7 +310,7 @@ return {
 		advance(1)
 		t.ok(InitialConditions.seatAtPower(byName, channels, Config, 20) ~= nil, "seated at 20 %FP")
 		t.near(channels:get("core.thermalPower_pctFP"), 20, 20 * 1e-9, "seated: heat equals the load exactly")
-		byName.Protection:applyCommand(OPERATOR, { kind = "reactor.trip.manual", tag = "BCR" })
+		byName.Protection:applyCommand(OPERATOR, { kind = "reactor.trip.manual", target = "BCR" })
 
 		--[[
 			Superposition, which is what makes the group model trustworthy for any history: the decay heat after

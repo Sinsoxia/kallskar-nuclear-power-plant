@@ -115,7 +115,7 @@ function DebugPanelServer.onAction(self: any, player: Player, kind: string, arg:
 	if kind == "preset" then
 		self:preset(tonumber(arg) or 20)
 	elseif kind == "scram" and protection then
-		protection:applyCommand(DEV, { kind = "reactor.trip.manual", tag = "BCR" })
+		protection:applyCommand(DEV, { kind = "reactor.trip.manual", target = "BCR" })
 	elseif kind == "reset" and protection then
 		if protection:applyCommand(DEV, { kind = "reactor.trip.reset" }).ok then
 			if rods then
@@ -138,7 +138,7 @@ function DebugPanelServer.onAction(self: any, player: Player, kind: string, arg:
 	elseif kind == "rod" and rods then
 		-- nudge one regulating rod, at its own §3.4 speed, through the same interlocks as any other move
 		local target = math.clamp((rods.drives[1].position_mm) + (tonumber(arg) or 0), 0, 1100)
-		rods:applyCommand(DEV, { kind = "rod.move", tag = "RR1", value = target })
+		rods:applyCommand(DEV, { kind = "rod.move", target = "RR1", value = target })
 	elseif kind == "pumpTrip" then
 		local pumps = self.systems.PrimaryPumps
 		if pumps then

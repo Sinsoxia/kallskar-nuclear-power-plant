@@ -192,6 +192,31 @@ return {
 		t.ok(ch:get("auto.rodSelected") == "", "it never reaches for a shim")
 	end,
 
+	["the band alarm goes out once rod auto has authority again, or is switched off"] = function(t)
+		local sys, ch, bus = make(100, 545)
+		local states = {}
+		bus:subscribe("Alarm", function(p)
+			if p.tag == "AUTO-ROD-BAND" then
+				table.insert(states, p.state)
+			end
+		end)
+		sys:applyCommand(OPERATOR, { kind = "auto.rod", value = 1 })
+		ch:setExternal("rods.position_mm", { BAND[2], BAND[2], BAND[2] })
+		run(sys, 1)
+		t.eq(states[#states], "in", "out of authority, it alarms")
+		-- the outlet comes back onto the 550 °C setpoint: nothing to do, and nothing to alarm about
+		ch:setExternal("pools.mixedCoreOutletMeasured_K", 550 + KEL)
+		run(sys, 1)
+		t.eq(states[#states], "out", "and the annunciator is told when that is over")
+		t.ok(not ch:get("auto.rodOutOfBand"))
+		-- in again, then switched to manual: the alarm goes with the controller
+		ch:setExternal("pools.mixedCoreOutletMeasured_K", 545 + KEL)
+		run(sys, 1)
+		t.eq(states[#states], "in")
+		sys:applyCommand(OPERATOR, { kind = "auto.rod", value = 0 })
+		t.eq(states[#states], "out", "switching rod auto off clears its alarm too")
+	end,
+
 	["rod auto stands down for a scram or a runback"] = function(t)
 		local sys, ch = make(100, 555)
 		sys:applyCommand(OPERATOR, { kind = "auto.rod", value = 1 })

@@ -97,6 +97,16 @@ return {
 		t.eq(Config.sourceOf("Kinetics.groups.beta_pcm.3").kind, "spec", "boxed table covers its elements")
 	end,
 
+	["the revision label matches the spec the values follow, and no setting is left unread"] = function(t)
+		--[[
+			A pin, not a derivation: the spec is not in the place, so nothing at run time can read its revision. The
+			values carry Rev A4 and A5 corrections (Rods.regulating.normalBand_mm, Primary.ihx.primaryInlet_C, the
+			§2.4 pin figures of D-018), so a label older than A5 misdescribes them.
+		]]
+		t.eq(Config.revision, "A5", "Config follows spec Rev A5")
+		t.eq(Config.Engineering.devStrictState, nil, "no switch that nothing reads (System.record takes its own flag)")
+	end,
+
 	["core map totals agree (§2.2, §3.7, §2.1)"] = function(t)
 		local all, r12, r10, fuel, inner, outer = 0, 0, 0, 0, 0, 0
 		for _, r in Config.Core.rings do

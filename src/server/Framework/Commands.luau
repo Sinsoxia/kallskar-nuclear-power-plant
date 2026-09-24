@@ -4,13 +4,19 @@
 	========================================================================================================
 
 	submit(actor, raw) does, in order:
-	  1. sanitise   — copy the client's table into a fresh Command, rejecting wrong types, oversized strings, NaN/inf
-	  2. rate limit — token bucket per player (Engineering.commandRate_perSecond / commandBurst)
+	  1. rate limit — token bucket per player (Engineering.commandRate_perSecond / commandBurst), before any other work
+	  2. sanitise   — copy the client's table into a fresh Command, rejecting wrong types, oversized strings, NaN/inf
 	  3. route      — the system that declared this command kind (Registry), or refuse
 	  4. access     — players only: within reach of the panel (Access.panelReach_studs) and, for critical controls,
 	                  the minimum total playtime (Access.criticalMinimumPlaytime_h)
 	  5. apply      — system:applyCommand(actor, cmd)
-	  6. log        — every attempt, accepted or refused, goes to the EventLog with the actor's name (§10.7)
+	  6. log        — every control attempt that reaches a system's desk, accepted or refused, goes to the EventLog
+	                  with the actor's name (§10.7). A player's commands refused before that (throttled, malformed,
+	                  or of a kind no system handles) are not control actions: they are counted, and the count is
+	                  noted at most once per Engineering.commandRefusalNote_s. The rate limit bounds the rest, so a
+	                  player adds at most commandRate_perSecond + 1 / commandRefusalNote_s records a second (plus
+	                  up to commandBurst after a quiet spell), and one who sends only refused commands adds
+	                  1 / commandRefusalNote_s
 
 	Actors of kind "auto" and "scenario" are server-internal and skip reach/playtime. "dev" actors come only from the
 	Studio/owner-gated debug panel and skip reach (there are no physical panels yet in M1).
@@ -136,6 +142,7 @@ function Commands.new(opts: {
 	self.limits = { stringMax = eng.commandStringMax, argsMax = eng.commandArgsMax }
 	self.rate = eng.commandRate_perSecond
 	self.burst = eng.commandBurst
+	self.noteEvery = eng.commandRefusalNote_s
 	self.reach = access.panelReach_studs
 	self.requiredHours = access.criticalMinimumPlaytime_h
 	self.critical = {} :: { [string]: boolean }
@@ -154,7 +161,7 @@ function Commands.new(opts: {
 		return nil
 	end
 	self.now = opts.now or os.clock
-	self.buckets = {} :: { [number]: { tokens: number, t: number } }
+	self.buckets = {} :: { [number]: { tokens: number, t: number, refused: number, why: string, noted: number } }
 	return self
 end
 
@@ -166,7 +173,7 @@ local function takeToken(self: any, userId: number): boolean
 	local now = self.now()
 	local b = self.buckets[userId]
 	if not b then
-		b = { tokens = self.burst, t = now }
+		b = { tokens = self.burst, t = now, refused = 0, why = "", noted = -math.huge }
 		self.buckets[userId] = b
 	end
 	b.tokens = math.min(self.burst, b.tokens + (now - b.t) * self.rate)
@@ -176,6 +183,27 @@ local function takeToken(self: any, userId: number): boolean
 	end
 	b.tokens -= 1
 	return true
+end
+
+local THROTTLED = "too many commands; slow down"
+
+--[[
+	A command refused before it reaches a system (throttled, malformed, or of a kind nothing handles) costs its sender
+	nothing and operates nothing, so it must cost the log nothing either. Logged one by one, a flood would overwrite
+	the sequence-of-events ring and the eventLogPersisted entries the save keeps (and with them §10.7's record of who did what), and
+	the Replicator would send every record to every player. So a player's are counted, and the count is written at
+	most once per commandRefusalNote_s, with the latest reason. Only the rate-limited control attempts are then
+	logged one by one, which bounds a player at commandRate_perSecond + 1 / commandRefusalNote_s records a second.
+]]
+local function noteRefused(self: any, actor: Actor, why: string)
+	local b = self.buckets[actor.userId]
+	b.refused += 1
+	b.why = why
+	local now = self.now()
+	if now - b.noted >= self.noteEvery then
+		self.log:record("command.refused", actor, nil, `{b.refused} commands refused before routing since the last note`, `denied: {why}`)
+		b.refused, b.noted = 0, now
+	end
 end
 
 local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolean, string?)
@@ -205,23 +233,35 @@ local function checkPlayerAccess(self: any, actor: Actor, cmd: Command): (boolea
 end
 
 function Commands.submit(self: any, actor: Actor, raw: any): CommandResult
+	if actor.kind == "player" or actor.kind == "dev" then
+		if not takeToken(self, actor.userId) then
+			noteRefused(self, actor, THROTTLED)
+			return { ok = false, reason = THROTTLED }
+		end
+	end
 	local cmd, why = Commands.sanitize(raw, self.limits)
-	local kindForLog = if cmd then cmd.kind else (if type(raw) == "table" and type(raw.kind) == "string" then string.sub(raw.kind, 1, 64) else "?")
+	-- every client is sent the log, so a refused command's kind goes in only if it is a plain name
+	local kindForLog = if cmd then cmd.kind
+		elseif type(raw) == "table" and type(raw.kind) == "string" and string.match(raw.kind, NAME_PATTERN) then string.sub(raw.kind, 1, 64)
+		else "?"
 	local function refuse(reason: string): CommandResult
 		self.log:record(kindForLog, actor, if cmd then cmd.target else nil, nil, `denied: {reason}`)
 		return { ok = false, reason = reason }
 	end
-	if not cmd then
-		return refuse(why :: string)
-	end
-	if actor.kind == "player" or actor.kind == "dev" then
-		if not takeToken(self, actor.userId) then
-			return refuse("too many commands; slow down")
+	-- refused before routing: a player's are counted into the note, a server actor's logged as they come
+	local function refuseUnrouted(reason: string): CommandResult
+		if actor.kind == "player" or actor.kind == "dev" then
+			noteRefused(self, actor, reason)
+			return { ok = false, reason = reason }
 		end
+		return refuse(reason)
+	end
+	if not cmd then
+		return refuseUnrouted(why :: string)
 	end
 	local owner = self.registry:ownerOfCommand(cmd.kind)
 	if not owner then
-		return refuse(`no system handles '{cmd.kind}'`)
+		return refuseUnrouted(`no system handles '{cmd.kind}'`)
 	end
 	if actor.kind == "player" then
 		local ok, reason = checkPlayerAccess(self, actor, cmd)
@@ -259,6 +299,19 @@ function Commands.bindRemote(self: any, remote: RemoteFunction, isDev: (Player) 
 		end
 		return result
 	end
+end
+
+--[[
+	Drop a player's bucket when they leave (Main, PlayerRemoving), so the table does not grow with everyone who has
+	ever joined the server. Refused commands not yet noted are noted now.
+]]
+function Commands.forget(self: any, actor: Actor)
+	local b = self.buckets[actor.userId]
+	if b and b.refused > 0 then
+		self.log:record("command.refused", actor, nil, `{b.refused} commands refused before routing since the last note`,
+			`denied: {b.why}`)
+	end
+	self.buckets[actor.userId] = nil
 end
 
 return Commands

@@ -7,11 +7,14 @@
 	- The save is versioned. Persistence.CURRENT_VERSION increases whenever any system's save layout changes, and a
 	  migration function is added to MIGRATIONS[oldVersion] that upgrades a save by one version. load() walks the
 	  chain, so any old plant can be brought forward.
-	- Each system saves its own slice via System.save()/load(); the framework adds clock and event log.
+	- Each system saves its own slice via System.save()/load(); the framework adds clock and event log. load(slice,
+	  version) is given the slice after migration, so `version` is always CURRENT_VERSION.
 	- Owner reset: requestReset(actor, phrase) checks the private server owner and the typed phrase
 	  (Engineering.resetConfirmationPhrase), then counts down Access.reset.countdown_s, announcing on the Bus; at zero
 	  it clears the save and publishes PlantReset (Main rebuilds the plant).
 	Stores are pluggable: MemoryStore for Studio/tests, DataStoreBackend for live private servers.
+	- One write at a time. A DataStore write yields, and Heartbeat keeps calling tick() meanwhile, so the autosave runs
+	  on its own thread and every write (autosave, shutdown save, the reset's remove) waits for the one in flight.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Types = require(ReplicatedStorage:WaitForChild("Kallskar"):WaitForChild("Types"))
@@ -74,7 +77,7 @@ DataStoreBackend.__index = DataStoreBackend
 
 function DataStoreBackend.new(storeName: string)
 	local DataStoreService = game:GetService("DataStoreService")
-	return setmetatable({ ds = DataStoreService:GetDataStore(storeName), retries = 3 }, DataStoreBackend)
+	return setmetatable({ ds = DataStoreService:GetDataStore(storeName), retries = 3, wait = task.wait }, DataStoreBackend)
 end
 
 local function withRetry(self: any, fn: () -> any): (boolean, any)
@@ -85,7 +88,9 @@ local function withRetry(self: any, fn: () -> any): (boolean, any)
 			return true, result
 		end
 		lastErr = result
-		task.wait(2 ^ attempt)
+		if attempt < self.retries then -- back off between tries; after the last one there is nothing to wait for
+			self.wait(2 ^ attempt)
+		end
 	end
 	return false, lastErr
 end
@@ -140,9 +145,11 @@ function Persistence.new(opts: {
 	self.migrations = opts.migrations or Persistence.MIGRATIONS
 	self.currentVersion = opts.currentVersion or Persistence.CURRENT_VERSION
 	self.saveInterval = opts.config.Engineering.saveInterval_s
+	self.writable = true -- false while the stored plant has not been read successfully (see load)
 	self.phrase = opts.config.Engineering.resetConfirmationPhrase
 	self.countdownLength = opts.config.Access.reset.countdown_s
 	self.sinceSave = 0
+	self.saving = false -- a write is in flight (see save)
 	self.reset = nil :: { remaining: number, requestedBy: string, lastAnnounced: number }?
 	return self
 end
@@ -192,15 +199,31 @@ function Persistence.migrate(self: any, data: any): any
 end
 
 function Persistence.save(self: any): (boolean, string?)
+	if not self.writable then
+		return false, "the stored plant could not be loaded, so nothing overwrites it"
+	end
 	if not self:enabled() then
 		return false, "persistence disabled on this server"
 	end
+	--[[
+		One write at a time, in the order they were asked for. A second write started while the first yields could
+		land first and then be overwritten by the older snapshot, or land after an owner reset has removed the plant.
+	]]
+	while self.saving do
+		task.wait()
+	end
+	self.saving = true
 	local okSnap, data = pcall(self.snapshot, self)
 	if not okSnap then
+		self.saving = false
 		self.log:record("save", nil, self.key, tostring(data), "error")
 		return false, tostring(data)
 	end
-	local ok, err = self.store:set(self.key, data)
+	local okCall, ok, err = pcall(self.store.set, self.store, self.key, data)
+	self.saving = false
+	if not okCall then
+		ok, err = false, ok
+	end
 	self.sinceSave = 0
 	if not ok then
 		self.log:record("save", nil, self.key, tostring(err), "error")
@@ -214,11 +237,15 @@ function Persistence.load(self: any): string
 	if not self:enabled() then
 		return "fresh"
 	end
+	-- Until this load succeeds nothing may overwrite what is stored: a save this server could not read (an outage, a
+	-- newer version) is still the owner's plant, and Main halts rather than start fresh over it.
+	self.writable = false
 	local ok, data = self.store:get(self.key)
 	if not ok then
 		error(`could not read save: {tostring(data)}`)
 	end
 	if data == nil then
+		self.writable = true
 		return "fresh"
 	end
 	local fromVersion = data.version
@@ -229,11 +256,12 @@ function Persistence.load(self: any): string
 	for _, sys in self.registry.systems do
 		local slice = data.systems and data.systems[sys.spec.name]
 		if slice ~= nil then
-			sys:load(slice, fromVersion)
+			sys:load(slice, self.currentVersion) -- the slice has been migrated to this version above
 		end
 	end
 	self.log:import(data.eventLog)
 	self.log:record("load", nil, self.key, `save version {fromVersion} → {self.currentVersion}`, "ok")
+	self.writable = true
 	return "loaded"
 end
 
@@ -268,10 +296,12 @@ function Persistence.cancelReset(self: any, actor: Actor): CommandResult
 end
 
 function Persistence.tick(self: any, dt: number)
-	if self:enabled() then
+	if self:enabled() and not self.saving then
 		self.sinceSave += dt
 		if self.sinceSave >= self.saveInterval then
-			self:save()
+			-- on a thread of its own: the write yields, and this frame's caller must not wait for it
+			self.sinceSave = 0
+			task.spawn(self.save, self)
 		end
 	end
 	local r = self.reset
@@ -286,11 +316,26 @@ function Persistence.tick(self: any, dt: number)
 		end
 		if r.remaining <= 0 then
 			self.reset = nil
-			self.store:remove(self.key)
+			-- a save in flight holds the plant as it was: let it land first, and let no other write land after
+			while self.saving do
+				task.wait()
+			end
+			self.saving = true
+			-- a store that raises must not leave the write marked in flight, or every later save waits on it forever
+			local okCall, ok, err = pcall(self.store.remove, self.store, self.key)
+			self.saving = false
+			if not okCall then
+				ok, err = false, ok
+			end
+			if not ok then
+				-- the reset goes ahead: the fresh plant's first save overwrites what could not be removed
+				self.log:record("plant.reset", nil, self.key, `the stored plant could not be removed: {tostring(err)}`, "error")
+			end
 			self.log:record("plant.reset", nil, nil, `requested by {r.requestedBy}`, "ok")
 			if self.bus then
 				self.bus:publish("PlantReset", { requestedBy = r.requestedBy })
 			end
+			self.writable = true -- the owner chose to start over, so the fresh plant may now be saved
 		end
 	end
 end

@@ -14,8 +14,6 @@ return {
 	coreMapResolution_K = spec(0.05, "§14.1"),
 	coreMapBytesPerValue = spec(2, "§14.1: u16"),
 
-	devStrictState = engineering(true, "Studio-only strict metatable on system state catches key typos; disabled on live servers"),
-
 	-- Sequence-of-events log (§10.7, §14.6)
 	eventLogCapacity = engineering(5000, "bounded memory; a busy 13-player crew at one action per 10 s fills ~720 per grid day (2 h), so this holds several grid days plus alarms"),
 	eventLogPersisted = engineering(500, "most recent entries kept in the private-server save; keeps the save well under DataStore's 4 MB value limit"),
@@ -25,6 +23,7 @@ return {
 	commandBurst = engineering(20, "short bursts, e.g. stepping a rod selector quickly"),
 	commandStringMax = engineering(64, "longest command kind / tag / panel id accepted from a client"),
 	commandArgsMax = engineering(8, "most extra arguments any control needs"),
+	commandRefusalNote_s = engineering(10, "commands refused before routing (throttled, malformed, unhandled) are counted and noted at most once per 10 s per player, so a player adds at most commandRate_perSecond + 0.1 = 10.1 log records/s, all but 0.1/s of them control attempts §10.7 requires recorded, and one who sends only refused commands adds 0.1/s"),
 
 	-- Persistence (§14.6)
 	saveInterval_s = engineering(60, "one DataStore write per minute per server stays far inside Roblox's 60 + 10×players per-minute budget"),
