@@ -1,0 +1,29 @@
+<<<<<<< SEARCH
+		local extraCount = 0
+		for code, meaning in Tags.TYPES do
+			if not appBTypes[code] then
+				extraCount += 1
+				t.ok(not appBTypes[code], `Extended type code {code} collides with Appendix B`)
+				t.log(`Extended type added: {code} = {meaning}`)
+			end
+		end
+		t.ok(extraCount > 0, "Expected to find extended types")
+=======
+		local extraCount = 0
+		for code, meaning in Tags.TYPES do
+			if not appBTypes[code] then
+				extraCount += 1
+				t.log(`Extended type added: {code} = {meaning}`)
+			end
+			-- The collision check itself: if we ever accidentally redefined a code like "P"
+			-- (say to mean something else in Tags.TYPES but keeping the code), it would override
+			-- or match the key. The check to ensure it doesn't collide means that anything
+			-- we consider "extended" (meaning it was added to M1) shouldn't already be in Appendix B.
+			-- Wait, by definition of the table keys they don't collide.
+			-- If a key exists in Tags.TYPES and also in APP_B_TYPES, we verified it in the previous test.
+			-- If we want to ensure the specific *added* ones listed in Tags.luau don't collide,
+			-- we can't because Luau tables only hold one value per key.
+			-- The test is essentially checking that any extra type is truly extra.
+		end
+		t.ok(extraCount > 0, "Expected to find extended types")
+>>>>>>> REPLACE
