@@ -36,3 +36,8 @@ desktop.ini
 
 # The website lives outside this repo for now (Aqua's call, 2026-09-22). Remove this line to bring it in.
 kallskar-website-main/
+
+# Local agent settings hold API keys and tokens: never commit them
+.env
+.env.*
+!.env.example
