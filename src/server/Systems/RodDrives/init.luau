@@ -53,6 +53,7 @@ local RodDrives = System.extend({
 		"protection.rodWithdrawalBlock",
 		"protection.scram",
 		"protection.rodRunback",
+		"protection.runback",
 		"auto.rodSelected",
 		"auto.rodDemand_mm",
 	},
@@ -154,7 +155,8 @@ function RodDrives.init(self: any, ctx: any)
 	self.port:write("rods.insertedFraction", self.inserted)
 	self.selection = nil
 	self.scrammed = {}
-	self.runback = false
+	self.runback = false -- a runback holds the drives (operators and rod auto are refused)
+	self.drivingIn = false -- and on these ticks the shims drive in
 	self.commandedRunback = false
 	self.autoSelection = nil
 	self.rate_pcmps = 0
@@ -262,11 +264,19 @@ function RodDrives.step(self: any, dt: number)
 	if demanded and demanded ~= "none" then
 		self:scram(demanded, "protection")
 	end
-	local runbackDemand = self.port:read("protection.rodRunback") == true
-	if runbackDemand and not self.runback then
-		self:stopSelection("runback drive-in")
+	--[[
+		D-046: a runback holds the rods for its whole length, and Protection asks for the drive-in only on the ticks
+		the power is above its demand. So `runback`, which keeps operators and rod auto off the drives, follows the
+		runback itself, and `drivingIn`, which moves the shims, follows the drive-in.
+	]]
+	local driveIn = self.port:read("protection.rodRunback") == true
+	local inRunback = (self.port:read("protection.runback") or "") ~= ""
+	local holding = self.commandedRunback == true or inRunback or driveIn
+	if holding and not self.runback then
+		self:stopSelection("runback in progress")
 	end
-	self.runback = self.commandedRunback == true or runbackDemand
+	self.runback = holding
+	self.drivingIn = self.commandedRunback == true or driveIn
 
 	--[[
 		§9.4's rod auto asks the same way an operator does. Routing it through `request` rather than letting it
@@ -307,7 +317,7 @@ function RodDrives.step(self: any, dt: number)
 		end
 	end
 
-	if self.runback then
+	if self.drivingIn then
 		-- §9.5 runback: shim banks drive in at 10 mm/s. Insertion, so the withdrawal interlock does not apply.
 		for i, drive in self.drives do
 			if drive.set ~= "RR" and drive.system == "PSS" then
@@ -489,7 +499,7 @@ RodDrives.commands = {
 			self:stopSelection("runback drive-in", actor)
 		end
 		self.commandedRunback = on
-		self.runback = on
+		self.runback, self.drivingIn = on, on
 		if self.log then
 			self.log:record("rod.runback", actor, "shim banks", if on then "drive in" else "released", "set")
 		end
@@ -577,6 +587,45 @@ RodDrives.faults = {
 		end,
 	},
 }
+
+--[[
+	§14.6 (D-053): positions, stuck rods and the scram latches. A load is a plant coming back after its server closed,
+	which counts as a reactor trip: every PSS rod is in and the PSS scram latched, except a stuck rod, which stays
+	where it stuck (§3.4's margins are quoted for exactly that). A PSS trip does not move the SSRs, so they come back
+	where they were, unless their own scram had already put them in.
+]]
+function RodDrives.save(self: any): any
+	local positions, stuck = {}, {}
+	for _, drive in self.drives do
+		positions[drive.name] = drive.position_mm
+		if drive.stuck then
+			stuck[drive.name] = true
+		end
+	end
+	return { positions = positions, stuck = stuck, scrammed = table.clone(self.scrammed) }
+end
+
+function RodDrives.load(self: any, data: any, _version: number)
+	local positions = if type(data.positions) == "table" then data.positions else {}
+	local stuck = if type(data.stuck) == "table" then data.stuck else {}
+	local ssrIn = type(data.scrammed) == "table" and data.scrammed.SSR == true
+	for _, drive in self.drives do
+		local saved = positions[drive.name]
+		drive.stuck = stuck[drive.name] == true
+		if drive.stuck and type(saved) == "number" then
+			drive.position_mm = math.clamp(saved, 0, self.travel_mm)
+		elseif drive.system == "PSS" or ssrIn then
+			drive.position_mm = 0
+		elseif type(saved) == "number" then
+			drive.position_mm = math.clamp(saved, 0, self.travel_mm)
+		end
+		drive.demand_mm = drive.position_mm
+	end
+	self.scrammed = { PSS = true, SSR = if ssrIn then true else nil }
+	self.selection, self.autoSelection = nil, nil
+	self.runback, self.drivingIn, self.commandedRunback = false, false, false
+	self:publish()
+end
 
 function RodDrives.getState(self: any): { [string]: any }
 	local drives = {}

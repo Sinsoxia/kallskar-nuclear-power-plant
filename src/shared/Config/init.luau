@@ -38,6 +38,7 @@ local Config = {
 	Protection = load("Protection", require(script.Protection)),
 	Sodium = load("Sodium", require(script.Sodium)),
 	Access = load("Access", require(script.Access)),
+	Desks = load("Desks", require(script.Desks)),
 	Engineering = load("Engineering", require(script.Engineering)),
 
 	provenance = table.freeze(prov),

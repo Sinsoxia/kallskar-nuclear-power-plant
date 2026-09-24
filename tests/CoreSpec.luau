@@ -20,6 +20,8 @@ local EventLog = require(Framework:WaitForChild("EventLog")) :: any
 local Bus = require(Framework:WaitForChild("Bus")) :: any
 local Systems = Root:WaitForChild("Systems")
 local Core = require(Systems:WaitForChild("Core")) :: any
+local Kinetics = require(Systems:WaitForChild("Core"):WaitForChild("Kinetics")) :: any
+local Sodium = require(ReplicatedStorage:WaitForChild("Kallskar"):WaitForChild("Props"):WaitForChild("Sodium")) :: any
 local InitialConditions = require(Systems:WaitForChild("InitialConditions")) :: any
 
 local KEL = Config.Units.kelvinOffset_K
@@ -29,6 +31,15 @@ local BUDGET = Config.Reactivity.budget_pcm
 local EXCESS = BUDGET.requiredExcessAt230AllRodsOut - BUDGET.isothermal230to375
 local PSS_WORTH = Config.Rods.regulating.worthTotal_pcm + Config.Rods.shim.worthTotal_pcm
 local OPERATOR = { kind = "player" :: any, name = "Aqua", userId = 1 }
+
+-- The delayed groups as fractions, and β, for the bounds the kinetics itself gives (D-049)
+local PCM = 1e-5
+local LAMBDA = Config.Kinetics.groups.lambda_ps
+local BETAS, BETA = {}, 0
+for i, b in Config.Kinetics.groups.beta_pcm do
+	BETAS[i] = b * PCM
+	BETA += b * PCM
+end
 
 local function make(worth_pcm: number?)
 	local ch = Channels.new()
@@ -116,23 +127,73 @@ return {
 
 	["D-030: a shut-down plant sits at the bottom of §3.5's wide range span"] = function(t)
 		local sys, ch = make()
-		run(sys, 200) -- let the subcritical multiplication settle
+		local settle = 200
+		run(sys, settle) -- let the subcritical multiplication settle
 		local floor = Config.Instruments.wideRange.span_pctFP[1]
-		t.near(ch:get("core.power_pctFP"), floor, floor * 0.05, "on scale, and only just")
+		--[[
+			D-049: the core boots at n = 0 with the D-030 source q. Its first step prompt-jumps to q/(β − ρ), which is
+			−ρ/(β − ρ) of the equilibrium q/(−ρ), and the rest, β/(β − ρ), closes no slower than the slowest mode,
+			the inhour period at the shut-down ρ of −3,826 pcm, so that decay bounds what is left from above.
+		]]
+		local rho = (EXCESS - PSS_WORTH) * PCM
+		local period = Kinetics.inhourPeriod(LAMBDA, BETAS, rho)
+		local left = BETA / (BETA - rho) * math.exp(-(settle - DT) / math.abs(period))
+		t.near(ch:get("core.power_pctFP"), floor, floor * left, "on scale, and only just")
 		t.ok(ch:get("core.power_pctFP") > 0, "an instrument reading zero would tell the crew nothing")
 	end,
 
+	["a loaded core runs the trip's delayed-neutron tail from the power it was saved at (D-053)"] = function(t)
+		-- every PSS rod in and the temperatures held at the reference, so the reactivity after the load is constant
+		local sys = make()
+		local n0 = 0.3
+		sys:load({ power_pctFP = n0 * 100 }, 2)
+		local rho = (EXCESS - PSS_WORTH) * PCM
+		-- the same trip as the kinetics sees it: a critical core at n0, stepped to that reactivity with the source
+		local oracle = Kinetics.newAmplitude(LAMBDA, BETAS, n0)
+		local worst, integral = 0, 0
+		for _ = 1, math.floor(600 / DT + 0.5) do
+			sys:step(DT)
+			Kinetics.step(oracle, DT, rho, sys.source)
+			worst = math.max(worst, math.abs(sys.n - oracle.n) / oracle.n)
+			integral += sys.n * DT
+		end
+		-- for the prompt-jump equations with constant ρ, d/dt Σ sᵢ/λᵢ = ρ·n, so the whole tail is n0·Σ(βᵢ/λᵢ)/(−ρ)
+		local tail = 0
+		for i, b in BETAS do
+			tail += b / LAMBDA[i]
+		end
+		tail *= n0 / -rho
+		t.log(string.format("from %d %%FP: %.3f FP·s in the first 10 min; the continuous tail is %.3f FP·s",
+			n0 * 100, integral, tail))
+		-- the same arithmetic on the same state, so the two agree to rounding
+		t.ok(worst <= 1e-12, `the loaded core runs the trip of a core critical at {n0 * 100} %FP, tail and all (worst {worst})`)
+	end,
+
 	["withdrawing worth raises reactivity, and the core answers (§3.1)"] = function(t)
+		--[[
+			D-049: each reading waits five of its state's slowest periods, so what is left of the approach is known.
+			From boot, β/(β − ρ₁) of the equilibrium is still to close (see the D-030 floor). After the step, the prompt
+			jump takes n₁ to n₁(β − ρ₁)/(β − ρ₂), which is short of q/(−ρ₂) by 1 − ρ₂(β − ρ₁)/(ρ₁(β − ρ₂)). Each
+			closes on its inhour period, and the ratio of the two readings is off by at most the sum of what is left.
+		]]
+		local rho1 = (EXCESS - PSS_WORTH) * PCM
+		local rho2 = rho1 + 3000 * PCM
+		local T1 = math.abs(Kinetics.inhourPeriod(LAMBDA, BETAS, rho1))
+		local T2 = math.abs(Kinetics.inhourPeriod(LAMBDA, BETAS, rho2))
+		local wait1, wait2 = math.ceil(5 * T1), math.ceil(5 * T2)
+		local left1 = BETA / (BETA - rho1) * math.exp(-(wait1 - DT) / T1)
+		local left2 = (1 - rho2 * (BETA - rho1) / (rho1 * (BETA - rho2))) * math.exp(-(wait2 - DT) / T2)
+
 		local sys, ch = make()
-		run(sys, 50)
+		run(sys, wait1)
 		local before = ch:get("core.power_pctFP")
 		-- take out 3,000 pcm of rod worth: still subcritical, but much closer
 		ch:setExternal("rods.indicativeWorth_pcm", PSS_WORTH - 3000)
-		run(sys, 50)
+		run(sys, wait2)
 		t.near(ch:get("core.rho_pcm"), EXCESS - PSS_WORTH + 3000, 1, "ρ follows the worth removed")
 		-- equilibrium subcritical multiplication is n = q/(−ρ), so the power rises by the ratio of the two ρ
 		local ratio = (PSS_WORTH - EXCESS) / (PSS_WORTH - 3000 - EXCESS)
-		t.near(ch:get("core.power_pctFP") / before, ratio, ratio * 0.1,
+		t.near(ch:get("core.power_pctFP") / before, ratio, ratio * (left1 + left2),
 			string.format("subcritical multiplication lifts the power %.1f×", ratio))
 		t.ok(ch:get("core.k") < 1, "still subcritical")
 
@@ -196,7 +257,15 @@ return {
 		for l = 1, L do
 			share += power[l]
 		end
-		t.near(share / perAssembly, Config.Core.flow.zones[1].flowFactor, 0.01,
+		-- D-049: the exact arithmetic, 1.12 × 301 / Σf (Σf = 301.36 over the three zones), to rounding
+		local zones = Config.Core.flow.zones
+		local assemblies, weight = 0, 0
+		for _, z in zones do
+			assemblies += z.fuel
+			weight += z.fuel * z.flowFactor
+		end
+		local zoneI = zones[1].flowFactor * assemblies / weight
+		t.near(share / perAssembly, zoneI, 1e-9 * zoneI,
 			"§2.5's zone I factor of 1.12 is that assembly's share of the power")
 	end,
 
@@ -255,7 +324,14 @@ return {
 		local inlet0 = channels:get("pools.coreInlet_K")
 		advance(60)
 		local inlet1 = channels:get("pools.coreInlet_K")
-		t.near(inlet1, inlet0, 1, "a minute of hot standby leaves the core inlet where it was")
+		--[[
+			D-049: the heat sink holds the cold leg on §9.2's no-load programme, and the pumps' heat is what the inlet
+			carries above it (§4.2), so the pump heat's own temperature rise bounds how far the inlet can move.
+		]]
+		local pumpRise = channels:get("primary.pumpHeat_MWt") * 1e6
+			/ (channels:get("primary.coreFlow_kgps") * Sodium.specificHeat(inlet1))
+		t.log(string.format("hot standby: the inlet moved %.3f K in a minute; the pumps' heat is %.3f K", inlet1 - inlet0, pumpRise))
+		t.near(inlet1, inlet0, pumpRise, "a minute of hot standby leaves the core inlet where it was")
 		local mode3 = Config.Program.modes[3].coreInlet_C
 		t.ok(inlet1 - KEL >= mode3[1] and inlet1 - KEL <= mode3[2], "inside §9.1's Mode 3 band")
 		--[[

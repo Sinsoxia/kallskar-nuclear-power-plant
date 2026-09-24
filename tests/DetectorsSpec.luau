@@ -29,6 +29,20 @@ local ALL_RODS_IN_PCM = Config.Reactivity.budget_pcm.requiredExcessAt230AllRodsO
 	- (Config.Rods.regulating.worthTotal_pcm + Config.Rods.shim.worthTotal_pcm
 		+ Config.Rods.secondaryShutdown.worthTotal_pcm)
 
+--[[
+	D-049: the ratemeters and filters are first-order lags, so a channel sampled every tick is an AR(1) series with
+	φ = e^(−dt/τ). Over n ticks it carries n(1 − φ)/(1 + φ) independent values for its mean and n(1 − φ²)/(1 + φ²)
+	for its variance or a correlation, and the tests take 3σ on those effective counts.
+]]
+local function effectiveMean(n: number, tau: number): number
+	local phi = math.exp(-DT / tau)
+	return n * (1 - phi) / (1 + phi)
+end
+local function effectiveVariance(n: number, tau: number): number
+	local phi = math.exp(-2 * DT / tau)
+	return n * (1 - phi) / (1 + phi)
+end
+
 local function kOf(rho_pcm: number): number
 	return 1 / (1 - rho_pcm / 1e5)
 end
@@ -85,16 +99,21 @@ return {
 	["source range noise is counting statistics, not a tuned figure"] = function(t)
 		-- σ/R = 1/√(Rτ) with τ the ratemeter's averaging time. No parameter in this prediction is free.
 		local tau = INST.noise.ratemeterAveraging_s
+		local seconds = 400
+		local lag = tau / 2 -- the ratemeter's first-order time constant (Detectors: ratemeterTau)
+		local nMean = effectiveMean(seconds / DT, lag)
+		local nVar = effectiveVariance(seconds / DT, lag)
 		for _, rho in { ALL_RODS_IN_PCM, -2000 } do
 			local sys, ch = make(0, kOf(rho))
 			run(sys, 30) -- let the ratemeter settle before sampling
 			local rate = sys:trueCountRate(kOf(rho))
-			local mean, relative = statistics(sys, ch, "detectors.sr_cps", 1, 400)
+			local mean, relative = statistics(sys, ch, "detectors.sr_cps", 1, seconds)
 			local predicted = 1 / math.sqrt(rate * tau)
-			t.log(string.format("%.0f cps: σ/R measured %.2f %%, counting statistics predict %.2f %%",
-				rate, relative * 100, predicted * 100))
-			t.near(mean, rate, rate * 0.05, "unbiased")
-			t.near(relative, predicted, predicted * 0.35, "1/√(Rτ)")
+			t.log(string.format("%.0f cps: σ/R measured %.2f %%, counting statistics predict %.2f %% (%.0f and %.0f effective samples)",
+				rate, relative * 100, predicted * 100, nMean, nVar))
+			-- 3σ of the mean, and of a standard deviation (relative standard error 1/√(2n)), on the effective counts
+			t.near(mean, rate, 3 * rate * predicted / math.sqrt(nMean), "unbiased")
+			t.near(relative, predicted, 3 * predicted / math.sqrt(2 * nVar), "1/√(Rτ)")
 		end
 	end,
 
@@ -116,8 +135,10 @@ return {
 		local cov = sxy / n - (sx / n) * (sy / n)
 		local correlation = cov / math.sqrt(math.max(sxx / n - (sx / n) ^ 2, 1e-12)
 			* math.max(syy / n - (sy / n) ^ 2, 1e-12))
-		t.log(string.format("SR1 against SR2: correlation %.3f", correlation))
-		t.ok(math.abs(correlation) < 0.15, "channels do not wander together")
+		-- D-049: two independent AR(1) series correlate by chance with σ = 1/√(effective count) (Bartlett)
+		local limit = 3 / math.sqrt(effectiveVariance(2000, INST.noise.ratemeterAveraging_s / 2))
+		t.log(string.format("SR1 against SR2: correlation %.3f (3σ for independent channels: %.3f)", correlation, limit))
+		t.ok(math.abs(correlation) < limit, "channels do not wander together")
 	end,
 
 	["the source range high voltage drops out above §3.5's 1e-3 %FP, with hysteresis"] = function(t)
@@ -216,8 +237,21 @@ return {
 			end
 		end
 		local measured = sum / n
-		t.log(string.format("a true %d s period reads as %.1f s", truePeriod, measured))
-		t.near(measured, truePeriod, truePeriod * 0.15, "the period meter finds it")
+		--[[
+			D-049: once settled (90 s is eighteen of the 5 s filter's time constants) the filter reads d(ln P)/dt =
+			1/T exactly, so what is left is noise. Each wide range channel's 2 % (D-025) differenced and filtered
+			gives the rate a σ of (α/dt)·σ_w·√(2/(1 + φ)), with α = 1 − φ; the median of three divides the variance by
+			1/(1 − √3/π); and the period 1/rate turns that into T²σ, with a bias of T·(σ/ω)² from the curvature.
+			The 300 averaged ticks are one AR(1) series through the filter, so their mean has n(1 − φ)/(1 + φ)
+			independent values, and the bound is the bias plus 3σ of that mean.
+		]]
+		local phi = math.exp(-DT / INST.noise.periodFilter_s)
+		local sigmaRate = (1 - phi) / DT * INST.noise.wideRangeRelative * math.sqrt(2 / (1 + phi))
+			* math.sqrt(1 - math.sqrt(3) / math.pi)
+		local relative = sigmaRate * truePeriod -- σ of the rate against the true rate 1/T
+		local bound = truePeriod * relative ^ 2 + 3 * truePeriod * relative / math.sqrt(n * (1 - phi) / (1 + phi))
+		t.log(string.format("a true %d s period reads as %.1f s (bound ±%.1f s)", truePeriod, measured, bound))
+		t.near(measured, truePeriod, bound, "the period meter finds it")
 		t.ok(ch:get("detectors.fluxRate_pctFPps") > 0, "and the flux rate is positive")
 	end,
 

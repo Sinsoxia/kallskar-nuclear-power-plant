@@ -68,14 +68,15 @@ return {
 			local sys, ch = make(power)
 			ch:setExternal("primary.flowFraction", flow / 100)
 			run(sys, 1)
-			t.near(ch:get("auto.coreOutletSetpoint_C"), TABLE.coreOutlet_C[i], 1.5,
+			-- D-049: §9.2 prints whole degrees, so a row is only good to its 0.5 K rounding
+			t.near(ch:get("auto.coreOutletSetpoint_C"), TABLE.coreOutlet_C[i], 0.5,
 				string.format("%d %%FP on %d %% flow", power, flow))
 		end
 		-- the rows that matter: below 40 %FP the programme is NOT 550, which is finding F3
 		local low, lch = make(30)
 		lch:setExternal("primary.flowFraction", 0.40)
 		run(low, 1)
-		t.near(lch:get("auto.coreOutletSetpoint_C"), 506, 1.5, "§9.2: 506 °C at 30 %FP, not 550")
+		t.near(lch:get("auto.coreOutletSetpoint_C"), 506, 0.5, "§9.2: 506 °C at 30 %FP, not 550")
 		t.ok(lch:get("auto.coreOutletSetpoint_C") < 545, "a controller holding 550 here would fight the programme")
 	end,
 

@@ -67,6 +67,8 @@
 	         primary.coreFlow_kgps   total primary flow, split between the units
 	         primary.pumpHeat_MWt    the pumps' heat, which the steam plant carries away with the load
 	         protection.scram        a trip takes the turbines off with it
+	         protection.runback…     a runback takes the load back with the reactor: to the runback's target, at its
+	                                 rate rather than §7.1's (D-046)
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -84,7 +86,13 @@ local IHX = System.extend({
 	name = "IHX",
 	lane = "fast",
 	reads = { "pools.hotPool_K", "primary.coreFlow_kgps", "primary.pumpHeat_MWt" },
-	readsLagged = { "protection.scram" }, -- Protection runs after the pools it watches, so the trip arrives next tick
+	-- Protection runs after the pools it watches, so a trip or a runback arrives next tick
+	readsLagged = {
+		"protection.scram",
+		"protection.runback",
+		"protection.runbackTarget_pctFP",
+		"protection.runbackRate_pctpmin",
+	},
 	writes = {
 		"ihx.heatRemoved_W",
 		"ihx.dutyEach_W",
@@ -177,6 +185,9 @@ function IHX.init(self: any, ctx: any)
 	self.ratedPrimary_kgps = cfg.Primary.pumps.ratedFlowTotal_kgps -- F30: the total is the authoritative figure
 	self.sinkLoad = 0 -- not `load`: that name is the System persistence hook (Framework/System)
 	self.loadDemand = 0
+	-- the runback the load is following down (D-046): its target, and its rate in % per second
+	self.runbackTarget = nil :: number?
+	self.runbackRate = 0
 	self.lastScram = "none"
 	self.coldLeg_K = self.warmest_K
 	self.loops = {}
@@ -324,6 +335,7 @@ function IHX.tripLoad(self: any, scram: string)
 	end
 	self.sinkLoad = 0
 	self.loadDemand = 0
+	self.runbackTarget = nil
 	if self.log then
 		self.log:record("sink.trip", nil, "steam plant", `reactor trip ({scram}): turbines tripped, bypass holding`, "tripped")
 	end
@@ -340,6 +352,12 @@ function IHX.rampLoad(self: any, dt: number)
 		return
 	end
 	local rising = demand > load
+	-- D-046: above a runback's target the load falls at the runback's rate, not at the operating limits
+	local floor = self.runbackTarget
+	if floor and not rising and load > floor then
+		self.sinkLoad = math.max(demand, floor, load - self.runbackRate * dt)
+		return
+	end
 	local high = if rising then load >= limit else load > limit
 	local rate = if high then self.loadRateHigh else self.loadRateLow
 	local step = rate * dt
@@ -434,6 +452,27 @@ function IHX.step(self: any, dt: number)
 		self:tripLoad(scram)
 	end
 	self.lastScram = scram
+	-- a runback (D-046): the demand goes down to its target, and the load follows at its rate
+	local runback = port:read("protection.runback") or ""
+	local target = port:read("protection.runbackTarget_pctFP") or 100
+	local perMinute = port:read("protection.runbackRate_pctpmin") or 0
+	if runback ~= "" then
+		self.runbackTarget, self.runbackRate = target, perMinute / 60
+		self.loadDemand = math.min(self.loadDemand, target)
+	elseif self.runbackTarget then
+		--[[
+			The runback is over, completed or cleared, and the steam plant's runback ends with it. The load reads
+			Protection a tick late, so a completed runback leaves it at most one tick of the ramp above the target,
+			and that tick is finished here. A cleared one leaves it anywhere above: the demand holds at the load,
+			for the operator to take from there at the operating rates.
+		]]
+		local step = self.runbackRate * dt
+		if self.sinkLoad - self.runbackTarget <= step then
+			self.sinkLoad = math.max(self.runbackTarget, self.sinkLoad - step)
+		end
+		self.loadDemand = self.sinkLoad
+		self.runbackTarget, self.runbackRate = nil, 0
+	end
 	self:rampLoad(dt)
 	self:applyFlows(flow)
 	self:solve(hotPool, flow)
@@ -646,6 +685,46 @@ IHX.faults = {
 		end,
 	},
 }
+
+-- §14.6 (D-053): the shutter demands, and the secondary loops, stopped or running, with any overrides. The steam
+-- plant tripped with the reactor when the server closed, so the load comes back at nothing.
+function IHX.save(self: any): any
+	local units, loops = {}, {}
+	for i, u in self.units do
+		units[i] = { shutter = u.shutter, demand = u.demand }
+	end
+	for l, loop in self.loops do
+		loops[l] = {
+			running = loop.running,
+			inletOverride_K = loop.inletOverride_K,
+			flowOverride_kgps = loop.flowOverride_kgps,
+		}
+	end
+	return { units = units, loops = loops }
+end
+
+function IHX.load(self: any, data: any, _version: number)
+	if type(data.units) == "table" then
+		for i, u in self.units do
+			local s = data.units[i]
+			if type(s) == "table" and type(s.shutter) == "number" and type(s.demand) == "number" then
+				u.shutter, u.demand = s.shutter, s.demand
+			end
+		end
+	end
+	if type(data.loops) == "table" then
+		for l, loop in self.loops do
+			local s = data.loops[l]
+			if type(s) == "table" then
+				loop.running = s.running ~= false
+				loop.inletOverride_K = if type(s.inletOverride_K) == "number" then s.inletOverride_K else nil
+				loop.flowOverride_kgps = if type(s.flowOverride_kgps) == "number" then s.flowOverride_kgps else nil
+			end
+		end
+	end
+	self.sinkLoad, self.loadDemand, self.runbackTarget = 0, 0, nil
+	self.lastScram = "PSS"
+end
 
 function IHX.getState(self: any): { [string]: any }
 	local units = {}
