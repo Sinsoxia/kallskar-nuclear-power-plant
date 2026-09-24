@@ -142,6 +142,33 @@ return {
 		t.ok(ch:get("core.power_pctFP") > 0, "an instrument reading zero would tell the crew nothing")
 	end,
 
+	["a loaded core runs the trip's delayed-neutron tail from the power it was saved at (D-053)"] = function(t)
+		-- every PSS rod in and the temperatures held at the reference, so the reactivity after the load is constant
+		local sys = make()
+		local n0 = 0.3
+		sys:load({ power_pctFP = n0 * 100 }, 2)
+		local rho = (EXCESS - PSS_WORTH) * PCM
+		-- the same trip as the kinetics sees it: a critical core at n0, stepped to that reactivity with the source
+		local oracle = Kinetics.newAmplitude(LAMBDA, BETAS, n0)
+		local worst, integral = 0, 0
+		for _ = 1, math.floor(600 / DT + 0.5) do
+			sys:step(DT)
+			Kinetics.step(oracle, DT, rho, sys.source)
+			worst = math.max(worst, math.abs(sys.n - oracle.n) / oracle.n)
+			integral += sys.n * DT
+		end
+		-- for the prompt-jump equations with constant ρ, d/dt Σ sᵢ/λᵢ = ρ·n, so the whole tail is n0·Σ(βᵢ/λᵢ)/(−ρ)
+		local tail = 0
+		for i, b in BETAS do
+			tail += b / LAMBDA[i]
+		end
+		tail *= n0 / -rho
+		t.log(string.format("from %d %%FP: %.3f FP·s in the first 10 min; the continuous tail is %.3f FP·s",
+			n0 * 100, integral, tail))
+		-- the same arithmetic on the same state, so the two agree to rounding
+		t.ok(worst <= 1e-12, `the loaded core runs the trip of a core critical at {n0 * 100} %FP, tail and all (worst {worst})`)
+	end,
+
 	["withdrawing worth raises reactivity, and the core answers (§3.1)"] = function(t)
 		--[[
 			D-049: each reading waits five of its state's slowest periods, so what is left of the approach is known.

@@ -219,21 +219,23 @@ function Core.step(self: any, dt: number)
 	local drivers = self:readDrivers()
 	if self.reseat then
 		--[[
-			D-053: a loaded plant comes back tripped. The rods were latched just above as they now stand, so seat the
-			§3.2 feedback on the loaded temperatures and the amplitude at the equilibrium its source drives for the
-			reactivity that leaves: n = q/(−ρ), with every precursor group in equilibrium at it.
+			D-053: a loaded plant comes back tripped, and the trip happens now. The rods were latched just above as
+			they now stand, and the §3.2 feedback is seated on the loaded temperatures. The amplitude is seated as the
+			plant was when it closed, at the saved power with every precursor group in equilibrium there
+			(sᵢ = βᵢ·n₀), so this step's prompt drop and the delayed-neutron tail after it run under the scram
+			reactivity as they would after any trip. Without a saved power (a version-1 save), it is seated at the
+			equilibrium the source drives for that reactivity, n = q/(−ρ).
 		]]
 		self.reseat = false
 		self.pk:updateFeedback(0, drivers)
 		local rho = self.pk.external + self.pk.feedback
 		local amp = self.pk.amp
-		local n = if rho < 0 then self.source / -rho else self.nFloor
+		local n = self.reseatPower or (if rho < 0 then self.source / -rho else self.nFloor)
+		self.reseatPower = nil
 		amp.n = n
 		for i = 1, #amp.s do
 			amp.s[i] = amp.beta[i] * n
 		end
-		amp.rho = rho
-		self.pk.rho = rho
 		self.n = n
 	end
 
@@ -376,15 +378,16 @@ end
 --[[
 	D-053: nothing on §14.6's list is the core's, but a loaded plant comes back tripped, so the core is re-seated on
 	its first step after a load (Core.step): the rods latched as they stand, the feedback on the loaded temperatures,
-	and the source-driven equilibrium for that reactivity. The power it had is saved for the record.
+	and the amplitude as it was at the saved power, so the trip's delayed-neutron tail runs from there.
 ]]
 function Core.save(self: any): any
 	return { power_pctFP = self.n * 100 }
 end
 
-function Core.load(self: any, _data: any, _version: number)
+function Core.load(self: any, data: any, _version: number)
 	self.worth0_pcm = nil -- latched again on the first step
 	self.reseat = true
+	self.reseatPower = if type(data.power_pctFP) == "number" and data.power_pctFP > 0 then data.power_pctFP / 100 else nil
 	self.promptCritical = false
 end
 

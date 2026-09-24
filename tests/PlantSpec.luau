@@ -271,8 +271,21 @@ return {
 		run(b, 10)
 		t.ok(protB.tripped.PSS, "still tripped")
 		t.ok(b.channels:get("core.k") < 1, "subcritical")
-		t.ok(b.channels:get("core.power_pctFP") < Config.Instruments.sourceRangeHighVoltageOffAbove_pctFP,
-			"down in the source range, where a shut-down core belongs (§3.5)")
+		--[[
+			The trip happened at the load, so ten seconds on the core is on its delayed-neutron tail. It is below the
+			prompt drop from the saved power, n₀·β/(β − ρ), because the precursors only decay from there, and above
+			the level the source alone would hold, q/(−ρ).
+		]]
+		local beta = 0
+		for _, b in Config.Kinetics.groups.beta_pcm do
+			beta += b
+		end
+		local rho = b.channels:get("core.rho_pcm")
+		local n = b.channels:get("core.power_pctFP")
+		local prompt = saved.systems.Core.power_pctFP * beta / (beta - rho)
+		local sourceOnly = b.byName.Core.source * 100 / (-rho * 1e-5)
+		t.ok(n < prompt and n > sourceOnly,
+			string.format("on the trip's tail: %.3g %%FP, between the source's %.3g and the prompt drop's %.3g", n, sourceOnly, prompt))
 	end,
 
 	["a fault comes back active but is not fired again, and its own effects come back with it (D-053)"] = function(t)
