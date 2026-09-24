@@ -92,6 +92,7 @@ local IHX = System.extend({
 		"protection.runback",
 		"protection.runbackTarget_pctFP",
 		"protection.runbackRate_pctpmin",
+		"protection.runbackEnd",
 	},
 	writes = {
 		"ihx.heatRemoved_W",
@@ -456,22 +457,29 @@ function IHX.step(self: any, dt: number)
 	local runback = port:read("protection.runback") or ""
 	local target = port:read("protection.runbackTarget_pctFP") or 100
 	local perMinute = port:read("protection.runbackRate_pctpmin") or 0
+	local ended = port:read("protection.runbackEnd") or ""
 	if runback ~= "" then
 		self.runbackTarget, self.runbackRate = target, perMinute / 60
 		self.loadDemand = math.min(self.loadDemand, target)
 	elseif self.runbackTarget then
 		--[[
-			The runback is over, completed or cleared, and the steam plant's runback ends with it. The load reads
-			Protection a tick late, so a completed runback leaves it at most one tick of the ramp above the target,
-			and that tick is finished here. A cleared one leaves it anywhere above: the demand holds at the load,
-			for the operator to take from there at the operating rates.
+			The runback is over, and Protection says how.
+			  complete  its demand reached the target, but the load can still be above it: the load reads Protection a
+			            tick late, and it ramps from the steam plant's own load while the demand ramped from the noisy
+			            PR median, so the gap is a few ticks of the ramp and differs run to run. The load finishes at the
+			            runback's rate to the target (rampLoad, on the latch kept here), unless the operator raises the
+			            demand first, which ends the latch.
+			  cleared   the steam plant's runback ends with it: the demand holds at the load, for the operator to take
+			            from there at the operating rates.
+			Either way the latch ends, so no later load change takes a runback's rate (D-046).
 		]]
-		local step = self.runbackRate * dt
-		if self.sinkLoad - self.runbackTarget <= step then
-			self.sinkLoad = math.max(self.runbackTarget, self.sinkLoad - step)
+		local finishing = ended == "complete" and self.sinkLoad > self.runbackTarget and self.loadDemand <= self.runbackTarget
+		if not finishing then
+			if ended ~= "complete" then
+				self.loadDemand = self.sinkLoad
+			end
+			self.runbackTarget, self.runbackRate = nil, 0
 		end
-		self.loadDemand = self.sinkLoad
-		self.runbackTarget, self.runbackRate = nil, 0
 	end
 	self:rampLoad(dt)
 	self:applyFlows(flow)

@@ -39,6 +39,7 @@ local function make(opts: { [string]: any }?)
 	ch:declareExternal("protection.runback", "")
 	ch:declareExternal("protection.runbackTarget_pctFP", 100)
 	ch:declareExternal("protection.runbackRate_pctpmin", 0)
+	ch:declareExternal("protection.runbackEnd", "")
 	ch:declareExternal("primary.pumpHeat_MWt", if o.pumpHeat ~= nil then o.pumpHeat else PRIMARY.pumps.pumpHeatToSodium_MWt)
 	local sys = System.new(IHX)
 	local bus = Bus.new()
@@ -352,6 +353,7 @@ return {
 		ch:setExternal("protection.runback", "")
 		ch:setExternal("protection.runbackTarget_pctFP", 100)
 		ch:setExternal("protection.runbackRate_pctpmin", 0)
+		ch:setExternal("protection.runbackEnd", "cleared")
 		run(sys, 5)
 		t.near(sys.sinkLoad, during, 1e-9, "the load holds where the cleared runback left it")
 		t.near(sys:getState().sinkLoadDemand_pct, during, 1e-9, "with the demand there, for the operator to take")
@@ -363,6 +365,40 @@ return {
 		t.ok(sys:applyCommand(OPERATOR, { kind = "sink.load", value = rb.target_pctFP }).ok)
 		run(sys, 60)
 		t.near(sys.sinkLoad, during, 1e-9, "and down a minute at 1 %/min, not at RB-2's 60 %/min")
+	end,
+
+	["a completed runback's load finishes at the target at the runback's rate, and then lets go (D-046)"] = function(t)
+		--[[
+			Protection completes a runback when its demand reaches the target. The demand ramps from the noisy PR
+			median and the load from the steam plant's own load, and the load reads Protection a tick late, so the load
+			can still be a few ticks of the ramp above the target then. Studio caught it two ticks short (60.2 %),
+			where the load used to freeze. It finishes at the runback's rate, and only then does the latch end.
+		]]
+		local sys, ch = make({ load = 100 })
+		local rb = Config.Protection.runbacks.RB2
+		local perTick = rb.rate_pctpmin / 60 * DT
+		ch:setExternal("protection.runback", "RB2")
+		ch:setExternal("protection.runbackTarget_pctFP", rb.target_pctFP)
+		ch:setExternal("protection.runbackRate_pctpmin", rb.rate_pctpmin)
+		local short = 2 -- ticks of the ramp still to go when Protection completes
+		run(sys, (100 - rb.target_pctFP) / (rb.rate_pctpmin / 60) - short * DT)
+		t.near(sys.sinkLoad, rb.target_pctFP + short * perTick, 1e-9, "two ticks of the ramp above the target")
+
+		ch:setExternal("protection.runback", "")
+		ch:setExternal("protection.runbackTarget_pctFP", 100)
+		ch:setExternal("protection.runbackRate_pctpmin", 0)
+		ch:setExternal("protection.runbackEnd", "complete")
+		run(sys, DT)
+		t.near(sys.sinkLoad, rb.target_pctFP + perTick, 1e-9, "the load carries on down at the runback's rate")
+		run(sys, DT)
+		t.near(sys.sinkLoad, rb.target_pctFP, 1e-9, "and reaches the target")
+		run(sys, 1)
+		t.near(sys.sinkLoad, rb.target_pctFP, 1e-9, "and stays there")
+
+		-- the latch has ended: a later decrease runs at LCO-10's 1 %/min above 40 %, not at RB-2's rate
+		t.ok(sys:applyCommand(OPERATOR, { kind = "sink.load", value = rb.target_pctFP - 5 }).ok)
+		run(sys, 60)
+		t.near(sys.sinkLoad, rb.target_pctFP - 1, 1e-9, "a minute later it is 1 % lower, not 5")
 	end,
 
 	["the load ramps at §7.1's 5 %/min, and at LCO-10's 1 %/min above 40 %"] = function(t)

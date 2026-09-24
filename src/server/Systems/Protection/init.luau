@@ -107,6 +107,7 @@ local Protection = System.extend({
 		"protection.runback",
 		"protection.runbackTarget_pctFP",
 		"protection.runbackRate_pctpmin",
+		"protection.runbackEnd",
 	},
 })
 
@@ -432,6 +433,9 @@ function Protection.init(self: any, ctx: any)
 	self.active = {}
 	self.inhibited = {}
 	self.runback = nil
+	-- how the last runback ended: "complete" or "cleared", "" before any has ended or while one runs. The steam
+	-- plant needs it: a completed runback's load still finishes at the target, a cleared one's holds (D-046).
+	self.runbackEnd = ""
 	self.curieTemp_C = 0
 	self.curieStarted = false
 	self.bypassed = {} :: { [string]: boolean }
@@ -464,6 +468,7 @@ function Protection.publish(self: any)
 	port:write("protection.runback", if self.runback then self.runback.id else "")
 	port:write("protection.runbackTarget_pctFP", if self.runback then self.runback.target else 100)
 	port:write("protection.runbackRate_pctpmin", if self.runback then self.runback.rate else 0)
+	port:write("protection.runbackEnd", self.runbackEnd)
 end
 
 --[[
@@ -507,6 +512,7 @@ function Protection.startRunback(self: any, id: string, actor: Actor?)
 		demand = self.measured,
 		driveIn = false,
 	}
+	self.runbackEnd = ""
 	if self.log then
 		self.log:record("runback", actor, id, spec.trigger, `to {spec.target_pctFP} %FP at {spec.rate_pctpmin} %/min`)
 	end
@@ -540,7 +546,7 @@ function Protection.followRunback(self: any, dt: number)
 		if self.log then
 			self.log:record("runback", nil, rb.id, string.format("%.1f %%FP", measured), "complete")
 		end
-		self.runback = nil
+		self.runback, self.runbackEnd = nil, "complete"
 	end
 end
 
@@ -826,7 +832,7 @@ Protection.commands = {
 		if self.log then
 			self.log:record("runback", actor, self.runback.id, nil, "cleared")
 		end
-		self.runback = nil
+		self.runback, self.runbackEnd = nil, "cleared"
 		self:publish()
 		return { ok = true }
 	end,
@@ -895,7 +901,7 @@ function Protection.load(self: any, data: any, _version: number)
 		self.log:record("reactor.trip", nil, "SERVER-CLOSE", "the server closed, which counts as a reactor trip (D-053)",
 			if self.firstOut == "SERVER-CLOSE" then "TRIP (first out)" else "TRIP")
 	end
-	self.runback = nil
+	self.runback, self.runbackEnd = nil, ""
 	table.clear(self.pressed)
 	self:publish()
 end
