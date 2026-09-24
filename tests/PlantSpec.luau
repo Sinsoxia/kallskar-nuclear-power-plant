@@ -542,6 +542,74 @@ return {
 		settled(t, p, target, "RB2")
 	end,
 
+	["a pump trip at full power with flow auto in runs back on RB-2 without a trip: the survivors hold 105 % (§4.2, D-046+)"] = function(t)
+		local p = atFullPower(t)
+		local pumps = p.byName.PrimaryPumps
+		local cfg = Config.Primary.pumps
+		local maxSpeed, ramp = cfg.speedRange_pct[2], cfg.maxRamp_pctps
+		local pqTrip = Config.Protection.pss.powerToFlow.trip
+		t.ok(p.faults:arm("PP-TRIP", { pump = 3 }, AUTO).ok, "PP3 trips at full power")
+		local started, done, tripped, firstOut = nil, nil, false, ""
+		local peak, peakAt, reached, heldBelow, demand = 0, nil, nil, math.huge, nil
+		local function pq(): number
+			return p.channels:get("core.power_pctFP") / 100 / p.channels:get("primary.flowFraction")
+		end
+		run(p, 300, function(tick)
+			if p.channels:get("protection.tripped") and not tripped then
+				tripped, firstOut = true, p.channels:get("protection.firstOut")
+			end
+			local rb = p.channels:get("protection.runback")
+			if rb == "RB2" and not started then
+				started = tick
+			elseif started and not done and rb == "" then
+				done = tick
+				demand = p.channels:get("auto.pumpSpeedDemand_pct") -- what the pumps read on the next tick
+			end
+			if started and not done then
+				if pq() > peak then
+					peak, peakAt = pq(), tick
+				end
+				local slowest = math.huge
+				for i = 1, 2 do
+					slowest = math.min(slowest, pumps.pumps[i].speed_pct)
+				end
+				if reached then
+					heldBelow = math.min(heldBelow, slowest)
+				elseif slowest >= maxSpeed then
+					reached = tick
+				end
+			end
+			return done ~= nil and tick >= done + 1
+		end)
+		t.log(string.format("RB-2 from tick %s to %s (%.1f s); survivors at %d %% after %.1f s; P/Q peak %.3f at %.1f s (trip %.2f); tripped %s %s",
+			tostring(started), tostring(done), ((done or 0) - (started or 0)) * DT, maxSpeed, (reached or 0) * DT, peak,
+			(peakAt or 0) * DT, pqTrip, tostring(tripped), firstOut))
+		t.ok(started ~= nil and started <= 2, "RB-2 starts from its own trigger, the PUMPS row, within a tick of the trip")
+		-- the drives ramp from 100 % at the 2 %/s limit, starting the tick after RB-2 shows (the pumps read it late)
+		t.ok(reached ~= nil and reached * DT <= (maxSpeed - 100) / ramp + 3 * DT,
+			`the surviving pumps reach {maxSpeed} % at the {ramp} %/s ramp`)
+		t.eq(heldBelow, maxSpeed, `and hold {maxSpeed} % while RB-2 runs`)
+		t.ok(peak < pqTrip, string.format("P/Q stays below the %.2f trip (peak %.3f)", pqTrip, peak))
+		t.eq(tripped, false, "the plant runs back without a trip")
+		t.ok(done ~= nil, "and RB-2 completes")
+		-- once RB-2 is over, flow auto has the pumps again, a tick later as they read it (§9.4: it ignores the trip, so
+		-- its demand is the three-pump programme's)
+		for i = 1, 2 do
+			t.eq(pumps.pumps[i].demand_pct, demand, `{pumps.pumps[i].name} is back on flow auto's demand`)
+		end
+		-- what flow auto does with two pumps is §9.4's weakness: log it rather than assert it (D-046+)
+		local after, afterFirstOut = nil, ""
+		run(p, 120, function(tick)
+			if p.channels:get("protection.tripped") then
+				after, afterFirstOut = tick, p.channels:get("protection.firstOut")
+				return true
+			end
+			return false
+		end)
+		t.log(string.format("after RB-2, with flow auto left in on two pumps at %.1f %%: %s", demand or 0,
+			if after then string.format("the plant trips on %s %.1f s later", afterFirstOut, after * DT) else "no trip in 120 s"))
+	end,
+
 	["RB-1 runs a full-power plant back to 64 %FP at 30 %/min and settles there (§9.5, D-046)"] = function(t)
 		local p, target = runback(t, "RB1")
 		settled(t, p, target, "RB1")

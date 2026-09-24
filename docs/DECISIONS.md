@@ -988,3 +988,31 @@ ProtectionSpec holds PR-HIGH for 600 s at each of two levels: the derived worst 
 level, where the old rule flickered 1,353 times. It bounds the count from the derivation, using its expected counts
 and their Poisson tails at the one-sided chance of 5σ. The deterministic test D-050 had is gone. A new test checks
 the off-delay's timing, tick by tick.
+
+## D-046 amendment (D-046+) — on a pump trip, the surviving pumps hold 105 % while RB-2 runs
+While D-046 was being implemented, RB-2 started by its own trigger still tripped a full-power plant. A primary pump
+trip with flow auto in tripped the reactor on PQ at 10.4 s, with P/Q peaking at 1.122. The lost pump coasts down, and
+flow auto slows the other two as its 10 s power filter comes down. **Decision (Aqua):** use §4.2's mechanism (Rev
+A5, F27). On a primary pump trip, the surviving pumps ramp to 105 % at the 2 %/s limit, which keeps P/Q below the
+1.12 trip while RB-2 runs power back. They hold 105 % while RB-2 runs, and flow auto takes them back when the runback
+ends. PrimaryPumps holds the survivors at the top of their range whenever a pump is down and RB-2 is running. While
+the hold is on, it refuses an operator's `pump.speed`.
+
+**How this sits with §9.4.** §9.4 gives flow auto the built-in weakness that it "ignores a pump trip". The ramp to
+105 % is the pump drives' own response to the trip (§4.2), not flow auto's. Flow auto still ignores the trip: its
+demand stays the three-pump programme, and the drives override it only while RB-2 runs. The weakness shows once the
+runback ends:
+- **Flow auto in:** flow auto takes the two pumps back to the programme's demand, 69 % at the end of RB-2. Two pumps
+  at that speed give the core about two thirds of the flow the programme means to. With flow auto left in, the plant
+  trips on PQ 16.4 s after RB-2 completes, unless the crew takes flow auto out or sets the pumps first. That is open
+  for Aqua (docs/review/DECISIONS_NEEDED.md, D-046+).
+- **Flow auto out:** the pumps stay at 105 %, and the operator takes them from there.
+
+**Result.** A pump trip at full power with flow auto in now runs back without a trip. P/Q peaks at 1.040, against
+1.122 before, and RB-2 completes at 40 s. PlantSpec has the case.
+
+**RB-1, still open for the steam-plant milestone.** Losing a secondary loop at full power still trips the reactor on
+INLET-HIGH before RB-1 completes. That happens at 53.1 s and 72 %FP with flow auto in, and at 45.9 s and 76 %FP with
+it out. The M1 heat sink has no secondary inventory, so a stopped loop's capacity goes at once, faster than 30 %/min
+can take the power off. The secondary loops' own model (their inventory and pump coastdown) is what fixes it, and it
+belongs to the steam-plant milestone.

@@ -13,6 +13,9 @@
 	            makes that curve; it is not integrated separately. The check valve only prevents reverse flow — it
 	            never adds flow, so a stopped pump contributes nothing rather than draining the diagrid
 	  pony      250 kW pony motors on the essential boards hold 10 % speed, which is a floor under the coastdown
+	  trip      on a pump trip the surviving pumps' drives ramp to 105 % at the 2 %/s limit, which keeps P/Q under
+	            the 1.12 trip while RB-2 runs the power back, and hold there until RB-2 ends (§4.2, Rev A5's F27;
+	            D-046+). This is the drives' own trip response, not §9.4's flow auto, which still ignores the trip
 	  no pumps  natural circulation, Q_nc = 3.5 % × (P / 100 %FP)^⅓ (§4.2 as corrected in Rev A4), applied as a floor
 	            on total flow rather than per pump
 
@@ -22,6 +25,8 @@
 	                                 it is decay heat that keeps the sodium moving, not the neutron power
 	         pools.coverGas_MPa      start interlock (≥ 0.105 MPa)
 	         pools.coldPool_K        start interlock (sodium ≥ 180 °C)
+	         protection.runback      whether RB-2, the pump trip's runback, is running (lagged: Protection runs
+	                                 after the pumps, so the survivors start their ramp a tick after the trip)
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -36,7 +41,7 @@ local PrimaryPumps = System.extend({
 	name = "PrimaryPumps",
 	lane = "fast",
 	reads = { "core.thermalPower_pctFP", "pools.coverGas_MPa", "pools.coldPool_K" },
-	readsLagged = { "auto.flowOn", "auto.pumpSpeedDemand_pct" },
+	readsLagged = { "auto.flowOn", "auto.pumpSpeedDemand_pct", "protection.runback" },
 	writes = {
 		"primary.coreFlow_kgps",
 		"primary.flowFraction",
@@ -48,6 +53,7 @@ local PrimaryPumps = System.extend({
 })
 
 local KELVIN = 273.15
+local PUMP_TRIP_RUNBACK = "RB2" -- §9.5: one primary pump lost runs the plant back on RB-2
 
 function PrimaryPumps.init(self: any, ctx: any)
 	local cfg = ctx.config
@@ -75,6 +81,7 @@ function PrimaryPumps.init(self: any, ctx: any)
 			coastTime_s = 0,
 		}
 	end
+	self.holding = false -- the survivors are held at the top of their range while RB-2 runs (§4.2, D-046+)
 	self.flow = table.create(self.count, self.ratedEach)
 	self.speed = table.create(self.count, 100)
 	self.port:write("primary.pumpFlow_kgps", self.flow)
@@ -133,6 +140,23 @@ function PrimaryPumps.step(self: any, dt: number)
 				if not pump.tripped then
 					pump.demand_pct = clamped
 				end
+			end
+		end
+	end
+
+	--[[
+		§4.2 (Rev A5, F27): "the surviving pumps ramp to 105 % on a pump trip, which keeps P/Q below the 1.12 trip
+		while RB-2 runs power back". The drives do it, not flow auto, so it overrides flow auto's demand above, and
+		holds for as long as RB-2 runs (D-046+). When RB-2 ends, flow auto takes the pumps back to its programme on
+		the next tick; with flow auto out they stay at 105 % until the operator moves them. Flow auto's programme is
+		for three pumps, so on two it gives the core about two thirds of the flow it means to (§9.4's weakness).
+	]]
+	local runback = self.port:read("protection.runback")
+	self.holding = runback == PUMP_TRIP_RUNBACK and self:runningCount() < self.count
+	if self.holding then
+		for _, pump in self.pumps do
+			if not pump.tripped then
+				pump.demand_pct = self.maxSpeed
 			end
 		end
 	end
@@ -245,6 +269,9 @@ PrimaryPumps.commands = {
 		if pump.tripped then
 			return { ok = false, reason = `{pump.name} is stopped; start it first` }
 		end
+		if self.holding then
+			return { ok = false, reason = `the drives hold {self.maxSpeed} % while RB-2 runs (§4.2)` }
+		end
 		if value < self.minSpeed or value > self.maxSpeed then
 			return { ok = false, reason = `speed must be between {self.minSpeed} and {self.maxSpeed} %` }
 		end
@@ -334,6 +361,7 @@ function PrimaryPumps.save(self: any): any
 end
 
 function PrimaryPumps.load(self: any, data: any, _version: number)
+	self.holding = false -- a loaded plant is tripped, with no runback running
 	if type(data.pumps) ~= "table" then
 		return
 	end

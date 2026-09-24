@@ -19,7 +19,7 @@ while implementing the amended D-050.
 | L13 | Where do the unexplained test tolerances come from? | Derive most from the method; record the rest as decisions |
 | L1+ | Should alarms have a reset deadband? | Yes, the channel's own noise |
 | L12 (deferred) | Where can a whole-fast-lane P99 test run reliably? | In Studio, with the headless run logging it |
-| D-046+ | Why do the runbacks' own triggers still trip a full-power plant? | Flow auto holds its demand during a runback |
+| D-046+ | What should flow auto do with two pumps once RB-2 ends? (RB-1 is open for the steam plant) | Leave it: §9.4's weakness |
 | M7+ | Should the PROT-CHANNEL fault obey D-055's bypass limits? | No, but make it visible and keep its bypass its own |
 | D-050+ | Should the DNDs' alarm wait longer than 5 s before it goes out? | Yes, 10 s |
 
@@ -261,31 +261,30 @@ pass would not show that the budget holds in a live server.
 
 ## D-046+: The runbacks' own triggers at full power (found while implementing D-046)
 
-**Today.** D-046 is in, and a runback started by command does what it says: from 100 %FP, RB-2 reaches 60 %FP in
-40 s and RB-1 reaches 64 %FP in 72 s (PlantSpec). The events that start them automatically still end in a trip at
-full power:
-- **One primary pump lost, flow auto in (RB-2):** a reactor trip on PQ at 10.4 s, with P/Q peaking at 1.122. The
-  lost pump coasts down, and flow auto slows the other two pumps as its 10 s power filter comes down, so the flow
-  falls faster than a 60 %/min power demand. With flow auto out, the plant survives: P/Q peaks at 1.082, and the
-  runback completes at 40.1 s.
-- **One secondary loop lost (RB-1):** a reactor trip on INLET-HIGH at 53.1 s, at 72 %FP. The M1 heat sink has no
-  secondary inventory, so a stopped loop's capacity goes at once. At 30 %/min, the excess heat raises the core inlet
-  past 405 °C before the power gets down to what two loops can carry.
+**Decided.** Aqua chose §4.2's mechanism (Rev A5, F27), recorded as the D-046 amendment in docs/DECISIONS.md. On a
+primary pump trip the surviving pumps ramp to 105 % at 2 %/s and hold there while RB-2 runs, and flow auto takes them
+back when the runback ends. A pump trip at full power with flow auto in now runs back without a trip: P/Q peaks at
+1.040, against 1.122 and a PQ trip at 10.4 s before, and RB-2 completes at 40 s (PlantSpec).
 
-**Spec.** §9.5 gives the runback table. §9.4 gives flow auto's 10 s filter as a stated weakness, and says a large
-enough step under flow auto trips the plant on P/Q. The IHX header records the missing secondary inventory as an
-M1 limitation.
+**Still open: flow auto after RB-2.** §9.4's flow auto ignores a pump trip, so when RB-2 ends it takes the two
+surviving pumps back to the three-pump programme's demand: 69 % at the end of the runback. That gives the core about
+two thirds of the flow the programme means to. With flow auto left in, the plant trips on PQ 16.4 s after RB-2
+completes. The crew has the 40 s of the runback and those 16 s to take flow auto out or set the pumps.
+- **A. Leave it.** It is the weakness §9.4 builds in on purpose ("deliberately worse than a crew"), and a crew that
+  leaves flow auto in after a pump trip should expect it.
+- **B. Flow auto drops to manual on a pump trip,** as rod auto does on a reactor trip (D-035). The pumps then stay at
+  105 % after RB-2. This softens the §9.4 weakness.
+- **C. The drives hold 105 % until the crew acts** (a speed command, or flow auto selected again), rather than until
+  RB-2 ends. This departs from "flow auto takes them back when the runback ends".
 
-**Options.**
-- **A. Flow auto holds its speed demand while a runback runs,** the way rod auto stands down (D-035). This is what
-  saves RB-2 in the numbers above.
-- **B. A faster first stage.** RB-2 drives in at full speed until P/Q is back under its alarm, and then follows the
-  table rate. This departs from §9.5's rate column.
-- **C. For RB-1, the secondary loops' own model:** their inventory and pump coast-down, so a lost loop's capacity
-  goes over the loops' transit time rather than at once. That is the IHX stand-in's documented limitation, and the
-  runback is only as good as the heat sink it runs against.
+**Recommendation.** A, because it is what §9.4 says. If the trap is too sharp in playtesting, B.
 
-**Recommendation.** A now, and C when the secondary loops are built. Keep the table rates.
+**Open for the steam-plant milestone: RB-1.** Losing a secondary loop at full power still trips the reactor on
+INLET-HIGH before RB-1 completes. That happens at 53.1 s and 72 %FP with flow auto in, and at 45.9 s and 76 %FP with
+it out. The M1 heat sink has no secondary inventory, so a stopped loop's capacity goes at once. At 30 %/min, the
+excess heat raises the core inlet past 405 °C before the power gets down to what two loops can carry. The IHX header
+records this as an M1 limitation. It is fixed by the secondary loops' own model, their inventory and pump coastdown,
+which is part of the steam-plant milestone. The table rates stay as they are.
 
 ## M7+: The PROT-CHANNEL fault and D-055's bypass limits (found in the review of PR #5)
 
