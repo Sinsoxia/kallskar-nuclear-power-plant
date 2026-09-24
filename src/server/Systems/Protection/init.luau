@@ -161,7 +161,7 @@ local function buildMonitors(cfg: any): { any }
 				return self.port:read("detectors.pr_pctFP") or { 0 }
 			end,
 			vote = votePR, alarm = pss.powerRangeHigh.alarm_pctFP, trip = pss.powerRangeHigh.trip_pctFP,
-			neutron = true, -- D-055: never bypassed
+			neutron = true, -- D-055: the pss.bypass command refuses it (the PROT-CHANNEL fault does not; see below)
 			-- D-050: one quadrant's D-025 noise at the alarm setpoint
 			deadband = noise.powerRangeRelative * pss.powerRangeHigh.alarm_pctFP,
 		},
@@ -749,9 +749,11 @@ Protection.commands = {
 		A bypass is a deliberate, logged, visible act: §9.6's LCOs are written around which protection is
 		available, so a bypassed trip has to be something an auditor can find afterwards. D-055 limits it: the
 		command is a critical control (the §10.7 playtime, Access.criticalControls); at most bypassedRowsMax rows
-		are out of service at once; and a row the neutron instruments drive (the power range high and low setpoint,
-		flux rate, period, and the SSS power range) is never bypassed, because those are the trips that answer a
-		reactivity excursion. Once the desks exist a bypass will also need §10.2's shift-supervisor authorisation.
+		are out of service at once; and the command refuses a row the neutron instruments drive (the power range
+		high and low setpoint, flux rate, period, and the SSS power range), because those are the trips that answer
+		a reactivity excursion. Once the desks exist a bypass will also need §10.2's shift-supervisor authorisation.
+		These limits are the command's. The PROT-CHANNEL fault below bypasses a row without them, and restoring the
+		row here takes the fault's bypass away too (docs/review/DECISIONS_NEEDED.md, M7+).
 	]]
 	["pss.bypass"] = function(self: any, actor: Actor, cmd: Command): CommandResult
 		local id = cmd.target
@@ -817,6 +819,12 @@ Protection.faults = {
 		--[[
 			A protective signal left bypassed — the way a real plant finds out it has been running without a trip
 			is usually the surveillance that trips over it, not the event itself.
+
+			The fault sets the bypass directly, not through pss.bypass, so none of D-055's limits applies to it: it
+			is not counted against bypassedRowsMax (though a row it holds does count against the operator's next
+			bypass), it bypasses a neutron row as readily as any other, and with no `signal` it bypasses PR-HIGH,
+			which is a neutron row. Its clear removes the row's bypass whoever set it. Whether that is right is open
+			for Aqua (docs/review/DECISIONS_NEEDED.md, M7+); until then the behaviour is left as it is.
 		]]
 		arm = function(self: any, params: { [string]: any }?)
 			local id = (params and params.signal) or "PR-HIGH"
@@ -835,7 +843,8 @@ Protection.faults = {
 --[[
 	§14.6 (D-053): the trip bypasses, and the trip itself. A server close counts as a reactor trip, so a loaded plant
 	comes back with the PSS tripped: with the first out it had if it was already tripped, SERVER-CLOSE otherwise.
-	A bypass a fault holds is put back by the fault as well (Faults.restore).
+	A bypass the PROT-CHANNEL fault holds is in the slice like any other; Faults.restore marks the fault active and
+	does not bypass the row again.
 ]]
 function Protection.save(self: any): any
 	local bypassed = {}

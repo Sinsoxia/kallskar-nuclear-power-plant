@@ -3,7 +3,7 @@
 Nine findings from `docs/review/CODE_REVIEW.md` cannot be fixed until someone decides how the plant should behave.
 Each proposal below states what the code does today, what the spec says (section numbers only), the options, and a
 recommendation. One further item came up while fixing L1, and one test the review asked for under L12 is deferred;
-both are at the end.
+both are at the end. Two more came up later: D-046+ while implementing D-046, and M7+ in the review of PR #5.
 
 | ID | Question | Recommendation |
 |---|---|---|
@@ -19,6 +19,7 @@ both are at the end.
 | L1+ | Should alarms have a reset deadband? | Yes, the channel's own noise |
 | L12 (deferred) | Where can a whole-fast-lane P99 test run reliably? | In Studio, with the headless run logging it |
 | D-046+ | Why do the runbacks' own triggers still trip a full-power plant? | Flow auto holds its demand during a runback |
+| M7+ | Should the PROT-CHANNEL fault obey D-055's bypass limits? | No, but make it visible and keep its bypass its own |
 
 ---
 
@@ -283,3 +284,30 @@ M1 limitation.
   runback is only as good as the heat sink it runs against.
 
 **Recommendation.** A now, and C when the secondary loops are built. Keep the table rates.
+
+## M7+: The PROT-CHANNEL fault and D-055's bypass limits (found in the review of PR #5)
+
+**Today.** D-055 limits the `pss.bypass` command: it is a critical control, at most `bypassedRowsMax` (1) rows are
+out at once, and a neutron row (PR-HIGH, PR-LOW-SP, PERIOD, FLUX-RATE, SSS-FLUX) is refused. The PROT-CHANNEL fault
+does not go through the command. Its `arm` sets the row's bypass directly, so:
+- it is not counted against the cap, so an operator's bypass and the fault's make two rows out at once;
+- it bypasses a neutron row, and with no `signal` parameter it bypasses PR-HIGH, which is one;
+- a row it holds does count against the operator's next bypass, whose refusal names that row ("PR-HIGH is already
+  bypassed; restore it first"), so the refusal gives the fault away;
+- an operator can restore the row with `pss.bypass` value 0, which ends the fault's effect while the fault stays
+  active; and the fault's `clear` removes a bypass the operator set on the same row before the fault.
+
+**Spec.** The spec has no bypass control and no PROT-CHANNEL fault. §9.6's LCOs assume the trips are available,
+and §10.2 gives the shift supervisor's desk "authorisations for bypasses".
+
+**Options.**
+- **A. The fault is outside D-055,** as today. It stands for a bypass nobody authorised, which the cap and the
+  neutron-row rule cannot stop because nobody asked them. A PR-HIGH default makes it the most serious one.
+- **B. The fault obeys D-055:** it counts against the cap and never picks a neutron row, and its default becomes a
+  process row (for example CORE-OUT).
+- **C. A, but the fault's bypass is its own:** it is held apart from the operator's, so it neither takes the
+  operator's one row nor gives itself away in a refusal, and a restore by command does not end it until the crew
+  has found it (for example, a surveillance check that reveals it).
+
+**Recommendation.** C. It keeps the fault's point, a trip missing without anyone deciding so, and removes the two
+side effects a player can see.
