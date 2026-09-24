@@ -432,14 +432,20 @@ return {
 		local p = plant({})
 		resolveAndInit(p)
 		local done, result = false, nil
+		-- each stretch between two budget checks is timed, so the overrun bound comes from the task itself (D-049)
+		local longest, mark = 0, 0
 		local started = p.scheduler:runSliced("work", function(budget, n)
 			local acc = 0
+			mark = os.clock()
 			for i = 1, n do
 				acc += math.sqrt(i)
 				if i % 1000 == 0 then
+					longest = math.max(longest, os.clock() - mark)
 					budget:check()
+					mark = os.clock()
 				end
 			end
+			longest = math.max(longest, os.clock() - mark)
 			return acc
 		end, function(ok, r)
 			done, result = ok, r
@@ -456,8 +462,11 @@ return {
 		t.ok(frames > 1, `work was spread over frames ({frames})`)
 		local budgetMs = Config.Clocks.shapeSliceBudget_s * 1000
 		local worst = p.scheduler.stats.frameSliced:max() * 1000
-		t.log(string.format("frames=%d worst slice=%.2f ms (budget %.1f ms)", frames, worst, budgetMs))
-		t.ok(worst < budgetMs * 3, "a slice never runs far past its budget")
+		t.log(string.format("frames=%d worst slice=%.2f ms (budget %.1f ms, longest piece %.3f ms)",
+			frames, worst, budgetMs, longest * 1000))
+		-- D-049, as IQSSpec: one piece past the budget if the deadline falls inside it, and at most one more for the
+		-- scheduler's own resume and yield around it
+		t.ok(worst <= budgetMs + 2 * longest * 1000, "a slice runs past its budget by at most the piece it is in")
 		t.ok(not p.scheduler:isSlicedRunning("work"))
 	end,
 

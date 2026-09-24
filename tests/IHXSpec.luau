@@ -78,7 +78,8 @@ return {
 		t.near(u.primaryOutlet_K - KEL, SPEC.primaryOutlet_C, 1, "§4.3: 375 °C primary out")
 		t.near(u.secondaryOutlet_K - KEL, SPEC.secondaryOutlet_C, 1, "§4.3: 520 °C secondary out")
 		t.near(u.lmtd_K, SPEC.lmtd_K, 0.5, "§4.3: LMTD ≈ 41 K")
-		t.near(s.total_MWt, Config.Units.ratedThermal_MWt, 30, "six of them carry the core")
+		-- D-049: six times the 2 MW each unit is checked to above
+		t.near(s.total_MWt, Config.Units.ratedThermal_MWt, 6 * 2, "six of them carry the core")
 		t.near(ch:get("ihx.heatRemoved_W"), s.total_MWt * 1e6, 1e-6, "published duty matches state")
 		t.eq(ch:get("ihx.loopsRunning"), 3)
 		t.eq(ch:get("ihx.unitsInService"), 6)
