@@ -30,7 +30,7 @@ return {
 		["pump.start"] = { "MCR-PO" },
 		["pump.stop"] = { "MCR-PO" },
 		["pump.speed"] = { "MCR-PO" },
-		["pump.pony"] = { "MCR-PO" },
+		["pump.pony"] = { "MCR-PO", "BCR-ESP" }, -- §10.2 also puts the pony motors in the backup control room
 		["auto.flow"] = { "MCR-PO" },
 		["ihx.shutter"] = { "MCR-PO" },
 		["covergas.auto"] = { "MCR-PO" },

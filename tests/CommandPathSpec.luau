@@ -173,6 +173,16 @@ return {
 		t.ok(byName.Protection:getState().tripped.PSS, "and trips the reactor")
 	end,
 
+	["a pony motor can be started from the backup control room (§10.2, D-054)"] = function(t)
+		local registry, byName, log, bus = plant()
+		local commands = intake(registry, log, bus)
+		byName.PrimaryPumps:tripPump(1, "test: a pump trip the BCR answers")
+		-- §10.2 lists the pony motors among the backup control room's controls, as well as on the primary desk
+		local r = commands:submit(PLAYER, { kind = "pump.pony", target = "PP1", value = 1, panel = BACKUP })
+		t.ok(r.ok, `pump.pony from the BCR refused: {r.reason}`)
+		t.eq(byName.PrimaryPumps.pumps[1].pony, true, "PP1's pony motor runs")
+	end,
+
 	["every control a system handles is carried by a desk (§10.2, D-054)"] = function(t)
 		local registry = plant()
 		for kind in registry.commandOwner do
