@@ -1,7 +1,8 @@
 --!strict
 -- Reactor core: geometry, core map, fuel, thermal limits, flow zoning. Spec §2.1–§2.5.
 local P = require(script.Parent.Provenance)
-local spec, tuning, derived = P.spec, P.tuning, P.derived
+local spec, tuning, derived, decision = P.spec, P.tuning, P.derived, P.decision
+local FUEL = "§2.3 (cladding 15-15Ti; pellet annular (U,Pu)O2; wrapper ferritic-martensitic)"
 
 return {
 	-- §2.1 geometry
@@ -70,24 +71,24 @@ return {
 		{ set = "SM_C", ring = 8, angles_deg = { 30, 90, 150, 210, 270, 330 } },
 	}, "tools/derive/rod_layout.py (D-010; RR angles and the A→B 30° offset are §2.2)"),
 
-	-- §2.3 fuel pin and assembly
-	fuel = spec({
-		pinsPerAssembly = 271,
-		pinPitch_mm = 9.7,
-		cladOuterDiameter_mm = 8.50,
-		cladWall_mm = 0.56,
-		pelletOuterDiameter_mm = 7.28,
-		pelletHoleDiameter_mm = 2.0,
-		pelletDensity_fracTD = 0.95,
-		plutoniumFraction = { inner = 0.18, outer = 0.23 },
-		wireDiameter_mm = 1.2,
-		wirePitch_mm = 200,
-		totalPins = 81571,
-		heavyMetal_t = 29,
-		cycleLength_EFPD = 160,
-		fractionReplacedPerOutage = 0.25,
-		dischargeBurnup_GWdpt = 51,
-	}, "§2.3 (cladding 15-15Ti; pellet annular (U,Pu)O2; wrapper ferritic-martensitic)"),
+	-- §2.3 fuel pin and assembly. The Pu content is D-051's, not §2.3's "≈ 18 / 23 %" (F39).
+	fuel = {
+		pinsPerAssembly = spec(271, FUEL),
+		pinPitch_mm = spec(9.7, FUEL),
+		cladOuterDiameter_mm = spec(8.50, FUEL),
+		cladWall_mm = spec(0.56, FUEL),
+		pelletOuterDiameter_mm = spec(7.28, FUEL),
+		pelletHoleDiameter_mm = spec(2.0, FUEL),
+		pelletDensity_fracTD = spec(0.95, FUEL),
+		plutoniumFraction = decision({ inner = 0.17, outer = 0.22 }, "D-051: §2.3's 18 / 23 % lowered one point in both zones so the equilibrium BOC core at 230 °C has §3.3's 2,250 pcm (tools/xsgen/k1_pusearch.py: +2,303 ± 30 pcm)"),
+		wireDiameter_mm = spec(1.2, FUEL),
+		wirePitch_mm = spec(200, FUEL),
+		totalPins = spec(81571, FUEL),
+		heavyMetal_t = spec(29, FUEL),
+		cycleLength_EFPD = spec(160, FUEL),
+		fractionReplacedPerOutage = spec(0.25, FUEL),
+		dischargeBurnup_GWdpt = spec(51, FUEL),
+	},
 	refuellingOutage_min = tuning(30, "§2.3, OD-8: timed wait, reactor held in Mode 5"),
 
 	-- §2.4 thermal limits

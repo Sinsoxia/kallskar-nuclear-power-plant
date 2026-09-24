@@ -59,7 +59,7 @@ def rod_layout() -> list[dict]:
 
 
 def pu_fraction() -> dict:
-    m = re.search(r"plutoniumFraction\s*=\s*\{\s*inner\s*=\s*([\d.]+),\s*outer\s*=\s*([\d.]+)\s*\}", _luau("Core"))
+    m = re.search(r"plutoniumFraction\s*=\s*(?:\w+\()?\{\s*inner\s*=\s*([\d.]+),\s*outer\s*=\s*([\d.]+)\s*\}", _luau("Core"))
     assert m, "Config.Core.fuel.plutoniumFraction not found"
     # a D-051 search trial moves both zones by the same number of percentage points
     shift = float(os.environ.get("KALLSKAR_PU_SHIFT_PCT") or 0) / 100

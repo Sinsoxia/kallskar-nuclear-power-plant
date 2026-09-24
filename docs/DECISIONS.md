@@ -898,8 +898,20 @@ code into decisions to implement.
   2,150 pcm per point. Further trials use the secant through the last two.
 - **Stop:** when the excess is within 3σ of its own statistics of 2,250 pcm, where it cannot be told apart from
   the target.
-- **Result:** replaces Config.Core.fuel.plutoniumFraction, with this decision as its provenance in place of §2.3's
-  "≈".
+- **Result (2026-09-24):** **Pu 17.00 % inner, 22.00 % outer**, one point below §2.3's 18 / 23 %. It replaces
+  Config.Core.fuel.plutoniumFraction, with this decision as its provenance in place of §2.3's "≈".
+  `results/k1_pusearch.json` holds the trials:
+
+  | Trial | Shift | Pu inner / outer | BOC excess at 230 °C |
+  |---|---|---|---|
+  | reference | 0 | 18.00 / 23.00 % | +4,695 ± 24 pcm |
+  | 1 | −1.14 points | 16.86 / 21.86 % | +1,917 ± 28 pcm |
+  | 2 | −1.00 points | 17.00 / 22.00 % | +2,303 ± 30 pcm |
+
+  Trial 2 is 53 pcm above 2,250, inside the 3σ stop (±89 pcm) and §3.3's ±150. The secant step came from trial 1's
+  worth of 2,437 pcm per point (the fresh lattices had implied 2,152). Between trials 1 and 2 the worth is
+  2,757 ± 293 pcm per point, and between trial 2 and the reference 2,392 ± 38. They differ by 1.2σ, so the worth is
+  steady within the statistics over this range.
 - **D-012:** its search was limited to the "≈"; F39's choice lifts that limit.
 
 ## D-052 Developer powers are Studio only (review M1) — Accepted
