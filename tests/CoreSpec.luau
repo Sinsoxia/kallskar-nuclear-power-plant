@@ -132,8 +132,8 @@ return {
 		local floor = Config.Instruments.wideRange.span_pctFP[1]
 		--[[
 			D-049: the core boots at n = 0 with the D-030 source q. Its first step prompt-jumps to q/(β − ρ), which is
-			−ρ/(β − ρ) of the equilibrium q/(−ρ), and the rest, β/(β − ρ), closes no faster than the slowest mode:
-			the inhour period at the shut-down ρ of −3,826 pcm.
+			−ρ/(β − ρ) of the equilibrium q/(−ρ), and the rest, β/(β − ρ), closes no slower than the slowest mode,
+			the inhour period at the shut-down ρ of −3,826 pcm, so that decay bounds what is left from above.
 		]]
 		local rho = (EXCESS - PSS_WORTH) * PCM
 		local period = Kinetics.inhourPeriod(LAMBDA, BETAS, rho)

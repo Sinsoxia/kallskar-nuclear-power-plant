@@ -875,7 +875,11 @@ Every tolerance CODE_REVIEW.md L13 lists takes the value its table derives, with
 - **The period:** from the 5 s filter, plus σ/√n of the averaged ticks.
 - **The AutoControls setpoint:** 0.5 K, §9.2's whole-degree rounding.
 - **IHX's six-unit total:** 12 MW, six times the per-unit rounding.
-- **FrameworkSpec's slice overrun:** the budget plus the measured longest piece, as IQSSpec now does.
+- **FrameworkSpec's and IQSSpec's slice overrun:** the budget plus twice the measured longest piece. The budget is
+  checked between pieces of work, so the piece running when the deadline passes finishes first: that is one piece
+  past the budget. The slice as the Scheduler times it also includes its own resume before the first piece and its
+  yield after the last. These are a few statements, and one more piece bounds them from what the test measures,
+  without guessing a margin.
 
 ## D-050 An alarm clears only once its signal is back past the setpoint by the channel's noise — Accepted (2026-09-24)
 With no deadband, an alarm chatters in and out every tick when a noisy signal sits at its setpoint. The CORE-OUT
@@ -905,6 +909,10 @@ code into decisions to implement.
 ## D-052 Developer powers are Studio only (review M1) — Accepted
 `isDev` is true only in Studio. A private-server owner is an ordinary player with one extra power, the §14.6 reset
 through `Persistence.requestReset`, and gets no exemption from reach or playtime.
+
+That reset has no caller yet: no remote or panel routes a request to `Persistence.requestReset`, and only
+FrameworkSpec calls it. The Studio debug panel's RESET is a separate control; it resets the trips. The owner's
+reset therefore stays open until the panels exist and one of them carries it.
 
 ## D-053 A private server saves §14.6's list, and a server close counts as a reactor trip (review M5) — Accepted
 Each system saves its §14.6 items: stuck rods, stopped pumps and loops, shutter demands, trip bypasses, active
