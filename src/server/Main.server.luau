@@ -110,18 +110,9 @@ PlantReset.new({
 -- Network --------------------------------------------------------------------------------------------------------
 local remotes = Remotes.server()
 
-local function isDev(player: Player): boolean
-	if isStudio then
-		return true
-	end
-	if game.CreatorType == Enum.CreatorType.User and player.UserId == game.CreatorId then
-		return true
-	end
-	return isPrivate and player.UserId == game.PrivateServerOwnerId
-end
-
 local commands = Commands.new({ config = Config, registry = registry, log = log, bus = bus })
-commands:bindRemote(remotes.Command, isDev)
+-- D-052: developer powers are Studio only; a private server's owner has the §14.6 reset (Persistence) and no more
+commands:bindRemote(remotes.Command, Commands.devGate({ isStudio = isStudio }))
 
 local replicator = Replicator.new({ config = Config, registry = registry, log = log, remotes = remotes })
 replicator:buildManifest()

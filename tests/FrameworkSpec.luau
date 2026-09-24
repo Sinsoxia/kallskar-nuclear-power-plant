@@ -716,6 +716,63 @@ return {
 		t.ok(written <= bound, `a minute of routed commands wrote {written} records, not at most {bound}`)
 	end,
 
+	["on a live server nobody has developer powers, not the private server's owner nor the creator (D-052)"] = function(t)
+		local Desk = System.extend({ name = "Desk", lane = "fast", reads = {}, writes = {} })
+		Desk.commands = {
+			["rod.move"] = function()
+				return { ok = true }
+			end,
+			["reactor.trip.manual"] = function()
+				return { ok = true }
+			end,
+		}
+		function Desk:step() end
+		local p = plant({ Desk })
+		resolveAndInit(p)
+		local standing = Vector3.new(Config.Access.panelReach_studs + 5, 0, 0)
+		local cmds = Commands.new({
+			config = Config,
+			registry = p.registry,
+			log = p.log,
+			bus = p.bus,
+			panelPosition = function(tag)
+				return if tag == "MCR-RO-1" then Vector3.zero else nil
+			end,
+			characterPosition = function()
+				return standing
+			end,
+			playtimeHours = function()
+				return 0
+			end,
+			now = function()
+				return 0
+			end,
+		})
+		local OWNER = 7
+		local owner = { Name = "Owner", UserId = OWNER } :: any
+		-- a private server whose owner also made the place: both of Main's old exemptions at once
+		local gate = Commands.devGate({
+			isStudio = false,
+			isPrivateServer = true,
+			privateServerOwnerId = OWNER,
+			creatorIsUser = true,
+			creatorId = OWNER,
+		})
+		t.eq(gate(owner), false, "the owner and creator is not a developer on a live server")
+		t.eq(Commands.devGate({ isStudio = true })(owner), true, "in Studio everyone is")
+
+		-- as the client sends it, through the remote
+		local remote = {} :: any
+		cmds:bindRemote(remote, gate)
+		local r = remote.OnServerInvoke(owner, { kind = "rod.move", panel = "MCR-RO-1", args = { dev = true } })
+		t.ok(not r.ok and string.find(r.reason, "not available", 1, true) ~= nil, "a dev-panel command from the owner is refused")
+		r = remote.OnServerInvoke(owner, { kind = "rod.move", panel = "MCR-RO-1" })
+		t.ok(not r.ok and string.find(r.reason, "out of reach", 1, true) ~= nil, `an ordinary one meets the reach rule ({r.reason})`)
+		standing = Vector3.new(1, 0, 0)
+		r = remote.OnServerInvoke(owner, { kind = "reactor.trip.manual", panel = "MCR-RO-1" })
+		t.ok(not r.ok and string.find(r.reason, "playtime", 1, true) ~= nil, `and a critical one the playtime rule ({r.reason})`)
+	end,
+
 	["critical access policy when the playtime lookup fails"] = function(t)
 		local required = Config.Access.criticalMinimumPlaytime_h
 		t.eq(Commands.criticalAccess(required, required), true)

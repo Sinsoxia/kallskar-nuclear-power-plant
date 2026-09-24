@@ -19,7 +19,7 @@
 	                  1 / commandRefusalNote_s
 
 	Actors of kind "auto" and "scenario" are server-internal and skip reach/playtime. "dev" actors come only from the
-	Studio/owner-gated debug panel and skip reach (there are no physical panels yet in M1).
+	debug panel, which is Studio only (D-052, devGate), and skip reach (there are no physical panels yet in M1).
 
 	Pluggable services (so tests and later milestones can swap them):
 	  panelPosition(panelTag) -> Vector3?      where the control panel is (nil = unknown panel)
@@ -276,6 +276,19 @@ function Commands.submit(self: any, actor: Actor, raw: any): CommandResult
 		self.bus:publish("CommandApplied", { actor = actor.name, kind = cmd.kind, target = cmd.target, result = result })
 	end
 	return result
+end
+
+--[[
+	Who may send dev-panel commands (args.dev == true): everyone in Studio, and nobody on a live server (D-052). The
+	place's creator and a private server's owner are ordinary players there. The owner's one extra power is the
+	§14.6 reset, which Persistence.requestReset checks for itself, and neither gets any exemption from the panel
+	reach or the critical-control playtime.
+]]
+function Commands.devGate(place: { isStudio: boolean }): (Player) -> boolean
+	local isStudio = place.isStudio
+	return function(_player: Player): boolean
+		return isStudio
+	end
 end
 
 --[[
