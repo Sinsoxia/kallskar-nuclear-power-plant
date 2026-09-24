@@ -25,8 +25,11 @@
 	                                 it is decay heat that keeps the sodium moving, not the neutron power
 	         pools.coverGas_MPa      start interlock (≥ 0.105 MPa)
 	         pools.coldPool_K        start interlock (sodium ≥ 180 °C)
-	         protection.runback      whether RB-2, the pump trip's runback, is running (lagged: Protection runs
-	                                 after the pumps, so the survivors start their ramp a tick after the trip)
+	         core.power_pctFP        whether §9.5's P/Q trip is armed (above 5 %FP), which §4.2's survivor ramp exists
+	                                 to protect: the same signal Protection arms that row on
+	         protection.runback      whether RB-2, the pump trip's runback, is still running (lagged: Protection
+	                                 runs after the pumps)
+	         protection.tripped      whether the reactor has tripped, which ends the survivor hold (lagged, likewise)
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -40,8 +43,8 @@ type CommandResult = Types.CommandResult
 local PrimaryPumps = System.extend({
 	name = "PrimaryPumps",
 	lane = "fast",
-	reads = { "core.thermalPower_pctFP", "pools.coverGas_MPa", "pools.coldPool_K" },
-	readsLagged = { "auto.flowOn", "auto.pumpSpeedDemand_pct", "protection.runback" },
+	reads = { "core.thermalPower_pctFP", "core.power_pctFP", "pools.coverGas_MPa", "pools.coldPool_K" },
+	readsLagged = { "auto.flowOn", "auto.pumpSpeedDemand_pct", "protection.runback", "protection.tripped" },
 	writes = {
 		"primary.coreFlow_kgps",
 		"primary.flowFraction",
@@ -81,7 +84,11 @@ function PrimaryPumps.init(self: any, ctx: any)
 			coastTime_s = 0,
 		}
 	end
-	self.holding = false -- the survivors are held at the top of their range while RB-2 runs (§4.2, D-046+)
+	-- §4.2's survivor hold after a pump trip (D-046 as amended): nil, or { elapsed_s, survivors = { [index] = true } }
+	self.hold = nil
+	self.holding = false
+	self.holdMinimum_s = cfg.Primary.survivorHold.minimum_s
+	self.pqArmedAbove_pctFP = cfg.Protection.pss.powerToFlow.activeAbove_pctFP
 	self.flow = table.create(self.count, self.ratedEach)
 	self.speed = table.create(self.count, 100)
 	self.port:write("primary.pumpFlow_kgps", self.flow)
@@ -146,15 +153,28 @@ function PrimaryPumps.step(self: any, dt: number)
 
 	--[[
 		§4.2 (Rev A5, F27): "the surviving pumps ramp to 105 % on a pump trip, which keeps P/Q below the 1.12 trip
-		while RB-2 runs power back". The drives do it, not flow auto, so it overrides flow auto's demand above, and
-		holds for as long as RB-2 runs (D-046+). When RB-2 ends, flow auto takes the pumps back to its programme on
+		while RB-2 runs power back". The drives do it, not flow auto, so it overrides flow auto's demand above.
+		D-046 as amended: the hold starts at the trip itself (tripPump), for the pumps running then, while the P/Q
+		trip it protects against is armed. It lasts at least Config.Primary.survivorHold.minimum_s (RB-2's length
+		from full power) and for as long as RB-2 still runs, so the crew has the same window at any power. A reactor
+		trip ends it at once: there is no power left to run back. When it ends, flow auto takes the pumps back on
 		the next tick; with flow auto out they stay at 105 % until the operator moves them. Flow auto's programme is
 		for three pumps, so on two it gives the core about two thirds of the flow it means to (§9.4's weakness).
 	]]
+	local reactorTripped = self.port:read("protection.tripped") == true
 	local runback = self.port:read("protection.runback")
-	self.holding = runback == PUMP_TRIP_RUNBACK and self:runningCount() < self.count
-	if self.holding then
-		for _, pump in self.pumps do
+	local hold = self.hold
+	if hold then
+		hold.elapsed_s += dt
+		local served = hold.elapsed_s >= self.holdMinimum_s - dt / 2 -- half a tick, against the sum's rounding
+		if reactorTripped or (served and runback ~= PUMP_TRIP_RUNBACK) then
+			self.hold, hold = nil, nil
+		end
+	end
+	self.holding = hold ~= nil
+	if hold then
+		for i in hold.survivors do
+			local pump = self.pumps[i]
 			if not pump.tripped then
 				pump.demand_pct = self.maxSpeed
 			end
@@ -193,9 +213,10 @@ end
 
 --[[
 	Trip or stop a pump: both hand over to the §4.2 coastdown from whatever flow the pump had. `reason` is logged so
-	the sequence of events can tell an operator stop from a fault trip.
+	the sequence of events can tell an operator stop from a fault trip. A trip, but not a deliberate stop, starts
+	§4.2's survivor hold for the pumps still running, while the P/Q trip is armed (see step).
 ]]
-function PrimaryPumps.tripPump(self: any, index: number, reason: string, actor: Actor?)
+function PrimaryPumps.tripPump(self: any, index: number, reason: string, actor: Actor?, deliberate: boolean?)
 	local pump = self.pumps[index]
 	if pump.tripped then
 		return false
@@ -204,6 +225,17 @@ function PrimaryPumps.tripPump(self: any, index: number, reason: string, actor: 
 	pump.coastTime_s = 0
 	pump.tripped = true
 	pump.demand_pct = 0
+	if not deliberate and (self.port:read("core.power_pctFP") or 0) > self.pqArmedAbove_pctFP then
+		local survivors, any = {}, false
+		for i, other in self.pumps do
+			if not other.tripped then
+				survivors[i], any = true, true
+			end
+		end
+		-- a second trip during a hold starts it again, for the pumps left
+		self.hold = if any then { elapsed_s = 0, survivors = survivors } else nil
+		self.holding = self.hold ~= nil
+	end
 	if self.log then
 		self.log:record("pump.stop", actor, pump.name, reason, "stopped")
 	end
@@ -269,8 +301,8 @@ PrimaryPumps.commands = {
 		if pump.tripped then
 			return { ok = false, reason = `{pump.name} is stopped; start it first` }
 		end
-		if self.holding then
-			return { ok = false, reason = `the drives hold {self.maxSpeed} % while RB-2 runs (§4.2)` }
+		if self.hold and self.hold.survivors[i] then
+			return { ok = false, reason = `the drives hold {self.maxSpeed} % after the pump trip (§4.2, D-046)` }
 		end
 		if value < self.minSpeed or value > self.maxSpeed then
 			return { ok = false, reason = `speed must be between {self.minSpeed} and {self.maxSpeed} %` }
@@ -284,7 +316,7 @@ PrimaryPumps.commands = {
 		if not i then
 			return { ok = false, reason = why }
 		end
-		if not self:tripPump(i, "operator stop", actor) then
+		if not self:tripPump(i, "operator stop", actor, true) then
 			return { ok = false, reason = `{self.pumps[i].name} is already stopped` }
 		end
 		return { ok = true }
@@ -361,7 +393,7 @@ function PrimaryPumps.save(self: any): any
 end
 
 function PrimaryPumps.load(self: any, data: any, _version: number)
-	self.holding = false -- a loaded plant is tripped, with no runback running
+	self.hold, self.holding = nil, false -- a loaded plant is tripped, with no runback running
 	if type(data.pumps) ~= "table" then
 		return
 	end

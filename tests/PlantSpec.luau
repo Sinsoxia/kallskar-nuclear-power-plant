@@ -80,15 +80,19 @@ local function run(p: any, seconds: number, each: ((tick: number) -> boolean?)?)
 	end
 end
 
--- Seated at 100 %FP with rod auto and flow auto in, as the plant runs at full power, and left to settle for 5 s
-local function atFullPower(t: any): any
+-- Seated at a power with rod auto and flow auto in, as the plant runs there, and left to settle for 5 s
+local function atPower(t: any, pct: number): any
 	local p = plant()
-	t.ok(InitialConditions.seatAtPower(p.byName, p.channels, Config, 100) ~= nil, "seated at 100 %FP")
+	t.ok(InitialConditions.seatAtPower(p.byName, p.channels, Config, pct) ~= nil, `seated at {pct} %FP`)
 	t.ok(p.byName.AutoControls:applyCommand(AUTO, { kind = "auto.rod", value = 1 }).ok)
 	t.ok(p.byName.AutoControls:applyCommand(AUTO, { kind = "auto.flow", value = 1 }).ok)
 	run(p, 5)
-	t.eq(p.channels:get("protection.tripped"), false, "steady at full power")
+	t.eq(p.channels:get("protection.tripped"), false, `steady at {pct} %FP`)
 	return p
+end
+
+local function atFullPower(t: any): any
+	return atPower(t, 100)
 end
 
 --[[
@@ -540,6 +544,47 @@ return {
 	["RB-2 runs a full-power plant back to 60 %FP at 60 %/min and settles there (§9.5, D-046)"] = function(t)
 		local p, target = runback(t, "RB2")
 		settled(t, p, target, "RB2")
+	end,
+
+	["a pump trip at part power holds the survivors at 105 % for the same 40 s, without a trip (§4.2, D-046)"] = function(t)
+		--[[
+			D-046 as amended: the hold starts on the trip and lasts RB-2's full-power length (Config.Primary.
+			survivorHold) at any power, and longer only while RB-2 still runs. At 80 %FP RB-2 needs 20 s, and at 55 %FP
+			it has nothing to run back, so both cases show the hold's own minimum. The hold ends on the step that
+			completes the minimum, so the last tick it holds is within a tick and a half of it.
+		]]
+		local cfg = Config.Primary.pumps
+		local maxSpeed, ramp = cfg.speedRange_pct[2], cfg.maxRamp_pctps
+		local minimum = Config.Primary.survivorHold.minimum_s
+		local pqTrip = Config.Protection.pss.powerToFlow.trip
+		for _, pct in { 55, 80 } do
+			local p = atPower(t, pct)
+			local pumps = p.byName.PrimaryPumps
+			t.ok(p.faults:arm("PP-TRIP", { pump = 3 }, AUTO).ok, `PP3 trips at {pct} %FP`)
+			local lastHeld, peak, worstStep, tripped, top = 0, 0, 0, false, 0
+			local last = { pumps.pumps[1].speed_pct, pumps.pumps[2].speed_pct }
+			run(p, minimum + 5, function(tick)
+				if pumps.holding then
+					lastHeld = tick
+					tripped = tripped or p.channels:get("protection.tripped")
+					peak = math.max(peak, p.channels:get("core.power_pctFP") / 100 / p.channels:get("primary.flowFraction"))
+				end
+				for i = 1, 2 do
+					local s = pumps.pumps[i].speed_pct
+					worstStep = math.max(worstStep, math.abs(s - last[i]))
+					top = math.max(top, s)
+					last[i] = s
+				end
+				return false
+			end)
+			t.log(string.format("%d %%FP: survivors held to %.1f s, top %.1f %%, P/Q peak %.3f, largest speed step %.3f %%",
+				pct, lastHeld * DT, top, peak, worstStep))
+			t.ok(math.abs(lastHeld * DT - minimum) <= 1.5 * DT, `at {pct} %FP the survivors hold {minimum} s (to {lastHeld * DT} s)`)
+			t.near(top, maxSpeed, 1e-9, `and reach {maxSpeed} %`)
+			t.ok(worstStep <= ramp * DT + 1e-9, `within the {ramp} %/s ramp, up and back`)
+			t.ok(peak < pqTrip, string.format("P/Q stays below the %.2f trip during the hold (peak %.3f)", pqTrip, peak))
+			t.eq(tripped, false, `no reactor trip during the hold at {pct} %FP`)
+		end
 	end,
 
 	["a pump trip at full power with flow auto in runs back on RB-2 without a trip: the survivors hold 105 % (§4.2, D-046+)"] = function(t)
