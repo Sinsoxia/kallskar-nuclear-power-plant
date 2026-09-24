@@ -1,0 +1,57 @@
+1. Heat capacity of the steel
+  Sodium inventory (1,250 t) heat capacity: 1590.3 MJ/K
+  D-021 model sodium heat capacity (1,262 t, mean over 375-575 C): 1601.7 MJ/K
+  Total heat capacity (sodium plus internals): 2,400 MJ/K
+  The '≈' implies two significant figures, so the last printed figure is the hundreds place.
+  Half a unit in the hundreds place gives an uncertainty of ±50 MJ/K.
+  Steel heat capacity implied: 2400 - 1601.7 = 798.3 MJ/K (±50 MJ/K)
+  Hot pool share of sodium: 0.524
+  Cold pool share of sodium: 0.476
+  Hot pool steel heat capacity: 418.3 MJ/K
+  Cold pool steel heat capacity: 380.0 MJ/K
+
+2. Coupling for the vessel wall
+  Vessel wetted area (side + bottom): 860.0 m²
+  316 steel thermal conductivity at 462.5 C (Kim 1975): 20.81 W/(m K)
+  Note: The vessel is 316LN, but properties here use 316L (Pichler) and 316 (Kim).
+  The compositional difference adds a small uncertainty to k and cp.
+  [ok] 316LN vs 316L difference is covered by ±50 MJ/K bound
+  Vessel wall conduction resistance (L / kA): 2.2 µK/W
+  Sodium at 375.0 C: Pr = 0.0053
+  Natural convection (Churchill & Chu 1975) over ΔT 1 to 50 K:
+    ΔT =  1 K: Ra = 3.70e+11, Nu = 252, h = 1233 W/(m² K), R_conv = 0.9 µK/W
+    ΔT = 10 K: Ra = 3.70e+12, Nu = 526, h = 2570 W/(m² K), R_conv = 0.5 µK/W
+    ΔT = 50 K: Ra = 1.85e+13, Nu = 884, h = 4320 W/(m² K), R_conv = 0.3 µK/W
+  Implied cold pool velocity: 0.0706 m/s
+  Flat plate forced convection: Re_L = 3.04e+06, Pe_L = 1.61e+04
+  Forced convection upper bound (Seban R.A., 1950, Trans. ASME 72: Nu = 0.565 Pe^0.5): Nu = 72, h = 350 W/(m² K), R_conv = 3.3 µK/W
+  Stagnant 0.3 m sodium layer conduction lower bound resistance: 4.9 µK/W
+  -> Under natural convection (blackout/DRACS), the steel wall conduction resistance (2.2 µK/W)
+     dominates the sodium-side convection (0.3-0.9 µK/W).
+  -> At full flow (forced convection) or a stagnant layer, sodium resistance (3.3-4.9 µK/W) dominates.
+  -> We evaluate time constants tracking the adiabatic vessel outside (heat to guard vessel is outside scope).
+  Vessel heat capacity: 152.6 MJ/K (from mass using 15.0m ID, 14.5m high, 40mm thick side and bottom flat head), tau = 240 s (insulated outside)
+
+3. Valid window of coupling time constants
+  Fast response unmodified (tau > tau_min): tau_min = 2550 s
+  Slow heat-up complete (tau < tau_max): tau_max = 1466 s
+  [ok] Valid window is EMPTY (as expected)
+  [ok] Vessel wall tau falls outside window
+
+4. Coupling for the internals
+  Steel properties (mean 375-550 C): cp = 562 J/(kg K), k = 20.8 W/(m K), alpha = 4.69e-06 m²/s
+  Time constants for plates wetted on both sides:
+    Thickness |  Conduction |  Convection |       Total | Inside window?
+       10 mm |         3 s |         9 s |        11 s | NO
+       20 mm |        11 s |        17 s |        28 s | NO
+       40 mm |        43 s |        35 s |        77 s | NO
+       60 mm |        96 s |        52 s |       148 s | NO
+       100 mm |       267 s |        86 s |       353 s | NO
+  SFR pool internals vary widely, but without a specific source for internal thickness in the Kallskar spec,
+  we state the derived valid window as the result.
+  FINDING for Aqua: the derived valid window is empty. No time constant satisfies both constraints simultaneously.
+  Options: 1) invent a typical thickness (e.g. 20 mm, 28 s) which acts on the same scale as the pool mixing;
+           2) pick a long time constant (e.g. 600 s) so the fast response stays exactly as printed;
+           3) split the steel into a thin 'fast' part and a thick 'slow' part.
+
+3/3 checks pass
