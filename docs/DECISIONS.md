@@ -309,7 +309,7 @@ consistent figures; `tools/derive/pool_gas.py` checks both against §4.1 with a 
 temperatures, and prints the 545 °C values alongside. **Proposal:** restate §4.1 as +0.27 m and +0.65 m, or state the
 hot-pool temperature the figures assume.
 
-## D-020 Cover gas make-up and vent controller — Proposed
+## D-020 Cover gas make-up and vent controller — Accepted (2026-09-24)
 §4.4 gives the argon setpoint (0.120 MPa), the automatic band (0.115–0.125), the alarms (0.105 / 0.140), the trip
 (0.160) and the floor the pumps need (0.102 MPa), but no valve capacity or control law: it says only that argon is
 admitted on cooldown and vented to the decay tanks on heatup. **Decision:** whenever pressure leaves the auto band,
@@ -322,7 +322,7 @@ is the entire 90 m³ swing inside ten minutes — about as fast as the pools can
 larger than 60 s would let a trip push the pressure out of the band; much smaller and the valves would chase
 measurement noise. **Alternative rejected:** a fixed mol/s valve rating, which would have been a guess.
 
-## D-021 Where the 70 t of core and diagrid sodium lives — Proposed
+## D-021 Where the 70 t of core and diagrid sodium lives — Accepted (2026-09-24)
 §4.1 splits the 1,250 t of primary sodium into 620 t hot pool, 560 t cold pool and **70 t in the core and diagrid**,
 and prescribes mixing nodes for the two pools only. `FuelThermal` treats the coolant in the assemblies algebraically
 (§14.3 allows it: the 0.19 s core transit is far shorter than any node's time constant), so no node carries that 70 t
@@ -340,7 +340,7 @@ transport line's contribution scales with flow (86 t at rated, 3 t at the natura
 blackout the model's inventory falls back to the 1,180 t of pools; the §4.5 coping calculation has its own
 2,400 MJ/K "with internals" figure and does not use this model.
 
-## D-022 IHX UA is held constant; the film coefficients' flow dependence is not modelled — Proposed
+## D-022 IHX UA is held constant; the film coefficients' flow dependence is not modelled — Accepted (2026-09-24)
 §4.3 gives one UA, 9.6 MW/K over about 2,000 m², so U ≈ 4,800 W/m²K — a sensible sodium-to-sodium overall
 coefficient. **Decision:** the `IHX` system uses that UA at every flow, and gets its duty from ε-NTU, so the duty,
 both outlet temperatures and the LMTD all follow from the live temperatures and flows rather than from §4.3's
@@ -356,7 +356,7 @@ and a station blackout, which is the wrong direction to be optimistic in. Revisi
 generator milestone brings tube geometry; until then the error sits in a regime where the pool time constants
 (28 minutes at the natural-circulation floor, D-021) dominate the response anyway.
 
-## D-023 Scram inserts at a constant rate — Proposed
+## D-023 Scram inserts at a constant rate — Accepted (2026-09-24)
 §3.4 gives one point on the scram curve for each system: 90 % inserted in ≤ 1.2 s (PSS) and ≤ 2.0 s (SSR). One
 point does not define a curve. **Decision:** insert at a constant rate sized to hit exactly that point —
 0.9 × 1,100 mm ÷ 1.2 s = **825 mm/s** for the PSS and **495 mm/s** for the SSR, so full travel takes 1.33 s and
@@ -369,7 +369,7 @@ The constant rate is exact where the spec constrains it and honest about being a
 of order 0.1 s, against delayed-neutron time constants of seconds. Worth revisiting only if a scenario turns on the
 last 10 % of rod travel.
 
-## D-024 The plant boots in Mode 3, hot standby — Proposed
+## D-024 The plant boots in Mode 3, hot standby — Accepted (2026-09-24)
 Something has to decide where the rods are when a server starts. **Decision:** every PSS rod fully inserted, the
 nine SSRs parked at 1,100 mm and latched, which is §3.4's stated normal position for them and §9.1's Mode 3.
 `FuelThermal` and `Pools` already boot isothermal at the §3.2 reference temperature of 375 °C with the pumps
@@ -379,7 +379,7 @@ running, so the whole plant starts as a coherent hot standby.
 start. Taking the plant from hot standby to power is the game. **Alternative if it proves tedious:** a scenario
 preset that fast-forwards a startup, which belongs to the scenario director rather than to these systems.
 
-## D-025 Neutron instrument noise, and the filters that follow from it — Proposed
+## D-025 Neutron instrument noise, and the filters that follow from it — Accepted (2026-09-24)
 The spec gives noise figures for thermocouples (§2.5: ±1 K, 3 s lag) but none for the neutron channels, while §9.5
 votes 2-of-3 and 2-of-4 on them — which only means anything if the channels are independently noisy.
 
@@ -409,7 +409,7 @@ period is 177 s, so a *sample* of it drifts lower the longer a session runs (3σ
 30 s rod block). **Protection must require the period rod block to persist rather than act on a single sample.**
 That is a note for the Protection system, not a reason to lengthen the filter, which would blunt the real trips.
 
-## D-026 Where the protection system votes, and where it cannot yet — Proposed
+## D-026 Where the protection system votes, and where it cannot yet — Accepted (2026-09-24)
 §9.5's header says the PSS is 2-out-of-3 on independent channels, and every row of its table is written as though
 three instruments exist. For the neutron channels they do: §3.5 gives three source range, three wide range, four
 power range quadrants and six DNDs, so those vote — 2-of-4 on the power range (D-005, finding F5) and 2-of-3
@@ -432,7 +432,7 @@ refinement, and because the vote is per row it will be a config change rather th
 it a permissive rather than an operator action. A plant that required a deliberate bypass during every startup is
 the other defensible reading; this one follows the spec's wording.
 
-## D-027 The core outlet thermocouple, and who is allowed to read the sodium — Proposed
+## D-027 The core outlet thermocouple, and who is allowed to read the sodium — Accepted (2026-09-24)
 §2.5 gives the core outlet instruments **±1 K of noise and a 3 s lag**, and nothing had implemented them: every
 system read the true sodium temperature. That matters more than it sounds. §9.4's rod auto is supposed to be
 limited by "reacts after thermocouples move", and a controller acting on an instantaneous, noiseless signal is
@@ -447,7 +447,7 @@ mixed core outlet is the same class of instrument in the hot pool, so it carries
 **Still ideal:** the 301 assembly outlet thermocouples themselves, which Protection's ASSY-DEV row votes on. Same
 treatment, not yet applied.
 
-## D-028 Rod auto sequences one rod, and holds it — Proposed
+## D-028 Rod auto sequences one rod, and holds it — Accepted (2026-09-24)
 D-006 has rod auto move one regulating rod at a time, and finding F6 is why. On the 250–750 mm band, one rod
 reaches the band edge from mid-band in about 55 minutes, against about 164 minutes for all three ganged. (Corrected
 2026-09-23, P-01 of `docs/audit/SPEC_AUDIT_UNBUILT.md`: this sentence had the comparison backwards, with the old
@@ -459,7 +459,7 @@ others it stops being the most-inserted, so the controller hops to the next one,
 keep-them-together rule when choosing a **new** rod. That is what a rod sequencer does, and it keeps the three
 within roughly one band-crossing of each other without thrashing between them.
 
-## D-029 §9.4's flow auto is safe inside LCO-10 and not outside it — Proposed
+## D-029 §9.4's flow auto is safe inside LCO-10 and not outside it — Accepted (2026-09-24)
 §9.4 gives primary flow auto a 10 s filter on power and says P/Q swings ±5 % on fast changes. Testing that
 against an instantaneous power step is meaningless: the step drives P/Q to P_new/P_old and trips the plant, but
 rods move at no more than 4 pcm/s (§3.4), so **power cannot step**. The rate limit on the rods is what keeps this
@@ -470,7 +470,7 @@ Measured, at 60 %FP: **1.003** at LCO-10's 1 %/min, **1.008** at its approved 3 
 and bites immediately outside it, which makes LCO-10 the thing that keeps flow auto usable rather than a
 formality. Worth knowing before someone "fixes" the filter.
 
-## D-030 The startup source, sized by the instrument that has to see it — Proposed
+## D-030 The startup source, sized by the instrument that has to see it — Accepted (2026-09-24)
 Point kinetics needs an external source term or a shut-down core reads exactly zero power, which is both wrong and
 useless: subcritical multiplication is what an approach to critical is flown on (§3.5). §3.5 gives no source
 strength. **Decision:** size it so that a shut-down plant — every PSS rod in, at the §3.2 reference temperature —
@@ -481,7 +481,7 @@ encodes a real design property: an instrument that reads zero in Mode 3 tells th
 the instrument are specified against each other. **Alternative rejected:** a neutron source strength in n/s, which
 would need a detector efficiency the spec does not give to connect to anything observable.
 
-## D-031 Core is a facade, and it runs point kinetics until the cross sections exist — Proposed
+## D-031 Core is a facade, and it runs point kinetics until the cross sections exist — Accepted (2026-09-24)
 The plan makes 3D multigroup IQS the plant physics and point kinetics "the spec-required fallback and the test
 oracle". The cross sections come from Track X and do not exist yet. **Decision:** put a facade at `Systems/Core`
 that publishes the `core.*` channels and runs the fallback inside, so the plant is operable now and the 3D path
@@ -507,7 +507,7 @@ Every unit test passed, because each set up a plant whose regulating rods were a
 nine systems together showed it. `RodDrives` now publishes `rods.selectionKind` so Protection can tell a bank
 move from a single rod, which is what the spec actually says.
 
-## D-032 The M1 heat sink takes its load, inside what the steam plant can give — Proposed
+## D-032 The M1 heat sink takes its load, inside what the steam plant can give — Accepted (2026-09-24)
 The plan's M1 boundary held every secondary loop at §4.3's full-load 320 °C and 1,556 kg/s per unit. Running the
 plant showed what that means: at hot standby the IHXs pulled **570 MWt out of a core making nothing**, cooled the
 pools 20 K in a minute, and left core-inlet-low armed against a falling inlet the moment the rods came out.
@@ -530,7 +530,7 @@ stand-in has no secondary inventory, so the cold leg steps where the real loops 
 that arrives with them. **Alternatives rejected:** the fixed full-load boundary (above); pinning §9.2's cold leg
 (F33); a temperature controller on the cold leg, which would need gains the spec does not give.
 
-## F33 §9.2's secondary temperatures need a UA that falls with flow; §4.3's is held constant — Open
+## F33 §9.2's secondary temperatures need a UA that falls with flow; §4.3's is held constant — Resolved (Aqua, 2026-09-24): §9.2's secondary column is indicative; D-032 keeps the reactor side exact
 §9.2 holds the core inlet at 375 °C at every load and gives the secondary legs. Its 40–100 % rows repeat the
 full-load temperatures at part duty, which needs **UA ∝ flow**. The implied UA is 0.401 of §4.3's at 40 % and
 0.250 at 5 %FP (`tools/derive/heat_sink.py`). D-022 holds §4.3's UA constant. The two cannot both hold. If the cold
@@ -540,7 +540,7 @@ table's column, on the side of the plant M1 does not model. **For Aqua:** either
 indicative, or the IHX needs a flow-dependent UA (real sodium film coefficients fall with velocity, though far
 less than in proportion). The answer decides what the real secondary loops aim at when they are built.
 
-## D-033 Initial conditions seat every state, not only the rods — Proposed
+## D-033 Initial conditions seat every state, not only the rods — Accepted (2026-09-24)
 Integration tests and the developer panel need a plant already at power. Placing only the rods is wrong in a way
 the plant notices at once. With the fuel still at hot zero power, the power defect the rods were placed against
 does not exist yet, and the core sees its absence as a reactivity step. At 20 %FP that is about 270 pcm, three
@@ -549,7 +549,7 @@ and the load to §9.2's point, the core at the power, the pools around 375 °C, 
 feedback lags at equilibrium, and the rods (regulating mid-band, shims together) wherever ρ comes out zero,
 found by bisecting RodDrives' own worth curve. The mode is then declared per §9.1. None of these numbers are its own.
 
-## D-034 Rod auto's programme is indexed on the steam plant's load, not the reactor's power — Proposed
+## D-034 Rod auto's programme is indexed on the steam plant's load, not the reactor's power — Accepted (2026-09-24)
 D-003 has rod auto hold §9.2's programme outlet, 375 + 175·P/Q. Computed from **measured** power, that fails on
 the 40 % flow floor. There the setpoint rises with power exactly as fast as the outlet does, so the error collapses
 to (inlet − 375 °C). Rod auto becomes an inlet controller acting through minutes of pool transport, and it
@@ -560,7 +560,7 @@ It leaves rod auto a fast loop on the outlet, and the heat sink's energy balance
 40 % flow auto keeps P/Q at 1, so the setpoint is 550 °C either way and nothing changes there. With no steam
 plant on the channels (a unit test of AutoControls alone), the programme falls back to the reactor's own power.
 
-## D-035 A reactor trip drops rod auto to manual — Proposed
+## D-035 A reactor trip drops rod auto to manual — Accepted (2026-09-24)
 §9.4's rod auto stood down during a scram and resumed when the trip was reset. Running the plant showed what that
 means. After a reset in hot standby, the outlet sits below the no-load setpoint, so rod auto began **withdrawing a
 regulating rod from a shut-down core**. That is a startup, and it has to be the crew's decision. **Decision:** a
@@ -568,7 +568,7 @@ trip switches rod auto to manual (logged), and it stays there until someone puts
 real plants. A runback is different: rod auto stands down during it and takes over again afterwards. Flow auto is
 unaffected, because it only follows the §9.2 flow programme down to its floor.
 
-## D-036 The plant boots with beginning-of-cycle decay heat: 1.23 %, 29 MW — Proposed
+## D-036 The plant boots with beginning-of-cycle decay heat: 1.23 %, 29 MW — Accepted (2026-09-24)
 §14.6 returns the plant, at boot and on an owner reset, to "hot standby at beginning of cycle". Beginning of cycle
 is the state after §2.3's refuelling outage, following a 160 EFPD cycle, which is also §3.6's own reference history.
 §2.3 gives the outage as "Timed wait (OD-8), 30 min real", and §0.2 puts the physics on "×1 real time, always".
@@ -577,7 +577,7 @@ is the state after §2.3's refuelling outage, following a 160 EFPD cycle, which 
 reset lands in Mode 3 at 375 °C, not Mode 5 at 230 °C, so any heat-up time would only lengthen it. See F34 for the
 alternatives.
 
-## D-037 Decay heat is 22 exponential groups driven by fission power, and thermal = prompt + decay — Proposed
+## D-037 Decay heat is 22 exponential groups driven by fission power, and thermal = prompt + decay — Accepted (2026-09-24)
 §3.6 gives decay heat after a trip from constant power. A plant needs it for any history. **Decision:**
 `Systems/DecayHeat` carries the formula as 22 groups, dHᵢ/dt = λᵢ(Eᵢ·P − Hᵢ), fitted to its kernel
 (0.0132·τ^−1.2) by non-negative least squares on a fixed 0.4-decade grid (`tools/derive/decay_heat.py`, 47/47
@@ -606,7 +606,7 @@ the two equal at every row (`tests/PartLoadSpec`), so nothing changes on the pro
 primary pump trip now slows the secondary too, which the real secondary pumps would not do. The real loops replace
 this stand-in.
 
-## F34 How long §2.3's refuelling outage lasts physically is not stated — Open
+## F34 How long §2.3's refuelling outage lasts physically is not stated — Resolved (Aqua, 2026-09-24): the outage is 30 min of real time, so D-036's 1.23 % stands
 "30 min real" is the player's timed wait (OD-8). What it stands for physically decides the decay heat at beginning of
 cycle, and so at every boot and reset:
 - ×1 physics (D-036): 1.23 %, 29 MW
@@ -616,14 +616,14 @@ cycle, and so at every boot and reset:
 - a real weeks-long outage: about 0.1 %, 2.5 MW
 **For Aqua:** choose one. It is a single Config number (`DecayHeat.boot.shutdown_s`).
 
-## F35 Decay-heat history follows physics time, burnup follows the ×360 clock — Open
+## F35 Decay-heat history follows physics time, burnup follows the ×360 clock — Resolved (Aqua, 2026-09-24): decay heat follows physics time, as now
 Long-lived groups fill over days of physics time. One real hour at a new power moves them only an hour's worth,
 while burnup advances 15 EFPD in that same hour. The seat and the boot carry §3.6's full reference history, so
 trips from a seated plant follow §3.6 exactly. A plant run for hours of real time at a new power carries a long
 tail that still reflects its seated history. **For Aqua:** accept this, or have the slowest groups fill on the
 slow-process clock (which makes their post-trip decay ambiguous).
 
-## F36 The pool model has no steel heat capacity, so a pool with no sink heats 1.7× too fast — Open
+## F36 The pool model has no steel heat capacity, so a pool with no sink heats 1.7× too fast — Resolved (Aqua, 2026-09-24): the internals are split between the pools in proportion to their sodium (D-057)
 D-021 keeps only the sodium inventory: 1,262 t, which is 1,602 MJ/K at Appendix A's mean c_p over 375–575 °C.
 §4.1 gives "sodium plus internals ≈ 2,400 MJ/K", and §4.5's coping time integrates into it.
 `tools/derive/decay_heat.py` confirms the §3.6 curve delivers 477 GJ in 6.5 h, which is 2,386 MJ/K × 200 K. With
@@ -633,7 +633,7 @@ scenarios:** add the internals' heat capacity to the pools without changing §4.
 remain unmodelled: §3.1's Np-239 +30 pcm over the week after shutdown, and §2.2 ring 15's stored assemblies, which
 hold a quarter of the vessel's decay heat outside the pins.
 
-## D-038 Fresh K1 MOX: NEA isotopics, Pu content by mass, stoichiometric, Carbajo's density — Proposed
+## D-038 Fresh K1 MOX: NEA isotopics, Pu content by mass, stoichiometric, Carbajo's density — Accepted (2026-09-24)
 §2.3 gives "(U,Pu)O₂, 95 % TD" with "≈ 18 %" and "≈ 23 %" Pu, and no isotopics. D-012 took the Pu vector from NEA
 Table 2.11's inner-core midplane. **Decision:** (a) the uranium vector comes from the same column, all four isotopes
 as printed. **Both vectors are irradiated.** Table 2.11 is the equilibrium core's batch-averaged BOC composition,
@@ -648,7 +648,7 @@ mole fraction Carbajo's density needs follows from it: 17.90 % and 22.88 %. (c) 
 and Pu only. The Am, Cm, Np and fission products in the same NEA column are left out, and D-012's depletion
 supplies its own.
 
-## D-039 The cross sections' reference state is as-fabricated geometry at operating temperatures — Proposed
+## D-039 The cross sections' reference state is as-fabricated geometry at operating temperatures — Accepted (2026-09-24)
 The spec gives dimensions without saying whether they are cold or hot. **Decision:** they are **as-fabricated**,
 and solids keep their room-temperature densities. Sodium takes its Appendix A density at the state's temperature,
 and nuclear data take the state's temperatures. At full power the fuel is at 1,380 K (file 20), and everything
@@ -666,7 +666,7 @@ operating-state densities, because that is how the sources give them:
 How far each sits from room temperature is not quantified here, since no cited expansion data for these materials is
 at hand. It is an open item for the XSData wiring.
 
-## D-040 Cladding, wire, wrapper, lower reflector and plenum materials — Proposed
+## D-040 Cladding, wire, wrapper, lower reflector and plenum materials — Accepted (2026-09-24)
 - **Cladding:** 15-15Ti per the measured JRC105589 TASTE tube, at 7,888 kg/m³ ± 1 %
   (`tools/derive/cladding_density.py`). That value scales the measured density of NIST SRM 1155a, 316L at
   7,904 ± 25 kg/m³ (Pichler et al. 2020), by mass per lattice site. The ±1 % is an allowance for the two steels'
@@ -679,7 +679,7 @@ at hand. It is an open item for the XSData wiring.
   Table 2.5's axial reflector.
 - **Plenum:** gas as void, with no spring, as in both NEA cores.
 
-## D-041 Rod assemblies: NEA MOX-3600 control assemblies, a 1,000 mm absorber over an empty duct — Proposed
+## D-041 Rod assemblies: NEA MOX-3600 control assemblies, a 1,000 mm absorber over an empty duct — Accepted (2026-09-24)
 §3.4 gives worths and speeds but no rod design. **Decision:**
 - **PSS rods (RR and shim A/B/C):** NEA MOX-3600's primary control assembly, with Table 2.8's oxide fractions and
   Table 2.14's B₄C.
@@ -693,7 +693,7 @@ at hand. It is an open item for the XSData wiring.
 The §3.7 worths (±10 %) are validation targets this design is measured against, never fitted. NEA §5.6 finds that
 homogeneous rods read 10–17 % high.
 
-## D-042 Rings 11–16 and the model's outer boundaries — Proposed
+## D-042 Rings 11–16 and the model's outer boundaries — Accepted (2026-09-24)
 - **Steel reflector (rings 11–12):** NEA MOX-1000's radial reflector, 84.5 % HT-9 and 15.5 % Na.
 - **Steel shield (ring 16):** the same material as the steel reflector.
 - **B₄C shield (rings 13–14):** MOX-1000's radial shield.
@@ -703,7 +703,7 @@ homogeneous rods read 10–17 % high.
 - **Boundaries:** vacuum beyond ring 16 and beyond §2.1's 300 mm reflector and 1,100 mm plenum, as in the NEA
   benchmarks. The `axial-reflective` case makes both axial ends reflective, which bounds what lies beyond.
 
-## D-043 Burnup comes from single-assembly depletion at the core's specific power, in EFPD — Proposed
+## D-043 Burnup comes from single-assembly depletion at the core's specific power, in EFPD — Accepted (2026-09-24)
 D-012 needs burnup-dependent fuel for the equilibrium four-batch core. **Decision:**
 - **Model:** deplete one assembly of each zone as an infinite lattice of itself, using explicit pins at the
   full-power temperatures and the ENDF/B-VIII.1 chain `chain_endfb81_fast.xml` (`tools/xsgen/k1_deplete.py`). This
@@ -732,13 +732,13 @@ D-012 needs burnup-dependent fuel for the equilibrium four-batch core. **Decisio
   each within its own σ of 75–89 pcm. The ten checked actinides move by at most 0.13 % (Cm-244), so the 80 EFPD
   steps are converged. The outer zone uses the same scheme; only the inner was double-run.
 
-## F37 160 EFPD × 4 cycles at 2,380 MWt is 52.3 GWd/tHM, against §2.3's "≈ 51" — Open
+## F37 160 EFPD × 4 cycles at 2,380 MWt is 52.3 GWd/tHM, against §2.3's "≈ 51" — Resolved (Aqua, 2026-09-24): 52.3 GWd/tHM is what "≈ 51" means
 On §2.3's own numbers, a cycle burns 160 × 2,380 / 29.11 = 13.08 GWd/t, so four cycles discharge at **52.3**. On
 the round 29 t it would be 52.5. §2.3's "≈ 51" would need about 156 EFPD cycles or 29.9 tHM. D-043 follows power
 and time, the quantities the plant runs on, so the equilibrium core's batches sit at 0 / 13.1 / 26.2 / 39.2 GWd/t.
 **For Aqua:** accept 52.3 as what "≈ 51" means, or name which of the three inputs should move.
 
-## D-044 The equilibrium core scatters its four batches on the 2 × 2 sublattice — Proposed
+## D-044 The equilibrium core scatters its four batches on the 2 × 2 sublattice — Accepted (2026-09-24)
 D-012's equilibrium BOC core needs a loading pattern, and the spec gives none. **Decision:**
 - **Pattern:** each fuel position's batch (0 fresh, then 1, 2 or 3 cycles burnt) follows its colour
   (q mod 2) + 2·(r mod 2) in the mesh's axial coordinates, mapped 0→1, 1→0, 2→2, 3→3. Every assembly's six neighbours are then two of each other batch, which is as even a
@@ -759,7 +759,7 @@ D-012's equilibrium BOC core needs a loading pattern, and the spec gives none. *
   is realistic content in bounding quantity (90 positions against a quarter core). The fresh-fuel bound of D-042
   applies to the fresh-core cases.
 
-## F38 Audit of the spec sections the code has not reached (§5–§8, §10–§13, file 16) — Open
+## F38 Audit of the spec sections the code has not reached (§5–§8, §10–§13, file 16) — Deferred (Aqua, 2026-09-24): reviewed before the steam-plant milestone
 A cloud session audited the unbuilt sections, recomputing every number from the spec's own primitives:
 `docs/audit/SPEC_AUDIT_UNBUILT.md`, reproduced by `tools/audit/spec_audit_unbuilt.py` (IAPWS-IF97 steam, TEOS-10
 seawater, and file 20's `calc.py` run unmodified). Findings C-01 to C-40: 1 high, 15 medium and 24 low, plus 64
@@ -769,7 +769,7 @@ corrected above. **C-29 is the high one**, and I confirmed it against the text: 
 about 180 zones would fail every couple of minutes. Nothing in these sections is built yet, so none of this affects
 M1. **For Aqua:** review before the steam-plant milestone, starting with C-29 and the medium findings.
 
-## D-045 The prompt-critical flag describes the core as it is now, not what happened this session — Proposed
+## D-045 The prompt-critical flag describes the core as it is now, not what happened this session — Accepted (2026-09-24)
 §14.2 has the amplitude hand over to a scripted core-damage event once ρ reaches 0.9β, "rather than integrating
 through it". Before PR #4, `Kinetics` set `amp.promptCritical` on the first crossing and never cleared it, although
 Core already had a branch meant to clear it. That made the latch a bug rather than a design. The code review (L3)
@@ -779,7 +779,7 @@ latch its own trigger on the flag's rising edge once it exists. **Effect outside
 payload keeps its `promptCritical` field, with the same name and type. It now means "prompt-critical on this tick",
 not "at some point this session", so a display reading it (KallskarWeb) will see it drop back to false.
 
-## F39 K1's Pu content gives about 2,450 pcm more excess reactivity than §3.3 budgets — Open
+## F39 K1's Pu content gives about 2,450 pcm more excess reactivity than §3.3 budgets — Resolved (Aqua, 2026-09-24): lower the Pu content until the excess is 2,250 pcm (D-051)
 The equilibrium BOC core (D-043, D-044), in OpenMC with ENDF/B-VIII.1 (`tools/xsgen/results/k1_fresh_results.json`),
 gives an excess of **+4,695 ± 24 pcm** at 230 °C with all rods out. §3.3 (and §3.7's target) require
 **2,250 ± 150**.
@@ -815,13 +815,13 @@ Other results from the same runs:
   terms, −643.
 - **β_eff (BOC):** 349.5 ± 11.6 pcm, inside §3.1's 360 ± 5 %.
 
-## F40 The model's prompt generation time is 4.56 × 10⁻⁷ s, 14 % above §3.1's 4.0 × 10⁻⁷ — Open
+## F40 The model's prompt generation time is 4.56 × 10⁻⁷ s, 14 % above §3.1's 4.0 × 10⁻⁷ — Resolved (Aqua, 2026-09-24): the computed Λ is used once XSData lands
 IFP tallies give Λ = 4.56 × 10⁻⁷ s for the equilibrium BOC core, and 4.53 × 10⁻⁷ s for the fresh core. §3.7's
 target is 4.0 × 10⁻⁷ ± 5 %. Lowering the Pu content for F39 would lengthen Λ slightly further. The point-kinetics
 facade uses §3.1's value today (D-031), and the 3D model will compute its own from the shape. **For Aqua:** accept
 the computed Λ once XSData lands, or keep §3.1's 4.0 × 10⁻⁷ as a tuning value (†) and record the difference.
 
-## D-046 A runback follows a power demand at its table rate, driven by the shims (review H5) — Proposed
+## D-046 A runback follows a power demand at its table rate, driven by the shims (review H5) — Accepted (2026-09-24)
 §9.5 gives each runback a target and a rate: RB-1 64 %FP at 30 %/min, RB-2 60 %FP at 60 %/min, RB-3
 bypass-limited at 20 %/min. §3.4 gives the mechanism: the shims drive in at 10 mm/s on a runback. The rate is a
 demand, not a rod speed. At 10 mm/s, eighteen shims insert up to about 108 pcm/s at mid-stroke (5,400 pcm over
@@ -841,7 +841,7 @@ which is the defect H5 found. **Decision:**
   at the new load.
 - **RB-3:** stays refused until turbines give its target a number (M3).
 
-## D-047 The IQS shape step works on a copy of the shape (review M8) — Proposed
+## D-047 The IQS shape step works on a copy of the shape (review M8) — Accepted (2026-09-24)
 A time-sliced shape step that sweeps `psi` in place lets the fast ticks between slices compute ρ from a half-swept,
 un-normalised shape. **Decision:**
 - **Copy:** the shape step iterates on a working copy, allocated once, and swaps it in only when a step converges.
@@ -850,7 +850,7 @@ un-normalised shape. **Decision:**
 - **Assembly:** the assembly is sliced too, since on its own it overruns the 4 ms slice (DECISIONS_NEEDED, 899086a).
 This stays latent until IQS replaces the point-kinetics facade (D-031), and is done then.
 
-## D-048 Detectors reads the core's power fresh (review L4) — Proposed
+## D-048 Detectors reads the core's power fresh (review L4) — Accepted (2026-09-24)
 Detectors declared `core.*` as lagged although no cycle requires it. It runs first in the lane, so every neutron trip
 reached the rods a tick late, at t + 0.2 s. That is about 24 % more overshoot on the 0.47 s period of §3.4's
 all-RR-out case. A fission chamber answers at neutron speed; the only delays the plant models are D-025's filters.
@@ -858,7 +858,7 @@ all-RR-out case. A fission chamber answers at neutron speed; the only delays the
 Registry puts Core ahead of Detectors, and that makes no cycle. Lagged reads keep L5's meaning ("last tick's or this
 tick's, and the code must be right either way"); no snapshot of lagged channels is added.
 
-## D-049 Test tolerances take the bases the review derived (review L13) — Proposed
+## D-049 Test tolerances take the bases the review derived (review L13) — Accepted (2026-09-24)
 Every tolerance CODE_REVIEW.md L13 lists takes the value its table derives, with the derivation in a comment:
 - **CoreSpec's D-030 floor:** the prompt drop and the inhour decay at −3,826 pcm.
 - **Subcritical multiplication:** read after several |T|, and bounded the same way.
@@ -870,10 +870,63 @@ Every tolerance CODE_REVIEW.md L13 lists takes the value its table derives, with
 - **IHX's six-unit total:** 12 MW, six times the per-unit rounding.
 - **FrameworkSpec's slice overrun:** the budget plus the measured longest piece, as IQSSpec now does.
 
-## D-050 An alarm clears only once its signal is back past the setpoint by the channel's noise — Proposed
+## D-050 An alarm clears only once its signal is back past the setpoint by the channel's noise — Accepted (2026-09-24)
 With no deadband, an alarm chatters in and out every tick when a noisy signal sits at its setpoint. The CORE-OUT
 thermocouple does it near 565 °C (±1 K, §2.5), and PR near 105 %FP (D-025's noise). **Decision:** each §9.5 row's
 alarm comes in at its setpoint as now, and goes out only once the signal is back past the setpoint by that channel's
 own noise amplitude: 1 K for the thermocouples (§2.5), and D-025's relative noise times the setpoint for the neutron
 channels. Channels with no modelled noise keep no deadband, since they cannot chatter. The deadband comes from
 figures the plant already has; no new number is introduced.
+
+## Aqua's choices of 2026-09-24
+Aqua took the recommended option on every open item: F33–F40, the code review's policy questions, and acceptance of
+D-020 to D-050. The findings' headings above record their resolutions. The entries below turn the choices that need
+code into decisions to implement.
+
+## D-051 The Pu search: both zones move together until the BOC excess is 2,250 pcm (F39) — Accepted
+- **What moves:** both zones shift by the same amount Δ, in percentage points of Pu/(U+Pu) by mass. That keeps §2.3's
+  five-point step between the zones, which is what flattens the radial power (§3.7's 1.20 peaking target).
+- **Method:** each trial repeats D-043's depletion of both zones and D-044's BOC core at 230 °C
+  (`tools/xsgen/k1_pusearch.py`). The first trial takes Δ from the Pu worth the fresh lattices imply, about
+  2,150 pcm per point. Further trials use the secant through the last two.
+- **Stop:** when the excess is within 3σ of its own statistics of 2,250 pcm, where it cannot be told apart from
+  the target.
+- **Result:** replaces Config.Core.fuel.plutoniumFraction, with this decision as its provenance in place of §2.3's
+  "≈".
+- **D-012:** its search was limited to the "≈"; F39's choice lifts that limit.
+
+## D-052 Developer powers are Studio only (review M1) — Accepted
+`isDev` is true only in Studio. A private-server owner is an ordinary player with one extra power, the §14.6 reset
+through `Persistence.requestReset`, and gets no exemption from reach or playtime.
+
+## D-053 A private server saves §14.6's list, and a server close counts as a reactor trip (review M5) — Accepted
+Each system saves its §14.6 items: stuck rods, stopped pumps and loops, shutter demands, trip bypasses, active
+faults, and the LCO clocks once they exist, alongside the event log already saved. It also saves the thermal state
+the restored decay heat needs to match: the pool, fuel and cover-gas temperatures. On load, the plant comes back
+tripped: rods in, scram latched, in the mode it was in. The saved decay heat (D-037) then lands in a plant consistent
+with it. A test saves and loads all ten systems in one round trip.
+
+## D-054 A control is operated only from a desk that carries it (review M6) — Accepted
+A desk map in Config (spec provenance, §10.2) lists, for each command kind, the desks that carry it: the RO desk has
+the rods and trip buttons, the PO desk the pumps, pony motors, IHX shutters and cover gas, the SS desk the mode key
+and authorisations. The trip buttons also sit in the BCR. Commands checks that the named panel is one of those desks,
+through a pluggable `panelHosts(panel, kind, target)` beside `panelPosition`. It changes to attributes on the panel
+instances when panels are built.
+
+## D-055 Bypassing a trip needs the critical playtime, one row at a time, never a neutron row (review M7) — Accepted
+- **Playtime:** `pss.bypass` and `runback.clear` join the critical controls, so they need
+  `Access.criticalMinimumPlaytime_h`.
+- **One at a time:** at most one §9.5 row may be bypassed at once. That is a new `decision("D-055")` value of 1.
+- **Neutron rows:** a row driven by the neutron instruments (PR high and low, flux rate, period) cannot be bypassed.
+- **Authorisation:** once the desks exist, a bypass also needs §10.2's shift-supervisor authorisation.
+
+## D-056 The MCR manual trip is two different buttons within 2 s (review L2) — Accepted
+A trip from the main control room needs `MCR-1` and `MCR-2` pressed within 2 s of each other, where 2 s is a new
+`decision("D-056")` value. One button pressed twice does not trip, and nor do two presses further apart. A single
+press is forgotten after the window. The BCR keeps its one button (§9.5).
+
+## D-057 The pools get the internals' heat capacity, split in proportion to their sodium (F36) — Accepted
+§4.1's "sodium plus internals ≈ 2,400 MJ/K", less the 1,602 MJ/K of sodium (D-021), leaves about 800 MJ/K of steel.
+It is split between the hot and cold pools in proportion to each pool's sodium. How the steel couples to the sodium,
+so that §4.1's mixing times stay as they are while the hours-long heat-up uses all of it, is derived before it is
+built (`tools/derive/pool_steel.py`). It is needed before DRACS and the blackout scenarios.
