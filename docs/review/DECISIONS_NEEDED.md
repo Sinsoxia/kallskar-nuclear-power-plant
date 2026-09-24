@@ -269,7 +269,8 @@ back when the runback ends. A pump trip at full power with flow auto in now runs
 **Still open: flow auto after RB-2.** §9.4's flow auto ignores a pump trip, so when RB-2 ends it takes the two
 surviving pumps back to the three-pump programme's demand: 69 % at the end of the runback. That gives the core about
 two thirds of the flow the programme means to. With flow auto left in, the plant trips on PQ 16.4 s after RB-2
-completes. The crew has the 40 s of the runback and those 16 s to take flow auto out or set the pumps.
+completes. The crew has the 40 s hold and those 16 s to take flow auto out, which is the only way to avoid the trip:
+speed commands are refused during the hold, and flow auto overwrites them each tick while it is in.
 - **A. Leave it.** It is the weakness §9.4 builds in on purpose ("deliberately worse than a crew"), and a crew that
   leaves flow auto in after a pump trip should expect it.
 - **B. Flow auto drops to manual on a pump trip,** as rod auto does on a reactor trip (D-035). The pumps then stay at

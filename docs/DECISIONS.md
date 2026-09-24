@@ -975,9 +975,9 @@ change of state, in or out. **Decision (Aqua):**
 
 `tools/derive/alarm_deadband.py` takes the 5 s as its engineering input. It derives the two-state alarm's flicker
 rate and finds the signal level where that rate is highest:
-- **PR-HIGH:** at the worst level, 102.56 %FP, once every 3.4 h with the noise's σ taken at the setpoint (Aqua's
-  estimate). With the noise relative to the power, as Detectors draws it, the figure is once every 4.5 h. The old
-  rule's worst was once every 0.43 s.
+- **PR-HIGH:** once every 4.5 h at its worst level, 102.56 %FP, with the noise relative to the power as Detectors
+  draws it. Taking σ at the setpoint instead, as the review's first estimate did, gives once every 3.4 h at
+  102.53 %FP: the two differ in σ alone (the physics review, 2026-09-24). The old rule's worst was once every 0.43 s.
 - **CORE-OUT:** never.
 - **The DNDs:** once every 50 min, at 89 cps. That is 2.2 × background, which only the DND-HIGH fault reaches. The
   ratemeter carries each reading into the next, so six readings stay back for 5 s far more often than 50 fresh
@@ -994,17 +994,28 @@ While D-046 was being implemented, RB-2 started by its own trigger still tripped
 trip with flow auto in tripped the reactor on PQ at 10.4 s, with P/Q peaking at 1.122. The lost pump coasts down, and
 flow auto slows the other two as its 10 s power filter comes down. **Decision (Aqua):** use §4.2's mechanism (Rev
 A5, F27). On a primary pump trip, the surviving pumps ramp to 105 % at the 2 %/s limit, which keeps P/Q below the
-1.12 trip while RB-2 runs power back. They hold 105 % while RB-2 runs, and flow auto takes them back when the runback
-ends. PrimaryPumps holds the survivors at the top of their range whenever a pump is down and RB-2 is running. While
-the hold is on, it refuses an operator's `pump.speed`.
+1.12 trip while RB-2 runs power back. Flow auto takes them back when the hold ends. While the hold is on, PrimaryPumps
+refuses an operator's `pump.speed` for the pumps it holds.
+
+**Amended (Aqua, 2026-09-24, after the physics review).** As first built, the hold was keyed on RB-2 running. Below
+60 %FP, where RB-2 has nothing to run back, there was no hold, and at 55 %FP with flow auto in the plant tripped on
+P/Q in 4.4 s. The hold also outlasted a reactor trip. Now:
+- **It starts on the pump trip itself,** for the pumps running at that moment. An operator's deliberate stop does
+  not start it, and a pump started later is not held. It starts only while §9.5's P/Q trip, the trip it protects
+  against, is armed (above 5 %FP), so nothing ramps in hot standby.
+- **It lasts at least 40 s** (`Config.Primary.survivorHold.minimum_s`, RB-2 from full power: 40 %FP at 60 %/min),
+  and for as long as RB-2 still runs. The crew gets the same window at any power: at 80 %FP, where RB-2 needs 20 s,
+  and at 55 %FP, where it runs nothing back, the survivors still hold 40 s (PlantSpec).
+- **A reactor trip ends it at once,** since there is no power left to run back, and the operator has the pumps back.
 
 **How this sits with §9.4.** §9.4 gives flow auto the built-in weakness that it "ignores a pump trip". The ramp to
 105 % is the pump drives' own response to the trip (§4.2), not flow auto's. Flow auto still ignores the trip: its
-demand stays the three-pump programme, and the drives override it only while RB-2 runs. The weakness shows once the
-runback ends:
+demand stays the three-pump programme, and the drives override it only during the hold. The weakness shows once the
+hold ends:
 - **Flow auto in:** flow auto takes the two pumps back to the programme's demand, 69 % at the end of RB-2. Two pumps
   at that speed give the core about two thirds of the flow the programme means to. With flow auto left in, the plant
-  trips on PQ 16.4 s after RB-2 completes, unless the crew takes flow auto out or sets the pumps first. That is open
+  trips on PQ 16.4 s after RB-2 completes, unless the crew takes flow auto out first. That is the only way: speed
+  commands are refused during the hold, and flow auto overwrites them each tick while it is in. That is open
   for Aqua (docs/review/DECISIONS_NEEDED.md, D-046+).
 - **Flow auto out:** the pumps stay at 105 %, and the operator takes them from there.
 
