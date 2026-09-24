@@ -1066,10 +1066,25 @@ desks exist.
     a position, turbines A and B don't coordinate, the trace heating can't see failed heaters, the load-follow
     master follows dispatch into violations, and the rest.
   - The cover gas auto keeps "cycles on heatup" until its controller (D-020) is reviewed under this principle.
-- **Tuning.** Each loop's gains are derived, not tuned by hand. The plant's own step response gives the loop's gain,
-  delay and time constant, and the SIMC rules (S. Skogestad, "Simple analytic rules for model reduction and PID
-  controller tuning", J. Process Control 13, 2003) turn them into gains that don't overshoot. The derivation goes
-  in `tools/derive/auto_tuning.py`.
+- **Tuning** (`tools/derive/auto_tuning.py`, from the open-loop step responses tests/TuningSpec measures on the whole
+  plant, autos out, at 100, 60 and 30 %FP; 22/22 checks):
+  - **Rod auto: option A (Aqua), a model of its own moves.** A rod move's effect on the outlet thermocouple has two
+    timescales. About half arrives within 10 s as the core's power moves. The rest takes minutes (a mode of about
+    150 s at full power), because the plant's heat balance settles slowly against the heat sink. A controller that
+    only watched the thermocouple would see too little, move again, and overshoot. So rod auto keeps its own copy of
+    four fitted modes, driven by the rods' actual positions, and acts on the measured error plus what its moves have
+    yet to do. When that is outside ±2 K, it moves by f·(error)/G. G is the final gain (about 0.091 K/mm at
+    mid-stroke, scaled by the §3.4 S-curve). f = 1/1.1 keeps a move from overshooting if the rods are as much as the
+    §3.7 ±10 % stronger than modelled. Simulated on the fitted plants with the ±1 K noise, a ±6 K setpoint step is
+    corrected in one move with no crossing, in about 15 s at 60 and 30 %FP. At full power it takes about 130 s, where
+    the slow mode carries more of the effect.
+  - **Flow auto: a direct inverse.** The flow is (Σ running speeds)/300, one to one and limited only by the 2 %/s
+    ramp, so flow auto asks for the speed that gives the programme's flow with the pumps it has running, and the
+    ramp does the rest. The programme is indexed on the PR median (the real measurement), through a 5.26 s filter.
+    That is derived from D-025's noise so that noise moves the pumps by less than a quarter of one tick's ramp, and
+    at §7.1's fastest routine change it lags by 0.44 %FP.
+  - SIMC (S. Skogestad, J. Process Control 13, 2003), named here first, suits a single lag and delay, and this
+    plant is neither: the measured responses decided the forms.
 - **Spec.** Rev A6 (`tools/derive/apply_rev_a6.py`, 35/35 checks) rewrites §9.4 and the project brief's sentence
   on the autos. Every rewritten row keeps its number of lines, and the two rows the spec audit cites inside §9.4 are
   untouched, so the audit's citations still hold. Only the two after Appendix C moved, by the A6 entry's 7 lines.

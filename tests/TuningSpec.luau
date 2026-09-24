@@ -5,8 +5,8 @@
 	  rod   RR1 withdrawn 20 mm at its drive speed, and the lagged outlet thermocouple (without its noise) recorded:
 	        what rod auto sees, through the core's feedbacks, the pools and the thermocouple's §2.5 lag
 	  flow  every pump's speed stepped down 5 %, and the flow and P/Q recorded: what flow auto sees
-	Each response is logged as one line, "TUNING <case> <power> dt=<s> <values...>", every second, which the derivation
-	parses from the harness report. The asserts only check that each step moved its signal the right way.
+	Each response is logged as one line, "TUNING <case> <power> dt=<s> [pos=<mm> speed=<mm/s>] <values...>", a value
+	every second, which the derivation parses from the harness report. The asserts only check that each step moved its signal the right way.
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -27,8 +27,9 @@ local DT = 1 / Config.Clocks.fast_Hz
 local KEL = 273.15
 local AUTO = { kind = "auto" :: any, name = "TuningSpec", userId = 0 }
 local SAMPLE_S = 1 -- one logged value a second
--- long enough for the rod to show its slow energy-balance mode (minutes); the flow settles within its 2 %/s ramp
-local RECORD_ROD_S, RECORD_FLOW_S = 240, 10
+-- the rod runs 2.5 times its slow energy-balance mode (about 235 s), so a fit pins it; the flow settles within its
+-- 2 %/s ramp
+local RECORD_ROD_S, RECORD_FLOW_S = 600, 10
 
 -- Every system as Main builds it, seated at a power with both autos out and left 10 s to settle
 local function seated(pct: number): any
@@ -80,12 +81,12 @@ local function record(p: any, seconds: number, read: () -> number): { number }
 	return out
 end
 
-local function line(case: string, pct: number, values: { number }): string
+local function line(case: string, pct: number, values: { number }, extra: string?): string
 	local parts = table.create(#values)
 	for i, v in values do
 		parts[i] = string.format("%.5f", v)
 	end
-	return `TUNING {case} {pct} dt={SAMPLE_S} {table.concat(parts, " ")}`
+	return `TUNING {case} {pct} dt={SAMPLE_S}{if extra then " " .. extra else ""} {table.concat(parts, " ")}`
 end
 
 local cases = {}
@@ -94,11 +95,12 @@ for _, pct in { 100, 60, 30 } do
 		local p = seated(pct)
 		local rods, pools = p.byName.RodDrives, p.byName.Pools
 		local rr1 = rods.drives[rods:indexOf("RR1")]
+		local from = rr1.position_mm
 		t.ok(rods:applyCommand(AUTO, { kind = "rod.move", target = "RR1", value = rr1.position_mm + 20 }).ok, "RR1 moves")
 		local samples = record(p, RECORD_ROD_S, function()
 			return pools.measuredOutlet_K - KEL
 		end)
-		t.log(line("rod", pct, samples))
+		t.log(line("rod", pct, samples, string.format("pos=%.3f speed=%.3f", from, Config.Rods.regulating.speed_mmps)))
 		t.ok(samples[#samples] > samples[1], "withdrawing a rod raises the outlet")
 		t.eq(p.channels:get("protection.tripped"), false, "and trips nothing")
 	end
