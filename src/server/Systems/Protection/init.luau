@@ -39,7 +39,7 @@
 	reached the target and the measured power is at or below the target plus one PR channel's D-025 noise there; rod
 	auto, if it was in auto, then takes over at the new load. The pump and loop rows start their runback on the
 	alarm's rising edge, so a runback that has been cleared or has finished does not restart until the trigger has
-	reset and come back. RB-3's target, "bypass-limited", is not a number yet, so RB-3 is refused (M3).
+	reset and come back; one refused because a deeper runback was running starts once that one is out of the way. RB-3's target, "bypass-limited", is not a number yet, so RB-3 is refused (M3).
 
 	**First-out.** The first monitor to reach its trip level latches, and stays latched through the reset, because
 	the question after a trip is always which signal went first. Later trips are recorded but do not overwrite it.
@@ -406,7 +406,7 @@ function Protection.init(self: any, ctx: any)
 	self.monitors = buildMonitors(cfg)
 	self.state = {}
 	for _, m in self.monitors do
-		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0, wasAlarm = false }
+		self.state[m.id] = { alarm = false, block = false, trip = false, blockFor = 0, tripFor = 0, runbackRan = false }
 	end
 	self.power = 0
 	self.measured = 0
@@ -615,12 +615,19 @@ function Protection.step(self: any, dt: number)
 			end
 		end
 
-		-- §9.5's "alarm or first action" column is a runback for the pump and loop rows. It starts on the alarm's
-		-- rising edge, so one that has been cleared or has finished waits for the trigger to reset and come back.
-		if m.runback and st.alarm and not st.wasAlarm then
-			self:startRunback(m.runback)
+		--[[
+			§9.5's "alarm or first action" column is a runback for the pump and loop rows. Once a row's runback has
+			run, cleared or finished, it waits for the trigger to reset and come back (D-046). One refused because a
+			deeper runback was already running has not run, so it starts once that one is out of the way, if its
+			trigger is still there.
+		]]
+		if m.runback then
+			if not st.alarm then
+				st.runbackRan = false
+			elseif not st.runbackRan and self:startRunback(m.runback) then
+				st.runbackRan = true
+			end
 		end
-		st.wasAlarm = st.alarm
 	end
 
 	self:followRunback(dt)

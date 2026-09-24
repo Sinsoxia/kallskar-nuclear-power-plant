@@ -390,6 +390,23 @@ return {
 		t.eq(starts, 2)
 	end,
 
+	["a milder runback refused while a deeper one runs starts once that one is cleared (D-046)"] = function(t)
+		local sys, ch = make()
+		run(sys, 1)
+		ch:setExternal("primary.pumpsRunning", 2)
+		run(sys, DT)
+		t.eq(ch:get("protection.runback"), "RB2", "a pump lost starts RB-2, to 60 %FP")
+		ch:setExternal("ihx.loopsRunning", 2)
+		run(sys, 1)
+		t.eq(ch:get("protection.runback"), "RB2", "a loop lost as well: RB-1's 64 %FP is milder, so RB-2 runs on")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "runback.clear" }).ok, "the operator clears RB-2")
+		run(sys, DT)
+		t.eq(ch:get("protection.runback"), "RB1", "RB-1, which never ran, starts: its trigger is still there")
+		t.ok(sys:applyCommand(OPERATOR, { kind = "runback.clear" }).ok, "and once it too is cleared")
+		run(sys, 5)
+		t.eq(ch:get("protection.runback"), "", "neither restarts while their triggers persist")
+	end,
+
 	["a runback with no depth to run to is refused, so it cannot halt the plant later (§9.5 RB-3)"] = function(t)
 		local sys, ch = make()
 		run(sys, 1)
