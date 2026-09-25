@@ -824,9 +824,24 @@ Other results from the same runs:
 
 ## F40 The model's prompt generation time is 4.56 × 10⁻⁷ s, 14 % above §3.1's 4.0 × 10⁻⁷ — Resolved (Aqua, 2026-09-24): the computed Λ is used once XSData lands
 IFP tallies give Λ = 4.56 × 10⁻⁷ s for the equilibrium BOC core, and 4.53 × 10⁻⁷ s for the fresh core. §3.7's
-target is 4.0 × 10⁻⁷ ± 5 %. Lowering the Pu content for F39 would lengthen Λ slightly further. The point-kinetics
+target is 4.0 × 10⁻⁷ ± 5 %. Lowering the Pu content for F39 would lengthen Λ slightly further, and did: at D-051's
+17 / 22 % it is 4.78 × 10⁻⁷ s fresh and 4.76 × 10⁻⁷ s at BOC, 19–20 % above §3.1 (2026-09-25). The point-kinetics
 facade uses §3.1's value today (D-031), and the 3D model will compute its own from the shape. **For Aqua:** accept
 the computed Λ once XSData lands, or keep §3.1's 4.0 × 10⁻⁷ as a tuning value (†) and record the difference.
+
+## F41 At D-051's Pu the fixed-geometry power defect is −748 ± 29 pcm, 16 % above §3.2's −643 — Open (for Aqua)
+The canonical chain at 17 / 22 % (D-051, 2026-09-25) puts hot zero power → full power at fixed geometry, which is
+§3.2's Doppler and sodium terms together, at −748 ± 29 pcm. At 18 / 23 % it was −639 ± 25, on §3.2's −643. The
+change, −109 ± 38 pcm (2.9σ), is the direction less plutonium goes: more U-238, and a softer spectrum that
+strengthens Doppler. §3.7 holds the Doppler constant to −900 ± 10 %, and −748 is 16 % above what §3.2's terms give.
+230 °C → HZP moved the same way: −276 ± 29 pcm against §3.2's −170 from the same two terms.
+
+Nothing in the plant uses these yet: the point-kinetics facade (D-031) takes §3.2's coefficients from Config, so
+this matters when XSData lands and the 3D model computes its own feedback. **For Aqua, one of:**
+- (a) accept the computed feedback when XSData lands, and record the difference from §3.2 then;
+- (b) keep §3.2's coefficients as the target, and look for what would bring the model back to them (for example the
+  Pu vector, which D-051 left at NEA's BOC one);
+- (c) revisit D-051: a Pu content that meets both §3.3's excess and §3.2's defect may not exist in this core.
 
 ## D-046 A runback follows a power demand at its table rate, driven by the shims (review H5) — Accepted (2026-09-24)
 §9.5 gives each runback a target and a rate: RB-1 64 %FP at 30 %/min, RB-2 60 %FP at 60 %/min, RB-3
@@ -917,6 +932,21 @@ code into decisions to implement.
   2,757 ± 293 pcm per point, and between trial 2 and the reference 2,392 ± 38. They differ by 1.2σ, so the worth is
   steady within the statistics over this range.
 - **D-012:** its search was limited to the "≈"; F39's choice lifts that limit.
+- **Canonical chain at 17 / 22 % (2026-09-25):** every reference result rerun from scratch: both zones' depletion,
+  the BOC cores and the fresh cases (`results/k1_fresh_results.json`, `results/k1_depletion.json`). The BOC excess at
+  230 °C with every rod out is **+2,286 ± 32 pcm**, inside §3.3's 2,250 ± 150. Against the 18 / 23 % runs:
+
+  | | 18 / 23 % | 17 / 22 % | Spec |
+  |---|---|---|---|
+  | BOC excess, 230 °C | +4,695 ± 24 pcm | +2,286 ± 32 pcm | 2,250 ± 150 (§3.3) |
+  | β_eff, fresh / BOC | 332 ± 7 / 350 ± 12 pcm | 339 ± 8 / 338 ± 10 pcm | 360 ± 5 % (§3.1, §3.7) |
+  | Λ, fresh / BOC | 4.53 / 4.56 × 10⁻⁷ s | 4.78 / 4.76 × 10⁻⁷ s | 4.0 × 10⁻⁷ ± 5 % (F40) |
+  | HZP → full power, fixed geometry | −639 ± 25 pcm | −748 ± 29 pcm | −643 (§3.2, F41) |
+  | 230 °C → HZP, fixed geometry | | −276 ± 29 pcm | −170 (§3.2's Doppler and sodium) |
+  | Axial ends reflective | +892 ± 25 pcm | +963 ± 28 pcm | |
+
+  β_eff has not moved beyond its statistics, and sits about 6 % under §3.1's 360, about 1σ outside the ±5 %. The
+  coarse-step depletion check still agrees with the fine one within its statistics (largest −142 ± 76 pcm).
 
 ## D-052 Developer powers are Studio only (review M1) — Accepted
 `isDev` is true only in Studio. A private-server owner is an ordinary player with one extra power, the §14.6 reset
