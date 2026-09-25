@@ -1,16 +1,16 @@
 Rod auto: the modes fitted to each open-loop response (RR1 out 20 mm from 500 mm)
-  100 %FP: final gain 0.09093 K/mm; modes -0.11007 K/mm at 1.0 s, +0.22293 K/mm at 2.5 s, -0.07283 K/mm at 8.0 s, +0.05090 K/mm at 150.4 s; fit RMS 28.0 mK over 600 s (response 1.778 K at most)
-  [ok] 100 %FP: the fit is within a tenth of the thermocouple's noise (0.0280 K)
-   60 %FP: final gain 0.09276 K/mm; modes -0.43337 K/mm at 1.7 s, +0.60570 K/mm at 2.5 s, -0.12335 K/mm at 8.0 s, +0.04379 K/mm at 147.4 s; fit RMS 27.0 mK over 600 s (response 1.819 K at most)
-  [ok] 60 %FP: the fit is within a tenth of the thermocouple's noise (0.0270 K)
-   30 %FP: final gain 0.09115 K/mm; modes -0.83108 K/mm at 2.5 s, +1.02448 K/mm at 3.1 s, -0.12955 K/mm at 8.0 s, +0.02731 K/mm at 101.2 s; fit RMS 20.8 mK over 600 s (response 1.828 K at most)
-  [ok] 30 %FP: the fit is within a tenth of the thermocouple's noise (0.0208 K)
-  100 %FP: slowest mode 150 s holds 56 % of the final gain
-  [ok] 100 %FP: the energy-balance mode is separate from the fast ones (150 s vs 1.0 s)
-  60 %FP: slowest mode 147 s holds 47 % of the final gain
-  [ok] 60 %FP: the energy-balance mode is separate from the fast ones (147 s vs 1.7 s)
-  30 %FP: slowest mode 101 s holds 30 % of the final gain
-  [ok] 30 %FP: the energy-balance mode is separate from the fast ones (101 s vs 2.5 s)
+  100 %FP: final gain 0.09018 K/mm; modes -0.01083 K/mm at 0.4 s, +0.06810 K/mm at 5.3 s, -0.03539 K/mm at 40.0 s, +0.06831 K/mm at 119.8 s; fit RMS 8.9 mK over 600 s (response 1.782 K at most)
+  [ok] 100 %FP: the fit is within a tenth of the thermocouple's noise (0.0089 K)
+   60 %FP: final gain 0.09199 K/mm; modes -0.03257 K/mm at 1.1 s, +0.10401 K/mm at 4.4 s, -0.04785 K/mm at 40.0 s, +0.06841 K/mm at 108.4 s; fit RMS 8.1 mK over 600 s (response 1.824 K at most)
+  [ok] 60 %FP: the fit is within a tenth of the thermocouple's noise (0.0081 K)
+   30 %FP: final gain 0.09124 K/mm; modes -0.03738 K/mm at 1.4 s, +0.11646 K/mm at 5.3 s, -0.04129 K/mm at 40.0 s, +0.05345 K/mm at 77.5 s; fit RMS 13.8 mK over 600 s (response 1.834 K at most)
+  [ok] 30 %FP: the fit is within a tenth of the thermocouple's noise (0.0138 K)
+  100 %FP: slowest mode 120 s holds 76 % of the final gain
+  [ok] 100 %FP: the energy-balance mode is separate from the fast ones (120 s vs 0.4 s)
+  60 %FP: slowest mode 108 s holds 74 % of the final gain
+  [ok] 60 %FP: the energy-balance mode is separate from the fast ones (108 s vs 1.1 s)
+  30 %FP: slowest mode 78 s holds 59 % of the final gain
+  [ok] 30 %FP: the energy-balance mode is separate from the fast ones (78 s vs 1.4 s)
   correction fraction f = 0.909: a move is sized for the error, less the §3.7 ±10 % rod-worth tolerance
   measurement filter τ = 10.42 s: the thermocouple's σ 0.577 K a tick comes through as 0.040 K, 5σ = the 0.20 K margin f leaves at the band edge
 Rod auto: closed loop on the fitted plants, IMC controller, ±2 K band, ±1 K thermocouple noise, five seeds
@@ -18,66 +18,66 @@ Rod auto: closed loop on the fitted plants, IMC controller, ±2 K band, ±1 K th
   [ok] 100 %FP, model = plant, setpoint -6 K: no crossing beyond the band (0.00 K ≤ 2.0 K)
   [ok] 100 %FP, model = plant, setpoint -6 K: every move the same way
   [ok] 100 %FP, model = plant, setpoint -6 K: inside the band after 15 min (0.54 K)
-  100 %FP model = plant       setpoint +6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.54 K
+  100 %FP model = plant       setpoint +6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.53 K
   [ok] 100 %FP, model = plant, setpoint +6 K: no crossing beyond the band (0.00 K ≤ 2.0 K)
   [ok] 100 %FP, model = plant, setpoint +6 K: every move the same way
-  [ok] 100 %FP, model = plant, setpoint +6 K: inside the band after 15 min (0.54 K)
-  100 %FP model = plant       reactivity worth +6 K   : past the setpoint by 0.57 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.58 K
-  [ok] 100 %FP, model = plant, reactivity worth +6 K: no crossing beyond the band (0.57 K ≤ 2.0 K)
+  [ok] 100 %FP, model = plant, setpoint +6 K: inside the band after 15 min (0.53 K)
+  100 %FP model = plant       reactivity worth +6 K   : past the setpoint by 0.17 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.56 K
+  [ok] 100 %FP, model = plant, reactivity worth +6 K: no crossing beyond the band (0.17 K ≤ 2.0 K)
   [ok] 100 %FP, model = plant, reactivity worth +6 K: every move the same way
-  [ok] 100 %FP, model = plant, reactivity worth +6 K: inside the band after 15 min (0.58 K)
-  100 %FP model = plant       reactivity worth -6 K   : past the setpoint by 0.57 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.57 K
-  [ok] 100 %FP, model = plant, reactivity worth -6 K: no crossing beyond the band (0.57 K ≤ 2.0 K)
+  [ok] 100 %FP, model = plant, reactivity worth +6 K: inside the band after 15 min (0.56 K)
+  100 %FP model = plant       reactivity worth -6 K   : past the setpoint by 0.17 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.55 K
+  [ok] 100 %FP, model = plant, reactivity worth -6 K: no crossing beyond the band (0.17 K ≤ 2.0 K)
   [ok] 100 %FP, model = plant, reactivity worth -6 K: every move the same way
-  [ok] 100 %FP, model = plant, reactivity worth -6 K: inside the band after 15 min (0.57 K)
+  [ok] 100 %FP, model = plant, reactivity worth -6 K: inside the band after 15 min (0.55 K)
   100 %FP rods 10 % stronger  setpoint -6 K           : past the setpoint by 0.05 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.05 K
   [ok] 100 %FP, rods 10 % stronger, setpoint -6 K: no crossing beyond the band (0.05 K ≤ 2.0 K)
   [ok] 100 %FP, rods 10 % stronger, setpoint -6 K: every move the same way
   [ok] 100 %FP, rods 10 % stronger, setpoint -6 K: inside the band after 15 min (0.05 K)
-  100 %FP rods 10 % stronger  setpoint +6 K           : past the setpoint by 0.05 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.05 K
-  [ok] 100 %FP, rods 10 % stronger, setpoint +6 K: no crossing beyond the band (0.05 K ≤ 2.0 K)
+  100 %FP rods 10 % stronger  setpoint +6 K           : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.06 K
+  [ok] 100 %FP, rods 10 % stronger, setpoint +6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 100 %FP, rods 10 % stronger, setpoint +6 K: every move the same way
-  [ok] 100 %FP, rods 10 % stronger, setpoint +6 K: inside the band after 15 min (0.05 K)
-  100 %FP rods 10 % stronger  reactivity worth +6 K   : past the setpoint by 0.63 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.62 K
-  [ok] 100 %FP, rods 10 % stronger, reactivity worth +6 K: no crossing beyond the band (0.63 K ≤ 2.0 K)
+  [ok] 100 %FP, rods 10 % stronger, setpoint +6 K: inside the band after 15 min (0.06 K)
+  100 %FP rods 10 % stronger  reactivity worth +6 K   : past the setpoint by 0.19 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.60 K
+  [ok] 100 %FP, rods 10 % stronger, reactivity worth +6 K: no crossing beyond the band (0.19 K ≤ 2.0 K)
   [ok] 100 %FP, rods 10 % stronger, reactivity worth +6 K: every move the same way
-  [ok] 100 %FP, rods 10 % stronger, reactivity worth +6 K: inside the band after 15 min (0.62 K)
-  100 %FP rods 10 % stronger  reactivity worth -6 K   : past the setpoint by 0.63 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.61 K
-  [ok] 100 %FP, rods 10 % stronger, reactivity worth -6 K: no crossing beyond the band (0.63 K ≤ 2.0 K)
+  [ok] 100 %FP, rods 10 % stronger, reactivity worth +6 K: inside the band after 15 min (0.60 K)
+  100 %FP rods 10 % stronger  reactivity worth -6 K   : past the setpoint by 0.19 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.61 K
+  [ok] 100 %FP, rods 10 % stronger, reactivity worth -6 K: no crossing beyond the band (0.19 K ≤ 2.0 K)
   [ok] 100 %FP, rods 10 % stronger, reactivity worth -6 K: every move the same way
   [ok] 100 %FP, rods 10 % stronger, reactivity worth -6 K: inside the band after 15 min (0.61 K)
-   60 %FP model = plant       setpoint -6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.54 K
+   60 %FP model = plant       setpoint -6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.53 K
   [ok] 60 %FP, model = plant, setpoint -6 K: no crossing beyond the band (0.00 K ≤ 2.0 K)
   [ok] 60 %FP, model = plant, setpoint -6 K: every move the same way
-  [ok] 60 %FP, model = plant, setpoint -6 K: inside the band after 15 min (0.54 K)
-   60 %FP model = plant       setpoint +6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.54 K
+  [ok] 60 %FP, model = plant, setpoint -6 K: inside the band after 15 min (0.53 K)
+   60 %FP model = plant       setpoint +6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.53 K
   [ok] 60 %FP, model = plant, setpoint +6 K: no crossing beyond the band (0.00 K ≤ 2.0 K)
   [ok] 60 %FP, model = plant, setpoint +6 K: every move the same way
-  [ok] 60 %FP, model = plant, setpoint +6 K: inside the band after 15 min (0.54 K)
-   60 %FP model = plant       reactivity worth +6 K   : past the setpoint by 0.52 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.56 K
-  [ok] 60 %FP, model = plant, reactivity worth +6 K: no crossing beyond the band (0.52 K ≤ 2.0 K)
+  [ok] 60 %FP, model = plant, setpoint +6 K: inside the band after 15 min (0.53 K)
+   60 %FP model = plant       reactivity worth +6 K   : past the setpoint by 0.08 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.55 K
+  [ok] 60 %FP, model = plant, reactivity worth +6 K: no crossing beyond the band (0.08 K ≤ 2.0 K)
   [ok] 60 %FP, model = plant, reactivity worth +6 K: every move the same way
-  [ok] 60 %FP, model = plant, reactivity worth +6 K: inside the band after 15 min (0.56 K)
-   60 %FP model = plant       reactivity worth -6 K   : past the setpoint by 0.52 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.56 K
-  [ok] 60 %FP, model = plant, reactivity worth -6 K: no crossing beyond the band (0.52 K ≤ 2.0 K)
+  [ok] 60 %FP, model = plant, reactivity worth +6 K: inside the band after 15 min (0.55 K)
+   60 %FP model = plant       reactivity worth -6 K   : past the setpoint by 0.08 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.55 K
+  [ok] 60 %FP, model = plant, reactivity worth -6 K: no crossing beyond the band (0.08 K ≤ 2.0 K)
   [ok] 60 %FP, model = plant, reactivity worth -6 K: every move the same way
-  [ok] 60 %FP, model = plant, reactivity worth -6 K: inside the band after 15 min (0.56 K)
-   60 %FP rods 10 % stronger  setpoint -6 K           : past the setpoint by 0.04 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.04 K
-  [ok] 60 %FP, rods 10 % stronger, setpoint -6 K: no crossing beyond the band (0.04 K ≤ 2.0 K)
+  [ok] 60 %FP, model = plant, reactivity worth -6 K: inside the band after 15 min (0.55 K)
+   60 %FP rods 10 % stronger  setpoint -6 K           : past the setpoint by 0.05 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.05 K
+  [ok] 60 %FP, rods 10 % stronger, setpoint -6 K: no crossing beyond the band (0.05 K ≤ 2.0 K)
   [ok] 60 %FP, rods 10 % stronger, setpoint -6 K: every move the same way
-  [ok] 60 %FP, rods 10 % stronger, setpoint -6 K: inside the band after 15 min (0.04 K)
-   60 %FP rods 10 % stronger  setpoint +6 K           : past the setpoint by 0.05 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.05 K
-  [ok] 60 %FP, rods 10 % stronger, setpoint +6 K: no crossing beyond the band (0.05 K ≤ 2.0 K)
+  [ok] 60 %FP, rods 10 % stronger, setpoint -6 K: inside the band after 15 min (0.05 K)
+   60 %FP rods 10 % stronger  setpoint +6 K           : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.06 K
+  [ok] 60 %FP, rods 10 % stronger, setpoint +6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 60 %FP, rods 10 % stronger, setpoint +6 K: every move the same way
-  [ok] 60 %FP, rods 10 % stronger, setpoint +6 K: inside the band after 15 min (0.05 K)
-   60 %FP rods 10 % stronger  reactivity worth +6 K   : past the setpoint by 0.57 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.60 K
-  [ok] 60 %FP, rods 10 % stronger, reactivity worth +6 K: no crossing beyond the band (0.57 K ≤ 2.0 K)
+  [ok] 60 %FP, rods 10 % stronger, setpoint +6 K: inside the band after 15 min (0.06 K)
+   60 %FP rods 10 % stronger  reactivity worth +6 K   : past the setpoint by 0.09 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.59 K
+  [ok] 60 %FP, rods 10 % stronger, reactivity worth +6 K: no crossing beyond the band (0.09 K ≤ 2.0 K)
   [ok] 60 %FP, rods 10 % stronger, reactivity worth +6 K: every move the same way
-  [ok] 60 %FP, rods 10 % stronger, reactivity worth +6 K: inside the band after 15 min (0.60 K)
-   60 %FP rods 10 % stronger  reactivity worth -6 K   : past the setpoint by 0.57 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.61 K
-  [ok] 60 %FP, rods 10 % stronger, reactivity worth -6 K: no crossing beyond the band (0.57 K ≤ 2.0 K)
+  [ok] 60 %FP, rods 10 % stronger, reactivity worth +6 K: inside the band after 15 min (0.59 K)
+   60 %FP rods 10 % stronger  reactivity worth -6 K   : past the setpoint by 0.09 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.60 K
+  [ok] 60 %FP, rods 10 % stronger, reactivity worth -6 K: no crossing beyond the band (0.09 K ≤ 2.0 K)
   [ok] 60 %FP, rods 10 % stronger, reactivity worth -6 K: every move the same way
-  [ok] 60 %FP, rods 10 % stronger, reactivity worth -6 K: inside the band after 15 min (0.61 K)
+  [ok] 60 %FP, rods 10 % stronger, reactivity worth -6 K: inside the band after 15 min (0.60 K)
    30 %FP model = plant       setpoint -6 K           : past the setpoint by 0.00 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.53 K
   [ok] 30 %FP, model = plant, setpoint -6 K: no crossing beyond the band (0.00 K ≤ 2.0 K)
   [ok] 30 %FP, model = plant, setpoint -6 K: every move the same way
@@ -86,30 +86,30 @@ Rod auto: closed loop on the fitted plants, IMC controller, ±2 K band, ±1 K th
   [ok] 30 %FP, model = plant, setpoint +6 K: no crossing beyond the band (0.00 K ≤ 2.0 K)
   [ok] 30 %FP, model = plant, setpoint +6 K: every move the same way
   [ok] 30 %FP, model = plant, setpoint +6 K: inside the band after 15 min (0.53 K)
-   30 %FP model = plant       reactivity worth +6 K   : past the setpoint by 0.32 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.54 K
-  [ok] 30 %FP, model = plant, reactivity worth +6 K: no crossing beyond the band (0.32 K ≤ 2.0 K)
+   30 %FP model = plant       reactivity worth +6 K   : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.53 K
+  [ok] 30 %FP, model = plant, reactivity worth +6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 30 %FP, model = plant, reactivity worth +6 K: every move the same way
-  [ok] 30 %FP, model = plant, reactivity worth +6 K: inside the band after 15 min (0.54 K)
-   30 %FP model = plant       reactivity worth -6 K   : past the setpoint by 0.32 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.54 K
-  [ok] 30 %FP, model = plant, reactivity worth -6 K: no crossing beyond the band (0.32 K ≤ 2.0 K)
+  [ok] 30 %FP, model = plant, reactivity worth +6 K: inside the band after 15 min (0.53 K)
+   30 %FP model = plant       reactivity worth -6 K   : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.54 K
+  [ok] 30 %FP, model = plant, reactivity worth -6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 30 %FP, model = plant, reactivity worth -6 K: every move the same way
   [ok] 30 %FP, model = plant, reactivity worth -6 K: inside the band after 15 min (0.54 K)
    30 %FP rods 10 % stronger  setpoint -6 K           : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.06 K
   [ok] 30 %FP, rods 10 % stronger, setpoint -6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 30 %FP, rods 10 % stronger, setpoint -6 K: every move the same way
   [ok] 30 %FP, rods 10 % stronger, setpoint -6 K: inside the band after 15 min (0.06 K)
-   30 %FP rods 10 % stronger  setpoint +6 K           : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.06 K
-  [ok] 30 %FP, rods 10 % stronger, setpoint +6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
+   30 %FP rods 10 % stronger  setpoint +6 K           : past the setpoint by 0.07 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.07 K
+  [ok] 30 %FP, rods 10 % stronger, setpoint +6 K: no crossing beyond the band (0.07 K ≤ 2.0 K)
   [ok] 30 %FP, rods 10 % stronger, setpoint +6 K: every move the same way
-  [ok] 30 %FP, rods 10 % stronger, setpoint +6 K: inside the band after 15 min (0.06 K)
-   30 %FP rods 10 % stronger  reactivity worth +6 K   : past the setpoint by 0.35 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.58 K
-  [ok] 30 %FP, rods 10 % stronger, reactivity worth +6 K: no crossing beyond the band (0.35 K ≤ 2.0 K)
+  [ok] 30 %FP, rods 10 % stronger, setpoint +6 K: inside the band after 15 min (0.07 K)
+   30 %FP rods 10 % stronger  reactivity worth +6 K   : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.59 K
+  [ok] 30 %FP, rods 10 % stronger, reactivity worth +6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 30 %FP, rods 10 % stronger, reactivity worth +6 K: every move the same way
-  [ok] 30 %FP, rods 10 % stronger, reactivity worth +6 K: inside the band after 15 min (0.58 K)
-   30 %FP rods 10 % stronger  reactivity worth -6 K   : past the setpoint by 0.35 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.57 K
-  [ok] 30 %FP, rods 10 % stronger, reactivity worth -6 K: no crossing beyond the band (0.35 K ≤ 2.0 K)
+  [ok] 30 %FP, rods 10 % stronger, reactivity worth +6 K: inside the band after 15 min (0.59 K)
+   30 %FP rods 10 % stronger  reactivity worth -6 K   : past the setpoint by 0.06 K at most; up to 3 move(s); 0/5 runs reverse; last minute within 0.58 K
+  [ok] 30 %FP, rods 10 % stronger, reactivity worth -6 K: no crossing beyond the band (0.06 K ≤ 2.0 K)
   [ok] 30 %FP, rods 10 % stronger, reactivity worth -6 K: every move the same way
-  [ok] 30 %FP, rods 10 % stronger, reactivity worth -6 K: inside the band after 15 min (0.57 K)
+  [ok] 30 %FP, rods 10 % stronger, reactivity worth -6 K: inside the band after 15 min (0.58 K)
 Flow auto: the plant
   100 %FP: 5 % slower gives 5.00 % less flow, there by 3 s
   [ok] 100 %FP: flow is (Σ running speeds)/300, 1:1 with speed
@@ -123,9 +123,9 @@ Flow auto: the plant
 
 For Config (D-059):
   rod auto: correctionFraction = 0.9091; measurementFilter_s = 10.42; modes at 100/60/30 %FP (K per mm at 500 mm, s):
-    [100] = { { gain_Kpmm = -0.110074, tau_s = 0.960 }, { gain_Kpmm = 0.222927, tau_s = 2.500 }, { gain_Kpmm = -0.072829, tau_s = 8.000 }, { gain_Kpmm = 0.050905, tau_s = 150.379 } },
-    [60] = { { gain_Kpmm = -0.433374, tau_s = 1.707 }, { gain_Kpmm = 0.605696, tau_s = 2.500 }, { gain_Kpmm = -0.123349, tau_s = 8.000 }, { gain_Kpmm = 0.043785, tau_s = 147.419 } },
-    [30] = { { gain_Kpmm = -0.831083, tau_s = 2.500 }, { gain_Kpmm = 1.024476, tau_s = 3.071 }, { gain_Kpmm = -0.129552, tau_s = 8.000 }, { gain_Kpmm = 0.027309, tau_s = 101.156 } },
+    [100] = { { gain_Kpmm = -0.010834, tau_s = 0.353 }, { gain_Kpmm = 0.068096, tau_s = 5.269 }, { gain_Kpmm = -0.035390, tau_s = 40.000 }, { gain_Kpmm = 0.068308, tau_s = 119.805 } },
+    [60] = { { gain_Kpmm = -0.032569, tau_s = 1.090 }, { gain_Kpmm = 0.104006, tau_s = 4.442 }, { gain_Kpmm = -0.047855, tau_s = 40.000 }, { gain_Kpmm = 0.068408, tau_s = 108.443 } },
+    [30] = { { gain_Kpmm = -0.037383, tau_s = 1.425 }, { gain_Kpmm = 0.116462, tau_s = 5.346 }, { gain_Kpmm = -0.041293, tau_s = 40.000 }, { gain_Kpmm = 0.053455, tau_s = 77.518 } },
   flow auto: powerFilter_s = 5.26
 
 82/82 checks pass

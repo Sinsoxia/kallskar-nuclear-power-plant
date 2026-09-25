@@ -247,6 +247,25 @@ return {
 		t.ok(math.abs(breakdown.doppler) < BUDGET.powerDefect, "Doppler is most of the power defect, not all")
 	end,
 
+	["the fuel feedbacks take FuelThermal's fuel temperature as it is, lagged once (§3.2, D-060)"] = function(t)
+		--[[
+			§3.2's 4 s lag on Doppler and fuel axial expansion is the fuel's own thermal time constant, and the fuel
+			average FuelThermal publishes already carries it (its pin model, 3.0–3.8 s by layer). So on the tick the
+			Core reads a fuel temperature, both terms are §3.2's formulas of that temperature, with no second lag.
+		]]
+		local sys, ch = make(EXCESS)
+		run(sys, 1)
+		local fb = Config.Feedback
+		local Tf = fb.fullPowerFuelAverage_K
+		ch:setExternal("fuel.coreAverage_K", Tf)
+		run(sys, DT)
+		local breakdown = sys:getState().feedback
+		t.near(breakdown.doppler, fb.doppler.constant_pcm * math.log(Tf / fb.referenceTemperature_K), 1e-9,
+			"Doppler: −900 pcm × ln(T_f/T_ref) of the fuel as FuelThermal has it")
+		t.near(breakdown.fuelAxialExpansion, fb.fuelAxialExpansion.coefficient_pcmpK * (Tf - fb.referenceTemperature_K),
+			1e-9, "and the axial expansion likewise")
+	end,
+
 	["the pin power adds up, and is shaped the way §2.4 says"] = function(t)
 		local sys, ch = make(EXCESS)
 		run(sys, 1)

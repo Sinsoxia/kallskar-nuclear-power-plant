@@ -80,16 +80,16 @@ return {
 		correctionFraction = 0.9091,
 		byPower = {
 			{ power_pctFP = 30, modes = {
-				{ gain_Kpmm = -0.831083, tau_s = 2.500 }, { gain_Kpmm = 1.024476, tau_s = 3.071 },
-				{ gain_Kpmm = -0.129552, tau_s = 8.000 }, { gain_Kpmm = 0.027309, tau_s = 101.156 },
+				{ gain_Kpmm = -0.037383, tau_s = 1.425 }, { gain_Kpmm = 0.116462, tau_s = 5.346 },
+				{ gain_Kpmm = -0.041293, tau_s = 40.000 }, { gain_Kpmm = 0.053455, tau_s = 77.518 },
 			} },
 			{ power_pctFP = 60, modes = {
-				{ gain_Kpmm = -0.433374, tau_s = 1.707 }, { gain_Kpmm = 0.605696, tau_s = 2.500 },
-				{ gain_Kpmm = -0.123349, tau_s = 8.000 }, { gain_Kpmm = 0.043785, tau_s = 147.419 },
+				{ gain_Kpmm = -0.032569, tau_s = 1.090 }, { gain_Kpmm = 0.104006, tau_s = 4.442 },
+				{ gain_Kpmm = -0.047855, tau_s = 40.000 }, { gain_Kpmm = 0.068408, tau_s = 108.443 },
 			} },
 			{ power_pctFP = 100, modes = {
-				{ gain_Kpmm = -0.110074, tau_s = 0.960 }, { gain_Kpmm = 0.222927, tau_s = 2.500 },
-				{ gain_Kpmm = -0.072829, tau_s = 8.000 }, { gain_Kpmm = 0.050905, tau_s = 150.379 },
+				{ gain_Kpmm = -0.010834, tau_s = 0.353 }, { gain_Kpmm = 0.068096, tau_s = 5.269 },
+				{ gain_Kpmm = -0.035390, tau_s = 40.000 }, { gain_Kpmm = 0.068308, tau_s = 119.805 },
 			} },
 		},
 	}, "tools/derive/auto_tuning.py (D-059: fitted to tests/TuningSpec's regulating-rod steps)"),

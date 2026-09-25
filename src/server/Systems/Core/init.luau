@@ -156,7 +156,13 @@ function Core.init(self: any, ctx: any)
 		upperHotPool = T0,
 		coldPool = T0,
 	}
-	self.pk = Kinetics.PointKinetics.new(cfg, self.drivers, 0)
+	--[[
+		The fuel average comes from FuelThermal's pin model, which already carries the fuel's thermal time constant
+		(3.0–3.8 s by layer, tools/derive/pin_thermal.py, against §3.2's 4 s), so Doppler and fuel axial expansion take
+		it as it is (D-060). The other drivers are sodium temperatures, and their lags are the structures' own: the
+		load pads, the diagrid, the drivelines and the vessel follow the sodium they sit in.
+	]]
+	self.pk = Kinetics.PointKinetics.new(cfg, self.drivers, 0, { fuelAverage = true })
 
 	--[[
 		D-030: the startup source. §3.5 gives no source strength, but it does give the wide range a span whose

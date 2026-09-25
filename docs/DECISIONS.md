@@ -1070,7 +1070,7 @@ desks exist.
   plant, autos out, at 100, 60 and 30 %FP; 82/82 checks):
   - **Rod auto: option A (Aqua), a model of its own moves.** A rod move's effect on the outlet thermocouple has two
     timescales. About half arrives within 10 s as the core's power moves. The rest takes minutes (a mode of about
-    150 s at full power), because the plant's heat balance settles slowly against the heat sink. A controller that
+    120 s at full power since D-060), because the plant's heat balance settles slowly against the heat sink. A controller that
     only watched the thermocouple would see too little, move again, and overshoot. So rod auto keeps its own copy of
     four fitted modes, driven by the rods' actual positions, and acts on the measured error plus what its moves have
     yet to do. When that is outside ±2 K, it moves by f·(error)/G. G is the final gain (about 0.091 K/mm at
@@ -1109,3 +1109,21 @@ desks exist.
   as the release it is (RodDrivesSpec).
 - **Order:** the spec (A6), then the tuning derivation, then AutoControls and its tests, with Config.revision moving
   to A6. All done.
+
+## D-060 The fuel feedbacks count the fuel's thermal time constant once (§3.2) — Proposed (a fix to §3.2's own wording; Aqua to confirm)
+§3.2 gives each feedback a lag and says what it is: "the lags are the thermal time constants of the driving
+temperatures. The point-kinetics fallback uses them directly." Doppler and fuel axial expansion are driven by the fuel
+average, with a 4 s lag.
+- **The fault.** The Core runs point kinetics (D-031), but the fuel average it gives the oracle is FuelThermal's, and
+  FuelThermal's pin model already carries the fuel's thermal time constant: 3.0–3.8 s by layer (tools/derive/pin_thermal.py,
+  checked against the same 4 s). The oracle then lagged that temperature by §3.2's 4 s again, so Doppler reached the
+  power through two lags in series, about twice the spec's.
+- **The fix.** The oracle keeps its §3.2 lags, which is what a fallback with no fuel model needs and what KineticsSpec
+  tests. A caller names the drivers that are already simulated temperatures, and those are used as they are. The Core
+  names the fuel average. The other drivers are sodium temperatures, and their lags are the structures' own (load pads,
+  diagrid, drivelines, vessel), so they stay.
+- **What it changes.** Doppler now answers a power change on the fuel's own timescale. After a shim move at full power,
+  the outlet peaks at +3.25 K instead of +4.51 K (PlantSpec). D-059's rod-auto modes were re-measured and refitted
+  (`auto_tuning.py --measure`, 82/82): the slow mode at full power is 120 s, where it was 150 s, and about half the final
+  effect still arrives within 10 s.
+- CoreSpec checks that on the tick the Core reads a fuel temperature, both terms equal §3.2's formulas of it.

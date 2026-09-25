@@ -193,7 +193,13 @@ local PointKinetics = {}
 PointKinetics.__index = PointKinetics
 Kinetics.PointKinetics = PointKinetics
 
-function PointKinetics.new(config: any, drivers: Drivers, n0: number)
+--[[
+	§3.2's lags "are the thermal time constants of the driving temperatures", and "the point-kinetics fallback uses
+	them directly": given a temperature that has not been through them, the oracle lags it itself. A caller whose
+	driver is already a simulated temperature, carrying its own thermal time constant, names it in `simulated`, and
+	that driver is used as it is. Lagging it again would count the time constant twice (D-060).
+]]
+function PointKinetics.new(config: any, drivers: Drivers, n0: number, simulated: { [string]: boolean }?)
 	local kin, fb = config.Kinetics, config.Feedback
 	local pcm = 1 / config.Units.pcmPerUnit
 	local beta = {}
@@ -208,7 +214,7 @@ function PointKinetics.new(config: any, drivers: Drivers, n0: number)
 		local spec = fb[name]
 		self.terms[name] = {
 			driver = spec.drivenBy,
-			lag = spec.lag_s,
+			lag = if simulated and simulated[spec.drivenBy] then 0 else spec.lag_s,
 			coef = if name == "doppler" then spec.constant_pcm * pcm else spec.coefficient_pcmpK * pcm,
 			log = name == "doppler",
 			T = (drivers :: any)[spec.drivenBy],
@@ -229,7 +235,7 @@ function PointKinetics.updateFeedback(self: any, dt: number, drivers: Drivers)
 	local total = 0
 	for _, term in self.terms do
 		local target = (drivers :: any)[term.driver]
-		if dt > 0 then
+		if dt > 0 and term.lag > 0 then
 			term.T = target + (term.T - target) * math.exp(-dt / term.lag)
 		else
 			term.T = target
