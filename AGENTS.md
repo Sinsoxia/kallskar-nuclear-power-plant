@@ -16,8 +16,7 @@ The design spec is the source of truth for every number. It comes in three copie
 
 `python tools/derive/apply_rev_a6.py --check` verifies that the copies agree. `docs/FINAL_DECISIONS_REV_A5.md`
 records what took the spec from A4 to A5, and D-059 in docs/DECISIONS.md what took it to A6 (§9.4's automatic
-controllers). `Config.revision` names the revision Config's values follow: still `"A5"`, because A6 changed no
-Config value; it moves to A6 when AutoControls implements D-059.
+controllers). `Config.revision` names the revision Config's values follow: `"A6"`.
 
 Decisions made while building it are in [docs/DECISIONS.md](docs/DECISIONS.md), as `D-xxx` decisions and `Fxx` spec
 findings. Read the relevant entries before changing behaviour, and cite them by number in code and commits.

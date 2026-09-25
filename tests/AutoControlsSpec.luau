@@ -1,11 +1,11 @@
 --!strict
 --[[
-	AutoControls verification (spec §9.4, §9.2, D-003, D-006).
+	AutoControls verification (spec §9.4 Rev A6, §9.2, D-003, D-006, D-059).
 
-	§9.4's controllers are meant to be worse than a crew, so the weaknesses are tested as carefully as the
-	behaviour: that flow auto's 10 s filter really does throw P/Q off on a fast change, that rod auto really does
-	stop at the band rather than reaching for a shim, and that both track §9.2's programme rather than the flat
-	numbers §9.4 quotes (D-003, finding F3).
+	§9.4's controllers are competent, local and reactive (D-059), so what is tested is that each holds its own
+	variable without overshooting and within its own sector: rod auto's model of its own moves, flow auto asking the
+	pumps it has for the programme's flow, rod auto stopping at the band rather than reaching for a shim, and both
+	tracking §9.2's programme rather than the flat numbers §9.4 quotes (D-003, finding F3).
 ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -31,10 +31,32 @@ local BAND = Config.Rods.regulating.normalBand_mm
 local PROGRAM_LCO = Config.Protection.lco["LCO-10"]
 local OPERATOR = { kind = "player" :: any, name = "Aqua", userId = 1 }
 
+-- §3.4's S-curve in the 500-mm equivalent millimetres rod auto sizes its moves in (D-059), as AutoControls has it
+local ACTIVE = Config.Core.geometry.fissileHeight_mm
+local TRAVEL = Config.Units.rodTravel_mm
+local MODEL = PROGRAM.rodAutoModel
+local function depth(z: number): number
+	return math.clamp((TRAVEL - z) / ACTIVE, 0, 1)
+end
+local function worthFraction(d: number): number
+	return d - math.sin(2 * math.pi * d) / (2 * math.pi)
+end
+local function equivalentMm(fromZ: number, toZ: number): number
+	local slope = (1 - math.cos(2 * math.pi * depth(MODEL.measuredAt_mm))) / ACTIVE
+	return (worthFraction(depth(fromZ)) - worthFraction(depth(toZ))) / slope
+end
+-- the model's final gain, K per equivalent millimetre, at full power (where make() seats its plant)
+local GAIN_100 = 0
+for _, mode in MODEL.byPower[#MODEL.byPower].modes do
+	GAIN_100 += mode.gain_Kpmm
+end
+
 local function make(power: number?, outlet_C: number?)
 	local pctFP = power or 100
 	local ch = Channels.new()
 	ch:declareExternal("core.power_pctFP", pctFP)
+	ch:declareExternal("detectors.prMean_pctFP", pctFP) -- flow auto's measurement (D-059)
+	ch:declareExternal("primary.pumpsRunning", 3)
 	ch:declareExternal("ihx.sinkLoad_pct", pctFP) -- the steam plant on the same load, as at steady state
 	ch:declareExternal("primary.flowFraction", pctFP / 100)
 	ch:declareExternal("pools.mixedCoreOutletMeasured_K", (outlet_C or 550) + KEL)
@@ -61,6 +83,25 @@ local function run(sys: any, seconds: number)
 	end
 end
 
+--[[
+	Rod auto reads the thermocouple through a first-order filter (D-059), so a reading changed in one tick reaches its
+	decisions over the filter's time constant. Five of them leave e^−5, under 1 %, of a step: long enough for any
+	change these tests make to have come through.
+]]
+local FILTER_S = PROGRAM.rodAutoTuning.measurementFilter_s
+local SETTLE_S = 5 * FILTER_S
+
+-- Step until `done` holds, for at most `seconds`; the time it took, or nil if it never did
+local function runUntil(sys: any, seconds: number, done: () -> boolean): number?
+	for n = 1, math.floor(seconds / DT + 0.5) do
+		sys:step(DT)
+		if done() then
+			return n * DT
+		end
+	end
+	return nil
+end
+
 return {
 	["the setpoint follows §9.2's programme, not §9.4's flat 550 °C (D-003, F3)"] = function(t)
 		for i, power in TABLE.power_pct do
@@ -83,27 +124,26 @@ return {
 	["the flow programme follows §9.2, with its 40 % floor and D-007's ramp"] = function(t)
 		local sys, ch = make(100)
 		for i, power in TABLE.power_pct do
-			ch:setExternal("core.power_pctFP", power)
-			run(sys, 60) -- past the 10 s filter, so the demand is the programme rather than the lag
+			ch:setExternal("detectors.prMean_pctFP", power)
+			run(sys, 60) -- past the power filter, so the demand is the programme rather than the lag
 			t.near(ch:get("auto.flowProgram_pct"), TABLE.flow_pct[i], 1,
 				string.format("%d %%FP asks for %d %% flow", power, TABLE.flow_pct[i]))
 		end
 		-- D-007: between 5 and 10 %FP the floor ramps from 25 % to 40 % rather than stepping
-		ch:setExternal("core.power_pctFP", 7.5)
+		ch:setExternal("detectors.prMean_pctFP", 7.5)
 		run(sys, 60)
 		t.near(ch:get("auto.flowProgram_pct"), 32.5, 0.5, "D-007: half way up the ramp")
 	end,
 
-	["flow auto's 10 s filter costs what §9.4 says, at the rates the plant can actually ramp"] = function(t)
+	["flow auto follows the power through only its noise filter, at the rates the plant can ramp (D-059)"] = function(t)
 		--[[
-			An instantaneous step would drive P/Q to power_new / power_old and trip the plant outright — but rods
-			move at no more than 4 pcm/s (§3.4), so power cannot step. The rate limit on the rods is what keeps this
-			deliberately weak controller survivable, and the interesting question is what it costs at the rates the
-			plant CAN ramp at. The flow lags power by τ × rate, so the excursion is (P + τ·rate) / P.
+			Flow auto asks for the programme's flow from the PR median, filtered only against D-025's noise
+			(tools/derive/auto_tuning.py), so the flow lags the power by τ × rate and P/Q by (P + τ·rate)/P. The rods
+			move at no more than 4 pcm/s (§3.4), so the power cannot step, and at the rates it can ramp at the lag is
+			what is left: §9.4's 10 s filter, and the rod block it could reach, are gone.
 		]]
-		local tau = PROGRAM.primaryFlowAuto.powerFilter_s
+		local tau = PROGRAM.primaryFlowAutoTuning.powerFilter_s
 		local BLOCK = Config.Protection.pss.powerToFlow.alarm
-		local TRIP = Config.Protection.pss.powerToFlow.trip
 
 		local function rampFrom(start_pctFP: number, pctPerMin: number): number
 			local sys, ch = make(start_pctFP)
@@ -112,9 +152,9 @@ return {
 			local power, worst = start_pctFP, 0
 			for _ = 1, 1200 do
 				power = math.min(power + pctPerMin / 60 * DT, 100)
-				ch:setExternal("core.power_pctFP", power)
+				ch:setExternal("detectors.prMean_pctFP", power)
 				sys:step(DT)
-				local flow = ch:get("auto.pumpSpeedDemand_pct") / 100
+				local flow = ch:get("auto.pumpSpeedDemand_pct") / 100 -- three pumps, so the flow is the speed
 				ch:setExternal("primary.flowFraction", flow)
 				worst = math.max(worst, (power / 100) / flow)
 			end
@@ -129,11 +169,26 @@ return {
 			runbackRate, Config.Protection.runbacks.RB1.rate_pctpmin))
 		t.ok(normal < 1.01, "inside LCO-10's 1 %/min the filter costs almost nothing")
 		t.ok(approved < BLOCK, "and the approved 3 %/min stays clear of §9.5's 1.05 rod block")
-		t.ok(runbackRate > BLOCK, "§9.4's weakness has teeth: a 30 %/min change reaches the rod block")
-		t.ok(runbackRate < TRIP, "though not the 1.12 trip")
-		-- the lag itself, which is the whole of the stated weakness
+		t.ok(runbackRate < BLOCK, "even a 30 %/min change stays clear of it now")
+		-- the lag itself: the filter's, and nothing else
 		local predicted = (60 + tau * Config.Protection.runbacks.RB1.rate_pctpmin / 60) / 60
-		t.near(runbackRate, predicted, 0.02, "the excursion is exactly the 10 s filter's lag")
+		t.near(runbackRate, predicted, 0.02, "the excursion is the noise filter's lag")
+	end,
+
+	["flow auto asks the pumps it has for the programme's flow: one lost, the others go up by half (D-059)"] = function(t)
+		local sys, ch = make(60)
+		sys:applyCommand(OPERATOR, { kind = "auto.flow", value = 1 })
+		run(sys, 1)
+		t.near(ch:get("auto.pumpSpeedDemand_pct"), 60, 1e-9, "three pumps at the programme's 60 %")
+		ch:setExternal("primary.pumpsRunning", 2)
+		run(sys, DT)
+		t.near(ch:get("auto.pumpSpeedDemand_pct"), 90, 1e-9, "one lost: the other two asked for 3/2 of it at once")
+		-- at full power two pumps cannot make up the loss: the demand stops at §4.2's 105 %
+		local full, fch = make(100)
+		full:applyCommand(OPERATOR, { kind = "auto.flow", value = 1 })
+		fch:setExternal("primary.pumpsRunning", 2)
+		run(full, 1)
+		t.eq(fch:get("auto.pumpSpeedDemand_pct"), Config.Primary.pumps.speedRange_pct[2], "the top of the range")
 	end,
 
 	["rod auto holds the band and does nothing inside it (§9.4)"] = function(t)
@@ -142,21 +197,78 @@ return {
 		run(sys, 5)
 		t.eq(ch:get("auto.rodSelected"), "", "on programme, so nothing moves")
 
-		-- 1 K off is inside §9.4's ±2 K band
+		-- 1 K off is inside §9.4's ±2 K band, even once the filter has taken all of it in
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 551 + KEL)
-		run(sys, 5)
+		run(sys, SETTLE_S)
 		t.eq(ch:get("auto.rodSelected"), "", "still nothing: 1 K is inside the band")
 
-		-- 5 K hot: insert
+		--[[
+			5 K hot. It acts on the tick its filter carries the reading past the band: a first-order filter closes
+			the gap to a step as e^(−t/τ), so from a filtered F₀ toward 555 °C it reaches 550 + band after
+			τ·ln((555 − F₀)/(555 − 550 − band)). It inserts by the reactivity that filtered error calls for, less the
+			rod-worth tolerance (D-059).
+		]]
+		local f, band = MODEL.correctionFraction, PROGRAM.rodAuto.holdBand_K
+		local before = sys:getState().rodOutletFiltered_C
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 555 + KEL)
-		run(sys, 1)
-		t.ok(ch:get("auto.rodSelected") ~= "", "too hot, so it acts")
-		t.eq(ch:get("auto.rodDemand_mm"), BAND[1], "driving in, toward the bottom of the band")
+		local crossing = FILTER_S * math.log((555 - before) / (555 - 550 - band))
+		local waited = runUntil(sys, SETTLE_S, function()
+			return ch:get("auto.rodSelected") ~= ""
+		end)
+		t.ok(waited ~= nil, "too hot, so it acts")
+		t.near(waited or 0, crossing, DT, `when its filter carries the reading past the band ({crossing} s)`)
+		local effective = sys:getState().rodEffectiveError_K
+		t.near(equivalentMm(500, ch:get("auto.rodDemand_mm")), -f * effective / GAIN_100, 1e-6,
+			"sent in by the reactivity its filtered error calls for, through the S-curve")
 
-		-- 5 K cold: withdraw
+		-- 5 K cold: once the move under way calls the wrong way beyond the band, it stops and withdraws
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 545 + KEL)
-		run(sys, 1)
-		t.eq(ch:get("auto.rodDemand_mm"), BAND[2], "and out again when it is cold")
+		t.ok(runUntil(sys, SETTLE_S, function()
+			return ch:get("auto.rodDemand_mm") > 500
+		end) ~= nil, "and out again when it is cold")
+		effective = sys:getState().rodEffectiveError_K
+		t.ok(effective < -band, "on an error beyond the band the other way")
+		t.near(equivalentMm(500, ch:get("auto.rodDemand_mm")), -f * effective / GAIN_100, 1e-6, "by what that error calls for")
+	end,
+
+	["rod auto decides on its predicted error, the thermocouple plus what its moves have still to do (D-059)"] = function(t)
+		--[[
+			The model's arithmetic, with no plant: the thermocouple is held 5 K hot, and the rod is put at its target
+			in one tick. Straight after, the model says nearly all of the move's effect is still to come, so the
+			predicted error is inside the band although the raw one is 5 K, and rod auto does not move. With nothing
+			answering, the prediction leaves the band as the model's modes run their course, and only then does it move
+			again. That it waits long enough on a real plant is PlantSpec's to show, where the plant answers.
+		]]
+		local band = PROGRAM.rodAuto.holdBand_K
+		local sys, ch = make(100, 555)
+		sys:applyCommand(OPERATOR, { kind = "auto.rod", value = 1 })
+		run(sys, DT)
+		local target = ch:get("auto.rodDemand_mm")
+		t.eq(ch:get("auto.rodSelected"), "RR1", "it inserts the most-withdrawn rod")
+		ch:setExternal("rods.position_mm", { target, 500, 500 })
+		run(sys, DT * 2)
+		t.eq(ch:get("auto.rodSelected"), "", "at its target it lets the rod go")
+		local state = sys:getState()
+		-- what is still to come, from the modes: an instant move of Δ equivalent mm leaves Σ aᵢ·Δ·e^(−t/τᵢ)
+		local moved = equivalentMm(500, target)
+		t.log(string.format("just after an instant move of %.1f equivalent mm: %.2f K still to come, predicted error %.2f K",
+			moved, state.rodPending_K, state.rodEffectiveError_K))
+		t.near(state.rodEffectiveError_K, 5 + state.rodPending_K, 1e-9, "the predicted error is the raw one plus what is still to come")
+		t.ok(math.abs(state.rodEffectiveError_K) <= band, "inside the band, although the raw error is 5 K")
+		local waited, predictedThen = 0, nil
+		for _ = 1, math.floor(900 / DT) do
+			local before = sys:getState().rodEffectiveError_K
+			sys:step(DT)
+			if ch:get("auto.rodSelected") ~= "" then
+				predictedThen = sys:getState().rodEffectiveError_K
+				break
+			end
+			t.ok(math.abs(before) <= band + 1e-9, "while it waits, its prediction is inside the band")
+			waited += 1
+		end
+		t.log(string.format("with nothing answering it waited %.1f s, then moved again on a predicted %.2f K", waited * DT, predictedThen or 0))
+		t.ok(waited > 0 and predictedThen ~= nil and math.abs(predictedThen :: number) > band,
+			"it moves again only once its prediction leaves the band")
 	end,
 
 	["rod auto moves one rod at a time, and keeps the three together (D-006, F6)"] = function(t)
@@ -167,7 +279,9 @@ return {
 		t.eq(ch:get("auto.rodSelected"), "RR2", "withdrawing: it takes the most-inserted rod")
 
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 555 + KEL) -- hot, so it inserts
-		run(sys, 1)
+		runUntil(sys, SETTLE_S, function()
+			return ch:get("auto.rodSelected") ~= "RR2"
+		end)
 		t.eq(ch:get("auto.rodSelected"), "RR1", "inserting: it takes the most-withdrawn")
 		-- one rod, never a bank: §9.4 says it never moves a shim
 		t.ok(string.sub(ch:get("auto.rodSelected"), 1, 2) == "RR", "and only ever a regulating rod")
@@ -207,12 +321,16 @@ return {
 		t.eq(states[#states], "in", "out of authority, it alarms")
 		-- the outlet comes back onto the 550 °C setpoint: nothing to do, and nothing to alarm about
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 550 + KEL)
-		run(sys, 1)
+		runUntil(sys, SETTLE_S, function()
+			return states[#states] == "out"
+		end)
 		t.eq(states[#states], "out", "and the annunciator is told when that is over")
 		t.ok(not ch:get("auto.rodOutOfBand"))
 		-- in again, then switched to manual: the alarm goes with the controller
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 545 + KEL)
-		run(sys, 1)
+		runUntil(sys, SETTLE_S, function()
+			return states[#states] == "in"
+		end)
 		t.eq(states[#states], "in")
 		sys:applyCommand(OPERATOR, { kind = "auto.rod", value = 0 })
 		t.eq(states[#states], "out", "switching rod auto off clears its alarm too")
@@ -247,9 +365,11 @@ return {
 		run(sys, 1)
 		t.eq(ch:get("auto.rodSelected"), "", "blocked")
 		ch:setExternal("pools.mixedCoreOutletMeasured_K", 555 + KEL) -- now hot: inserting is always allowed
-		run(sys, 1)
+		runUntil(sys, SETTLE_S, function()
+			return ch:get("auto.rodSelected") ~= ""
+		end)
 		t.ok(ch:get("auto.rodSelected") ~= "", "but it may still bring power down")
-		t.eq(ch:get("auto.rodDemand_mm"), BAND[1])
+		t.ok(ch:get("auto.rodDemand_mm") < 500, "inserting")
 	end,
 
 	["switching auto off releases the rods"] = function(t)
@@ -300,7 +420,7 @@ return {
 				rods:step(DT)
 			end
 		end
-		advance(10)
+		advance(4) -- the move is about 50 mm at 5 mm/s, so still under way
 		local moved = 0
 		for _, d in rods:getState().drives do
 			if d.set == "RR" and d.position_mm > 500 then
@@ -311,10 +431,10 @@ return {
 		t.eq(rods:getState().selection, ch:get("auto.rodSelected"), "and it is the one the auto asked for")
 		-- §3.4's 5 mm/s for a single regulating rod
 		local pos = rods.drives[rods:indexOf(ch:get("auto.rodSelected"))].position_mm
-		t.near(pos, 500 + 10 * Config.Rods.regulating.speed_mmps, 1, "at the §3.4 single-rod speed")
+		t.near(pos, 500 + 4 * Config.Rods.regulating.speed_mmps, 1, "at the §3.4 single-rod speed")
 
-		-- once the plant is back on programme the auto lets go, and the drive stops where it stands
-		ch:setExternal("pools.mixedCoreOutletMeasured_K", 550 + KEL)
+		-- switched to manual, the auto lets go, and the drive stops where it stands
+		auto:applyCommand(OPERATOR, { kind = "auto.rod", value = 0 })
 		advance(1)
 		t.eq(ch:get("auto.rodSelected"), "", "auto releases")
 		local stopped = rods.drives[rods:indexOf("RR1")].position_mm
@@ -323,7 +443,7 @@ return {
 		t.eq(rods:getState().selection, nil, "leaving the drives free for an operator")
 	end,
 
-	["PrimaryPumps takes the flow auto's demand, and ignores a pump trip as §9.4 says"] = function(t)
+	["PrimaryPumps takes the flow auto's demand, and holds its survivors at 105 % after a trip first (§4.2)"] = function(t)
 		local PrimaryPumps = require(Systems:WaitForChild("PrimaryPumps")) :: any
 		local ch = Channels.new()
 		ch:declareExternal("core.power_pctFP", 100)

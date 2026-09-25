@@ -100,10 +100,11 @@ return {
 	["the revision label matches the spec the values follow, and no setting is left unread"] = function(t)
 		--[[
 			A pin, not a derivation: the spec is not in the place, so nothing at run time can read its revision. The
-			values carry Rev A4 and A5 corrections (Rods.regulating.normalBand_mm, Primary.ihx.primaryInlet_C, the
-			§2.4 pin figures of D-018), so a label older than A5 misdescribes them.
+			values carry Rev A4, A5 and A6 changes (Rods.regulating.normalBand_mm, Primary.ihx.primaryInlet_C, the
+			§2.4 pin figures of D-018, and A6's §9.4 autos in Program.rodAutoModel and primaryFlowAutoTuning), so a
+			label older than A6 misdescribes them.
 		]]
-		t.eq(Config.revision, "A5", "Config follows spec Rev A5")
+		t.eq(Config.revision, "A6", "Config follows spec Rev A6")
 		t.eq(Config.Engineering.devStrictState, nil, "no switch that nothing reads (System.record takes its own flag)")
 	end,
 

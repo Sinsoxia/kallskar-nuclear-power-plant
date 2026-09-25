@@ -1067,7 +1067,7 @@ desks exist.
     master follows dispatch into violations, and the rest.
   - The cover gas auto keeps "cycles on heatup" until its controller (D-020) is reviewed under this principle.
 - **Tuning** (`tools/derive/auto_tuning.py`, from the open-loop step responses tests/TuningSpec measures on the whole
-  plant, autos out, at 100, 60 and 30 %FP; 22/22 checks):
+  plant, autos out, at 100, 60 and 30 %FP; 82/82 checks):
   - **Rod auto: option A (Aqua), a model of its own moves.** A rod move's effect on the outlet thermocouple has two
     timescales. About half arrives within 10 s as the core's power moves. The rest takes minutes (a mode of about
     150 s at full power), because the plant's heat balance settles slowly against the heat sink. A controller that
@@ -1075,9 +1075,21 @@ desks exist.
     four fitted modes, driven by the rods' actual positions, and acts on the measured error plus what its moves have
     yet to do. When that is outside ±2 K, it moves by f·(error)/G. G is the final gain (about 0.091 K/mm at
     mid-stroke, scaled by the §3.4 S-curve). f = 1/1.1 keeps a move from overshooting if the rods are as much as the
-    §3.7 ±10 % stronger than modelled. Simulated on the fitted plants with the ±1 K noise, a ±6 K setpoint step is
-    corrected in one move with no crossing, in about 15 s at 60 and 30 %FP. At full power it takes about 130 s, where
-    the slow mode carries more of the effect.
+    §3.7 ±10 % stronger than modelled.
+  - **Rod auto reads the thermocouple through a 10.42 s filter, and runs its model through the same one.** Built
+    without it, the whole plant showed why it is needed: a shim move at full power drew eight rod-auto moves, three of
+    them withdrawals. A move sized on one reading of §2.5's ±1 K (uniform, every tick) is off by up to 0.9 K, and a
+    reactivity disturbance reaches the outlet on both timescales, so the predicted error dips as the disturbance's
+    slow part is still to come. Against a ±2 K band, noise on that dip reversed the next move. The filter is the
+    shortest that keeps the noise, at D-025's 5σ, inside the margin f leaves at the band edge ((1 − f)/f of 2 K,
+    0.2 K), so noise alone never makes a band-edge move overshoot. Filtering the model too keeps the prediction of
+    its own moves exact: the filter delays what it sees of a disturbance, never what it expects of itself. It starts
+    as a running mean after a seat or a load, so its first value is not one reading's noise.
+  - Simulated on the fitted plants with the noise (five seeds each): a ±6 K setpoint step takes up to three moves
+    and crosses the new setpoint by 0.06 K at most, with rods 10 % strong. A reactivity step worth ±6 K crosses by
+    0.63 K at most. No run reverses, and every one is inside the band after 15 minutes. Without the filter, 14 to 19 of
+    50 runs at each power reversed. On the whole plant (PlantSpec) the shim move now takes three moves, all inserting,
+    and the outlet never goes below the setpoint.
   - **Flow auto: a direct inverse.** The flow is (Σ running speeds)/300, one to one and limited only by the 2 %/s
     ramp, so flow auto asks for the speed that gives the programme's flow with the pumps it has running, and the
     ramp does the rest. The programme is indexed on the PR median (the real measurement), through a 5.26 s filter.
@@ -1088,7 +1100,12 @@ desks exist.
 - **Spec.** Rev A6 (`tools/derive/apply_rev_a6.py`, 35/35 checks) rewrites §9.4 and the project brief's sentence
   on the autos. Every rewritten row keeps its number of lines, and the two rows the spec audit cites inside §9.4 are
   untouched, so the audit's citations still hold. Only the two after Appendix C moved, by the A6 entry's 7 lines.
-- **Consequence to confirm when built:** flow auto answers a pump trip through its own P/Q error, so the PQ trip
-  16 s after RB-2 (D-046+) should no longer happen with flow auto left in.
-- **Order:** the spec (A6, done), then the tuning derivation, then AutoControls and its tests, with Config.revision
-  moving to A6 then.
+- **Confirmed when built:** flow auto answers a pump trip through its own P/Q error, so the PQ trip 16 s after RB-2
+  (D-046+) no longer happens with flow auto left in. On the two pumps left it asks 96.8 %, and nothing trips in the
+  two minutes after RB-2 (PlantSpec).
+- **Found while building it: RodDrives kept a released rod moving.** Rod auto can release a move and choose another
+  rod in the same tick. Its selection then went from one rod to another with no empty tick between, and RodDrives
+  saw neither a new request nor a release, so the first rod ran on to its old demand. It now treats a change of rod
+  as the release it is (RodDrivesSpec).
+- **Order:** the spec (A6), then the tuning derivation, then AutoControls and its tests, with Config.revision moving
+  to A6. All done.

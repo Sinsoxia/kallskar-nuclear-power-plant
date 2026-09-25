@@ -10,15 +10,22 @@ thermocouple a fast rise (about half the final change within 10 s), a dip, and a
 holds the load, so the extra power warms the whole pool until the isothermal feedback cancels the rod's reactivity.
   1. Each response is fitted with a sum of first-order modes, driven by the rod's actual ramp:
          ΔT(t) = Σ a_i·x_i(t),  dx_i/dt = (Δz(t) − x_i)/τ_i
-     so a_i are K per mm of RR at 500 mm (mid-stroke), and Σ a_i is the final gain.
+     so a_i are K per mm of RR at 500 mm (depth 0.6 of the active height, 90 % of the S-curve's peak
+     differential worth), and Σ a_i is the final gain.
   2. The controller keeps its own copy of those mode states, driven by the rods' actual positions. What its moves have
      yet to do to the outlet is Σ a_i·(Δz − x_i); it acts on the measured error plus that, so it never moves again for
      an effect that is still arriving.
   3. When that predicted error is outside §9.4's ±2 K band, it moves a regulating rod by f·(error)/G, where G is the
-     final gain at the rod's position on the §3.4 S-curve. f < 1 so the move never overshoots at the power where the
+     final gain, and the move is solved in reactivity: the target position is the one whose S-curve worth
+     differs from the rod's by the equivalent millimetres needed. f < 1 so the move never overshoots at the power where the
      plant's gain is highest while the model's is that of the power the controller interpolates to.
-  4. A closed-loop simulation on the fitted plants (with the thermocouple's ±1 K noise) checks the result: a setpoint
-     step at each power, with no crossing of the new setpoint by more than the noise and the band allow.
+  4. It acts on the thermocouple through a first-order filter, and its copy of the modes runs through the same filter,
+     so the prediction of its own moves stays exact. Unfiltered, a move sized on one reading of §2.5's ±1 K noise
+     is off by up to 0.9 K, and against a ±2 K band that is enough to reverse. The filter is the shortest that keeps the
+     noise, at D-025's 5σ, inside the margin f leaves: then noise alone never makes a band-edge move overshoot.
+  5. A closed-loop simulation on the fitted plants, with the noise, checks the result. The cases are a setpoint step
+     at each power, and a reactivity step (a shim move, which reaches the outlet on both timescales, so the controller
+     sees only part of it at first): no crossing of the setpoint by more than the band, and every move the same way.
 
 Flow auto. Every pump 5 % slower gives 5 % less flow within the pumps' 2 %/s ramp, at every power: a static plant,
 flow = (Σ running speeds)/300. The controller asks directly for the speed that gives the programme's flow with the
@@ -48,6 +55,8 @@ BAND_K = M.luau_number("Program", "holdBand_K")                   # §9.4: rod a
 TC_NOISE_K = M.luau_number("Core", "thermocoupleNoise_K")         # §2.5: ±1 K, uniform, every tick
 RR_SPEED = M.luau_number("Rods", "speed_mmps")                    # §3.4: 5 mm/s
 ACTIVE_MM = M.luau_number("Core", "fissileHeight_mm")
+TRAVEL_MM = M.luau_number("Units", "rodTravel_mm")
+MEASURED_AT_MM = 500.0                                             # tests/TuningSpec: RR1 as InitialConditions seats it
 MODES = 4
 
 checks = []
@@ -114,55 +123,93 @@ def fit_modes(t, y, speed, dist):
     return a, tau, rms
 
 
-def worth_scale(pos_mm):
-    """The §3.4 S-curve's differential worth at a position, relative to mid-stroke (where the model was measured)."""
-    d = min(max(pos_mm / ACTIVE_MM, 0.0), 1.0)
-    return (1 - math.cos(2 * math.pi * d)) / 2
+def depth(pos_mm):
+    """RodDrives.depthOf: the fraction of the active height a rod at this position is inserted."""
+    return min(max((TRAVEL_MM - pos_mm) / ACTIVE_MM, 0.0), 1.0)
+
+
+def worth_fraction(d):
+    """§3.4's S-curve, W(d) = d − sin(2πd)/2π, as RodDrives has it: the fraction of a rod's worth inserted at depth d."""
+    return d - math.sin(2 * math.pi * d) / (2 * math.pi)
+
+
+NORM = (1 - math.cos(2 * math.pi * depth(MEASURED_AT_MM))) / ACTIVE_MM  # the S-curve's slope at 500 mm, per mm
+
+
+def equivalent_mm(z_from, z_to):
+    """
+    A move's reactivity in "500-mm equivalent" millimetres: the millimetres at 500 mm that would add as much. The
+    model is linear in reactivity, so this, not the millimetres, is its input: exact whatever the S-curve does.
+    """
+    return (worth_fraction(depth(z_from)) - worth_fraction(depth(z_to))) / NORM
+
+
+def position_for(z_from, eq_mm, lo, hi):
+    """The position that moves `eq_mm` equivalent millimetres from z_from, within [lo, hi] (bisection)."""
+    a, b = (z_from, hi) if eq_mm > 0 else (lo, z_from)
+    if (eq_mm > 0 and equivalent_mm(z_from, hi) <= eq_mm) or (eq_mm < 0 and equivalent_mm(z_from, lo) >= eq_mm):
+        return hi if eq_mm > 0 else lo  # the band limits it
+    for _ in range(50):
+        m = (a + b) / 2
+        if equivalent_mm(z_from, m) < eq_mm:  # the equivalent millimetres rise with position, either way
+            a = m
+        else:
+            b = m
+    return (a + b) / 2
 
 
 # ----------------------------------------------------------------------------------- rod auto: closed-loop simulation
-def simulate(plant, model, f, setpoint_step_K, seconds=900.0, seed=1):
+def simulate(plant, model, f, tau_m, setpoint_step_K=0.0, disturbance_mm=0.0, seconds=900.0, seed=1):
     """
-    One regulating rod under the IMC controller, on a plant given by modes (a, τ) per mm at mid-stroke, scaled by the
-    S-curve at the rod's position, with the thermocouple's uniform ±1 K noise. The setpoint steps at t = 0; returns the
-    true outlet error trace (outlet − new setpoint) and the rod travel.
+    One regulating rod under the IMC controller as AutoControls has it, on a plant given by modes (a, τ) per 500-mm
+    equivalent millimetre, with the thermocouple's uniform ±1 K noise. Both the plant and the controller's model are
+    driven by the rod's reactivity in equivalent millimetres, the controller's through the measurement filter τ_m.
+    At t = 0 the setpoint steps, or a reactivity the controller did not make (a shim move, in equivalent mm) enters
+    the plant. Returns (t, true error, rod travel) per tick and the direction of each move (True: withdrawing).
     """
     rng = np.random.default_rng(seed)
     (pa, ptau), (ma, mtau) = plant, model
-    z0 = z = 500.0
-    x = np.zeros(len(ptau))    # the plant's mode states, driven by position change
+    band_lo, band_hi = 250.0, 750.0  # §9.4 / Rev A4's regulating band
+    beta = 1 - math.exp(-DT / tau_m)
+    z0 = z = MEASURED_AT_MM
+    x = np.zeros(len(ptau))    # the plant's mode states, driven by the equivalent millimetres moved
     xm = np.zeros(len(mtau))   # the controller's copy
-    target = None
-    trace = []
+    ym = np.zeros(len(mtau))   # ... seen through its measurement filter
+    filtered = 0.0             # settled on the steady plant before t = 0
+    target, withdrawing = None, None
+    trace, moves = [], []
     for k in range(int(seconds / DT)):
-        u = z - z0
-        # the plant: each mode relaxes toward the position change; its gain follows the S-curve at the rod's position
-        x += (u - x) * (1 - np.exp(-DT / ptau))
+        u = equivalent_mm(z0, z)
+        x += (u + disturbance_mm - x) * (1 - np.exp(-DT / ptau))
         xm += (u - xm) * (1 - np.exp(-DT / mtau))
-        true_err = float(np.dot(pa, x)) * worth_scale(z) - setpoint_step_K
+        ym += (xm - ym) * beta
+        true_err = float(np.dot(pa, x)) - setpoint_step_K
         measured = true_err + TC_NOISE_K * (2 * rng.random() - 1)
-        pending = float(np.dot(ma, u - xm)) * worth_scale(z)
-        if target is None:
-            effective = measured + pending
-            if abs(effective) > BAND_K:
-                gain = float(np.sum(ma)) * worth_scale(z)
-                target = z - f * effective / gain
+        filtered += (measured - filtered) * beta
+        effective = filtered + float(np.dot(ma, u - ym))
+        # a move is released on arriving, or when the error calls the other way beyond the band
+        if target is not None and abs(effective) > BAND_K and (effective < 0) != withdrawing:
+            target = None
+        if target is None and abs(effective) > BAND_K:
+            target = position_for(z, -f * effective / float(np.sum(ma)), band_lo, band_hi)
+            withdrawing = effective < 0
+            moves.append(withdrawing)
         if target is not None:
             step = math.copysign(min(RR_SPEED * DT, abs(target - z)), target - z)
             z += step
             if abs(target - z) < 1e-9:
                 target = None
         trace.append((k * DT, true_err, z - z0))
-    return trace
+    return trace, moves
 
 
 def main():
     steps = load_steps()
-    print("Rod auto: the modes fitted to each open-loop response (RR1 out 20 mm at mid-stroke)")
+    print("Rod auto: the modes fitted to each open-loop response (RR1 out 20 mm from 500 mm)")
     fits = {}
     for pct in (100, 60, 30):
         meta, v = steps[("rod", pct)]
-        assert abs(float(meta["pos"]) - 500) < 1e-6 and abs(float(meta["speed"]) - RR_SPEED) < 1e-9
+        assert abs(float(meta["pos"]) - MEASURED_AT_MM) < 1e-6 and abs(float(meta["speed"]) - RR_SPEED) < 1e-9
         t = np.arange(len(v)) * float(1)
         y = v - v[0]
         a, tau, rms = fit_modes(t, y, RR_SPEED, 20.0)
@@ -190,20 +237,42 @@ def main():
     f = 1 / 1.10
     print(f"  correction fraction f = {f:.3f}: a move is sized for the error, less the §3.7 ±10 % rod-worth tolerance")
 
-    print("Rod auto: closed loop on the fitted plants, IMC controller, ±2 K band, ±1 K thermocouple noise")
+    # τ_m, the measurement filter. The thermocouple's noise is uniform ±1 K drawn every tick (Pools, §2.5): σ = 1/√3 K,
+    # independent from tick to tick. On a rod of nominal worth a move sized f·(e + δ) for a true error e overshoots
+    # when δ > (1 − f)/f·e, which at the band edge is 10 % of 2 K, 0.2 K: the margin f leaves for §3.7's tolerance.
+    # Criterion: the filter is the shortest that keeps the noise it lets through, at D-025's 5σ, inside that margin.
+    # A first-order filter of time constant τ passes σ·√(dt/2τ) of white noise sampled every dt (as flow auto's does).
+    sigma_tc = TC_NOISE_K / math.sqrt(3)
+    margin_K = (1 - f) / f * BAND_K
+    tau_m = DT / 2 * (sigma_tc / (margin_K / 5)) ** 2
+    print(f"  measurement filter τ = {tau_m:.2f} s: the thermocouple's σ {sigma_tc:.3f} K a tick comes through as "
+          f"{sigma_tc * math.sqrt(DT / (2 * tau_m)):.3f} K, 5σ = the {margin_K:.2f} K margin f leaves at the band edge")
+
+    print("Rod auto: closed loop on the fitted plants, IMC controller, ±2 K band, ±1 K thermocouple noise, five seeds")
     for pct in (100, 60, 30):
+        gain = float(np.sum(fits[pct][0]))
         for label, plant in (("model = plant", fits[pct]),
                              ("rods 10 % stronger", (fits[pct][0] * 1.10, fits[pct][1]))):
-            for step in (-6.0, +6.0):
-                tr = simulate(plant, fits[pct], f, step)
-                errs = np.array([e for _, e, _ in tr])
-                beyond = -errs.min() if step < 0 else errs.max()   # how far past the new setpoint the outlet went
-                inside = next((tt for tt, e, _ in tr if abs(e) <= BAND_K and all(abs(ee) <= BAND_K + TC_NOISE_K for _, ee, _ in tr[int(tt / DT):])), None)
-                moves = sum(1 for i in range(1, len(tr)) if tr[i][2] != tr[i - 1][2] and tr[i - 1][2] == tr[max(i - 2, 0)][2])
-                print(f"  {pct:3d} %FP {label:19s} setpoint {step:+.0f} K: past the setpoint by {max(beyond, 0):.2f} K at most; "
-                      f"inside the band from {inside if inside is None else round(inside)} s; {moves} move(s)")
-                check(f"{pct} %FP, {label}, {step:+.0f} K: no crossing beyond the band ({max(beyond, 0):.2f} K ≤ {BAND_K} K)",
+            for case, step, dist in (("setpoint", -6.0, 0.0), ("setpoint", +6.0, 0.0),
+                                     ("reactivity", 0.0, +6.0), ("reactivity", 0.0, -6.0)):
+                beyond, reversals, most, last = 0.0, 0, 0, 0.0
+                for seed in range(1, 6):
+                    tr, moves = simulate(plant, fits[pct], f, tau_m, setpoint_step_K=step,
+                                         disturbance_mm=dist / gain, seed=seed)
+                    errs = np.array([e for _, e, _ in tr])
+                    # how far past the setpoint, on the side the correction heads for
+                    over = -errs.min() if (step < 0 or dist > 0) else errs.max()
+                    beyond = max(beyond, over)
+                    reversals += len(set(moves)) > 1
+                    most = max(most, len(moves))
+                    last = max(last, float(np.abs(errs[-600:]).max()))
+                what = f"setpoint {step:+.0f} K" if case == "setpoint" else f"reactivity worth {dist:+.0f} K"
+                print(f"  {pct:3d} %FP {label:19s} {what:24s}: past the setpoint by {max(beyond, 0):.2f} K at most; "
+                      f"up to {most} move(s); {reversals}/5 runs reverse; last minute within {last:.2f} K")
+                check(f"{pct} %FP, {label}, {what}: no crossing beyond the band ({max(beyond, 0):.2f} K ≤ {BAND_K} K)",
                       beyond <= BAND_K)
+                check(f"{pct} %FP, {label}, {what}: every move the same way", reversals == 0)
+                check(f"{pct} %FP, {label}, {what}: inside the band after 15 min ({last:.2f} K)", last <= BAND_K)
 
     # ------------------------------------------------------------------------------------------------- flow auto
     print("Flow auto: the plant")
@@ -231,7 +300,8 @@ def main():
           f"a quarter of the {tick_step:.1f} % tick step); at §7.1's 5 %/min it lags the power by {lag:.2f} %FP")
     check("the filter's lag at §7.1's fastest routine change is well inside the P/Q alarm margin (5 %)", lag < 0.5)
 
-    print(f"\nFor Config (D-059):\n  rod auto: correctionFraction = {f:.4f}; modes at 100/60/30 %FP (K per mm at 500 mm, s):")
+    print(f"\nFor Config (D-059):\n  rod auto: correctionFraction = {f:.4f}; measurementFilter_s = {tau_m:.2f}; "
+          f"modes at 100/60/30 %FP (K per mm at 500 mm, s):")
     for pct in (100, 60, 30):
         a, tau = fits[pct]
         print(f"    [{pct}] = {{ " + ", ".join(f"{{ gain_Kpmm = {ai:.6f}, tau_s = {ti:.3f} }}" for ai, ti in zip(a, tau)) + " },")

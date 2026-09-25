@@ -1,7 +1,7 @@
 --!strict
 -- Operating modes, part-load program and the M1 automatic controllers. Spec §9.1, §9.2, §9.4.
 local P = require(script.Parent.Provenance)
-local spec, decision = P.spec, P.decision
+local spec, decision, derived = P.spec, P.decision, P.derived
 
 return {
 	-- §9.1 operating modes
@@ -58,7 +58,7 @@ return {
 		grossOutput_MWe = { 1000, 783, 573, 371, 273, 178, 86, 42 },
 	}, "§9.2 table"),
 
-	-- §9.4 automatic controllers relevant to M1 (deliberately worse than a crew)
+	-- §9.4 automatic controllers relevant to M1: competent, local and reactive (Rev A6, D-059)
 	rodAuto = spec({
 		holdBand_K = 2,
 		regulatingBand_mm = { 250, 750 }, -- Rev A4, matches Rods.regulating.normalBand_mm
@@ -67,13 +67,41 @@ return {
 		actsOnThermocouples = true,
 	}, "§9.4: holds core outlet 550 ±2 K using RR only"),
 	rodAutoTracksProgram = decision(true, "D-003"),
+	--[[
+		D-059, option A: rod auto's model of its own moves. The outlet thermocouple's response to a regulating rod is
+		four first-order modes, fitted to tests/TuningSpec's open-loop steps at three powers, per millimetre at 500 mm
+		(the position InitialConditions seats the rods at). Rod auto interpolates the modes in power, drives its copy of
+		them with the regulating rods' actual moves in reactivity (500-mm equivalent millimetres, through §3.4's
+		S-curve), and moves by correctionFraction of what the error plus the still-arriving effect calls for. The
+		fraction allows for §3.7's ±10 % rod-worth tolerance.
+	]]
+	rodAutoModel = derived({
+		measuredAt_mm = 500,
+		correctionFraction = 0.9091,
+		byPower = {
+			{ power_pctFP = 30, modes = {
+				{ gain_Kpmm = -0.831083, tau_s = 2.500 }, { gain_Kpmm = 1.024476, tau_s = 3.071 },
+				{ gain_Kpmm = -0.129552, tau_s = 8.000 }, { gain_Kpmm = 0.027309, tau_s = 101.156 },
+			} },
+			{ power_pctFP = 60, modes = {
+				{ gain_Kpmm = -0.433374, tau_s = 1.707 }, { gain_Kpmm = 0.605696, tau_s = 2.500 },
+				{ gain_Kpmm = -0.123349, tau_s = 8.000 }, { gain_Kpmm = 0.043785, tau_s = 147.419 },
+			} },
+			{ power_pctFP = 100, modes = {
+				{ gain_Kpmm = -0.110074, tau_s = 0.960 }, { gain_Kpmm = 0.222927, tau_s = 2.500 },
+				{ gain_Kpmm = -0.072829, tau_s = 8.000 }, { gain_Kpmm = 0.050905, tau_s = 150.379 },
+			} },
+		},
+	}, "tools/derive/auto_tuning.py (D-059: fitted to tests/TuningSpec's regulating-rod steps)"),
+	-- D-059: rod auto reads the thermocouple through this filter, and runs its model through the same one. It is the
+	-- shortest that keeps §2.5's ±1 K noise, at D-025's 5σ, inside the margin correctionFraction leaves at the band edge.
+	rodAutoTuning = derived({ measurementFilter_s = 10.42 }, "tools/derive/auto_tuning.py (D-059: §2.5's thermocouple noise)"),
 
-	primaryFlowAuto = spec({
-		targetPQ = 1.00,
-		powerFilter_s = 10,
-		swingOnFastChanges_frac = 0.05,
-		ignoresPumpTrip = true,
-	}, "§9.4: holds P/Q at 1.00"),
+	primaryFlowAuto = spec({ targetPQ = 1.00 }, "§9.4: holds P/Q at 1.00"),
+	-- D-059: flow auto asks for the speed that gives the programme's flow with the pumps running, and the ramp does the
+	-- rest. The PR median it indexes the programme on is filtered so its noise moves the pumps by less than a quarter
+	-- of one tick's 2 %/s ramp.
+	primaryFlowAutoTuning = derived({ powerFilter_s = 5.26 }, "tools/derive/auto_tuning.py (D-059: D-025's PR noise)"),
 	primaryFlowAutoTracksProgram = decision(true, "D-003"),
 
 	coverGasAuto = spec({

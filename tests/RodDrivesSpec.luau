@@ -110,6 +110,39 @@ return {
 		t.ok(sys:applyCommand(OPERATOR, { kind = "rod.move", target = "SMA1", value = 100 }).ok, "freeing the next move")
 	end,
 
+	["rod auto changing rods in one tick stops the rod it let go of (D-059)"] = function(t)
+		--[[
+			Rod auto can release a move and start another in the same tick: a move whose error has turned round
+			beyond the band is released, and the rod for the other direction chosen at once. Its selection then goes
+			from one rod to another with no empty tick between, and that is still a release: the first rod stops
+			where it is, and the second gets the selection.
+		]]
+		local ch = Channels.new()
+		ch:declareExternal("protection.rodWithdrawalBlock", false)
+		ch:declareExternal("protection.runback", "")
+		ch:declareExternal("protection.rodRunback", false)
+		ch:declareExternal("auto.rodSelected", "")
+		ch:declareExternal("auto.rodDemand_mm", 0)
+		local sys = System.new(RodDrives)
+		sys:init({
+			config = Config,
+			channels = ch:port(RodDrives.spec),
+			log = EventLog.new(Config, { sim = 0, grid = 0 }),
+			bus = Bus.new(),
+		})
+		place(sys, "RR", 500)
+		ch:setExternal("auto.rodSelected", "RR2")
+		ch:setExternal("auto.rodDemand_mm", 470)
+		run(sys, 1)
+		local rr2 = find(sys, "RR2").position_mm
+		t.ok(rr2 < 500 and rr2 > 470, `RR2 on its way in ({rr2} mm)`)
+		ch:setExternal("auto.rodSelected", "RR1")
+		ch:setExternal("auto.rodDemand_mm", 520)
+		run(sys, 1)
+		t.eq(find(sys, "RR2").position_mm, rr2, "RR2 stopped the tick rod auto let it go")
+		t.ok(find(sys, "RR1").position_mm > 500, "and RR1 is moving instead")
+	end,
+
 	["a bank moves at its own slower speed (§3.4)"] = function(t)
 		for bank, speed in { A = RODS.shim.speedBankA_mmps, B = RODS.shim.speedBank_mmps, C = RODS.shim.speedBank_mmps } do
 			local sys = make()

@@ -42,7 +42,7 @@ local Config = {
 	Engineering = load("Engineering", require(script.Engineering)),
 
 	provenance = table.freeze(prov),
-	revision = "A5", -- the spec revision these values follow (REACTOR SPEC/sfr-1000-spec.html)
+	revision = "A6", -- the spec revision these values follow (all three copies of the spec; tools/derive/apply_rev_a6.py)
 }
 
 --[[

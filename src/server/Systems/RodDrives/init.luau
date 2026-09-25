@@ -287,6 +287,14 @@ function RodDrives.step(self: any, dt: number)
 	local autoRod = self.port:read("auto.rodSelected")
 	if autoRod ~= nil and autoRod ~= "" then
 		local target = self.port:read("auto.rodDemand_mm") or 0
+		-- rod auto released one rod and chose another in the same tick: releasing the first stops it, as it would
+		-- have with a tick between them
+		if self.autoSelection ~= nil and self.autoSelection ~= autoRod then
+			if self.selection and self.selection.id == self.autoSelection then
+				self:stopSelection()
+			end
+			self.autoSelection = nil
+		end
 		if self.selection == nil then
 			if self:request("rod", autoRod, target, nil).ok then
 				self.autoSelection = autoRod

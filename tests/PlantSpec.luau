@@ -637,12 +637,13 @@ return {
 		t.ok(peak < pqTrip, string.format("P/Q stays below the %.2f trip (peak %.3f)", pqTrip, peak))
 		t.eq(tripped, false, "the plant runs back without a trip")
 		t.ok(done ~= nil, "and RB-2 completes")
-		-- once RB-2 is over, flow auto has the pumps again, a tick later as they read it (§9.4: it ignores the trip, so
-		-- its demand is the three-pump programme's)
+		-- once RB-2 is over, flow auto has the pumps again, a tick later as they read it (D-059: asking the two pumps
+		-- left for the programme's flow)
 		for i = 1, 2 do
 			t.eq(pumps.pumps[i].demand_pct, demand, `{pumps.pumps[i].name} is back on flow auto's demand`)
 		end
-		-- what flow auto does with two pumps is §9.4's weakness: log it rather than assert it (D-046+)
+		-- D-059: flow auto asks the two pumps left for the programme's flow, so the PQ trip §9.4's old flow auto caused
+		-- 16 s after RB-2 (D-046+) no longer comes
 		local after, afterFirstOut = nil, ""
 		run(p, 120, function(tick)
 			if p.channels:get("protection.tripped") then
@@ -653,6 +654,59 @@ return {
 		end)
 		t.log(string.format("after RB-2, with flow auto left in on two pumps at %.1f %%: %s", demand or 0,
 			if after then string.format("the plant trips on %s %.1f s later", afterFirstOut, after * DT) else "no trip in 120 s"))
+		t.eq(after, nil, "no trip in the two minutes after RB-2: flow auto holds P/Q on the two pumps left (D-059)")
+	end,
+
+	["rod auto takes back a shim move without overshooting, every move the same way (§9.4 Rev A6, D-059)"] = function(t)
+		--[[
+			An operator withdraws shim bank A 4 mm at full power, a disturbance with both of the plant's timescales:
+			the outlet rises about half its final amount within seconds and the rest over minutes. Rod auto sees the
+			rise on the thermocouple and inserts a regulating rod by what its prediction calls for. The checks, on the
+			thermocouple's lagged reading without its noise:
+			  - it never takes the outlet below the setpoint by more than §9.4's ±2 K band (no slingshot)
+			  - every move inserts: none reverses, which is what hunting would look like. The shim's own effect keeps
+			    arriving for minutes, and rod auto anticipates no disturbance (D-059), so as that effect grows it moves
+			    again each time the error it predicts leaves the band: a staircase, all one way
+			  - ten minutes on, four times the slow mode, the outlet is inside the band
+		]]
+		local p = atFullPower(t)
+		local rods, pools = p.byName.RodDrives, p.byName.Pools
+		local band = Config.Program.rodAuto.holdBand_K
+		local setpoint = p.channels:get("auto.coreOutletSetpoint_C")
+		local bankA = rods.drives[rods.banks.A.members[1]].position_mm
+		local rr0 = 0
+		for i = 1, Config.Rods.regulating.count do
+			rr0 += rods.drives[i].position_mm
+		end
+		t.ok(rods:applyCommand(AUTO, { kind = "rod.bank", target = "A", value = bankA + 4 }).ok, "shim bank A out 4 mm")
+		local lowest, highest, moves, withdrawals = math.huge, -math.huge, 0, 0
+		local lastRod, lastDemand = "", 0
+		run(p, 600, function()
+			local outlet = pools.measuredOutlet_K - 273.15 - setpoint
+			lowest, highest = math.min(lowest, outlet), math.max(highest, outlet)
+			-- a move starts when rod auto picks a rod or a new demand, including straight after releasing another
+			local rod, demand = p.channels:get("auto.rodSelected"), p.channels:get("auto.rodDemand_mm")
+			if rod ~= "" and (rod ~= lastRod or demand ~= lastDemand) then
+				moves += 1
+				if demand > rods.drives[rods:indexOf(rod)].position_mm then
+					withdrawals += 1
+				end
+			end
+			lastRod, lastDemand = rod, demand
+			return false
+		end)
+		local final = pools.measuredOutlet_K - 273.15 - setpoint
+		local rr = 0
+		for i = 1, Config.Rods.regulating.count do
+			rr += rods.drives[i].position_mm
+		end
+		t.log(string.format("shim bank A +4 mm: outlet up to %+.2f K, down to %+.2f K; rod auto %d move(s), %.1f mm of RR in; %+.2f K after 10 min",
+			highest, lowest, moves, rr0 - rr, final))
+		t.ok(highest > band, "the shim move pushes the outlet out of the band, so rod auto has something to do")
+		t.ok(lowest >= -band, string.format("rod auto never takes it past the setpoint by more than the band (%.2f K)", lowest))
+		t.ok(moves >= 1 and withdrawals == 0, `every move inserts: none reverses ({moves} moves, {withdrawals} withdrawing)`)
+		t.ok(math.abs(final) <= band, "and ten minutes on the outlet is inside the band")
+		t.eq(p.channels:get("protection.tripped"), false, "with nothing tripped")
 	end,
 
 	["RB-1 runs a full-power plant back to 64 %FP at 30 %/min and settles there (§9.5, D-046)"] = function(t)
